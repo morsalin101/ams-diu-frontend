@@ -33,7 +33,7 @@ export function ThemeColorSelector({ onColorChange }: ThemeColorSelectorProps) {
           Theme Colors
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-4 bg-white border border-gray-200 shadow-lg">
+      <PopoverContent className="w-80 p-4 bg-white border border-gray-200 shadow-lg z-50 backdrop-blur-sm">
         <div className="space-y-3">
           <h4 className="font-medium text-gray-900">Choose Theme Color</h4>
           <div className="grid grid-cols-2 gap-3">

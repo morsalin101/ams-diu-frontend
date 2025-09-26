@@ -12,22 +12,22 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({ onThemeChange }: DashboardHeaderProps) {
   return (
-    <header className="bg-white border-b border-gray-200 px-3 md:px-6 py-3 md:py-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
-          <div className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] text-white px-2 md:px-4 py-1 md:py-2 rounded-lg">
-            <h1 className="text-sm md:text-lg font-semibold">Admin Panel</h1>
+    <header className="flex h-14 sm:h-16 items-center gap-2 sm:gap-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 sm:px-4 md:px-6">
+      <div className="flex items-center justify-between w-full">
+        <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
+          <div className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] text-white px-2 sm:px-3 md:px-4 py-1 md:py-2 rounded-lg">
+            <h1 className="text-xs sm:text-sm md:text-lg font-semibold">Admin Panel</h1>
           </div>
-          <div className="relative hidden lg:block">
+          <div className="relative hidden md:block flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
               placeholder="Search..."
-              className="pl-10 w-64 xl:w-80"
+              className="pl-10 w-full"
             />
           </div>
         </div>
         
-        <div className="flex items-center gap-1 md:gap-4">
+        <div className="flex items-center gap-1 sm:gap-2 md:gap-4">
           <div className="hidden md:block">
             <ThemeColorSelector onColorChange={onThemeChange} />
           </div>

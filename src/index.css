@@ -89,7 +89,8 @@
 
 /* Custom styles for wider sidebar with smooth animations */
 [data-sidebar="sidebar"] {
-  width: var(--sidebar-width, 20rem) !important;
+  width: 20rem !important;
+  background-color: white !important;
   transition: transform 0.3s ease-in-out, width 0.3s ease-in-out;
   transform: translateX(0);
 }
@@ -102,10 +103,7 @@
   }
 }
 
-/* Sidebar hidden state */
-[data-sidebar="sidebar"][data-state="collapsed"] {
-  transform: translateX(-100%);
-}
+/* Sidebar hidden state handled by component now */
 
 /* Sidebar trigger button styling */
 [data-sidebar="trigger"] {
@@ -182,9 +180,56 @@
   z-index: 50;
 }
 
-.popover-content {
+.popover-content,
+[role="dialog"],
+[data-radix-dialog-content] {
   background: white !important;
   border: 1px solid #e5e7eb !important;
+  backdrop-filter: blur(4px);
+}
+
+/* Additional fixes for transparency issues */
+.card,
+[data-slot="card"] {
+  background-color: white !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+/* Fix select component transparency issues */
+[data-slot="select-content"],
+[data-radix-select-content] {
+  background-color: white !important;
+  border: 1px solid #d1d5db !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-slot="select-trigger"] {
+  background-color: white !important;
+  border: 1px solid #d1d5db !important;
+}
+
+[data-slot="select-item"]:hover,
+[data-slot="select-item"]:focus {
+  background-color: #f3f4f6 !important;
+}
+
+[data-slot="select-item"][data-state="checked"] {
+  background-color: #dbeafe !important;
+  color: #1e40af !important;
+}
+
+/* Ensure all dialogs and modals have solid backgrounds */
+[role="dialog"],
+[data-radix-dialog-content],
+[data-radix-popover-content] {
+  background-color: white !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Fix any transparent overlays */
+[data-radix-dialog-overlay] {
+  background-color: rgba(0, 0, 0, 0.5) !important;
 }
 
 /* CSS Variables for theming */
@@ -221,8 +266,8 @@
   --sidebar-ring: #2e3094;
   --sidebar-accent: #f4f4f5;
   --sidebar-accent-foreground: #0f0f0f;
-  --sidebar-width: 16rem;
-  --sidebar-width-mobile: 18rem;
+  --sidebar-width: 20rem;
+  --sidebar-width-mobile: 22rem;
   --sidebar-width-icon: 3rem;
 }
 

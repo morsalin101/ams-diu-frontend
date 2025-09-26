@@ -28,44 +28,43 @@ function DashboardContent_({ currentPage, currentGradient }: { currentPage: stri
   return (
     <>
       {/* Header - Fixed at top with toggle button on the left */}
-      <header className="sticky top-0 z-0 w-full border-b bg-white border-gray-200">
-        <div className={`${open ? 'max-w-6xl' : 'max-w-7xl'} mx-auto flex h-14 md:h-16 items-center px-3 md:px-6 transition-all duration-300`}>
+      <header className="sticky top-0 z-40 w-full border-b bg-white border-gray-200 shadow-sm">
+        <div className="mx-auto flex h-16 items-center px-6 transition-all duration-300">
           {/* Sidebar Toggle Button - Left side of header */}
           <div className="flex items-center mr-4">
             <SidebarTrigger className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-              <Menu className="h-6 w-6 text-gray-700" />
+              <Menu className="h-5 w-5 text-gray-600" />
             </SidebarTrigger>
           </div>
           
           {/* Title - Centered */}
           <div className="flex-1 text-center">
-            <h1 className="font-semibold text-lg md:text-xl">Admin Panel</h1>
+            <h1 className="font-semibold text-xl text-gray-800">Admin Panel</h1>
           </div>
           
           {/* Right side controls */}
-          <div className="flex items-center gap-2 md:gap-4">
-            {/* Theme selector - Hidden on mobile */}
-            <div className="hidden sm:block">
-              <ThemeColorSelector onColorChange={(color: string, gradient: string) => {
-                // Update CSS custom properties
-                document.documentElement.style.setProperty('--primary', color);
-              }} />
-            </div>
+          <div className="flex items-center gap-3">
+            {/* Theme selector */}
+            <ThemeColorSelector onColorChange={(color: string, gradient: string) => {
+              // Update CSS custom properties
+              document.documentElement.style.setProperty('--primary', color);
+            }} />
             
-            <Button variant="ghost" size="sm" className="relative">
-              <Bell className="h-5 w-5" />
-              <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
+            {/* Notification Bell */}
+            <Button variant="ghost" size="sm" className="relative p-2">
+              <Bell className="h-5 w-5 text-gray-600" />
+              <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-red-500 text-white rounded-full">
                 3
               </Badge>
             </Button>
             
-            {/* Settings - Hidden on mobile */}
-            <Button variant="ghost" size="sm" className="hidden sm:flex">
-              <Settings className="h-5 w-5" />
+            {/* Settings */}
+            <Button variant="ghost" size="sm" className="p-2">
+              <Settings className="h-5 w-5 text-gray-600" />
             </Button>
             
             {/* User avatar and name */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3 pl-2">
               <Avatar className="h-8 w-8">
                 <AvatarImage src="" alt="Admin" />
                 <AvatarFallback>
@@ -74,19 +73,13 @@ function DashboardContent_({ currentPage, currentGradient }: { currentPage: stri
               </Avatar>
               <span className="text-sm font-medium hidden sm:inline">Admin User</span>
             </div>
-
-            {/* Mobile Menu */}
-            <MobileMenu onThemeChange={(color: string, gradient: string) => {
-              // Update CSS custom properties
-              document.documentElement.style.setProperty('--primary', color);
-            }} />
           </div>
         </div>
       </header>
 
       {/* Main Content - Responsive width based on sidebar state */}
       <main className="flex-1 overflow-auto bg-gray-50 min-h-screen pt-4 md:pt-8">
-        <div className={`${open ? 'max-w-6xl' : 'max-w-7xl'} mx-auto px-3 md:px-6 pb-4 md:pb-8 transition-all duration-300`}>
+        <div className="mx-auto px-3 md:px-6 pb-4 md:pb-8 transition-all duration-300 max-w-7xl">
           {renderContent()}
         </div>
       </main>
@@ -113,14 +106,14 @@ export function Dashboard() {
 
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="flex h-screen w-full">
+      <div className="flex h-screen w-full bg-background">
         <AppSidebar
           currentPage={currentPage}
           onPageChange={setCurrentPage}
           gradientClass={currentGradient}
           logo={logoConfig}
         />
-        <SidebarInset className="flex-1">
+        <SidebarInset className="flex-1 flex flex-col">
           <DashboardContent_ currentPage={currentPage} currentGradient={currentGradient} />
         </SidebarInset>
       </div>

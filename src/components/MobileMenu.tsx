@@ -20,7 +20,7 @@ export function MobileMenu({ onThemeChange }: MobileMenuProps) {
           <MoreVertical className="h-5 w-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-80">
+      <SheetContent side="right" className="w-80 bg-white border-l border-gray-200">
         <SheetHeader>
           <SheetTitle>Menu</SheetTitle>
           <SheetDescription>

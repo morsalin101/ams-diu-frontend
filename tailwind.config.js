@@ -6,6 +6,14 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
+    screens: {
+      'xs': '475px',
+      'sm': '640px',
+      'md': '768px',
+      'lg': '1024px',
+      'xl': '1280px',
+      '2xl': '1536px',
+    },
     extend: {
       colors: {
         border: "hsl(var(--border))",
@@ -70,6 +78,14 @@ export default {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+      },
+      spacing: {
+        '18': '4.5rem', // 72px - Custom height for laptop displays
+        '88': '22rem',   // 352px - Better container spacing
+        '100': '25rem',  // 400px - Laptop content width
+      },
+      fontSize: {
+        '2.5xl': ['1.75rem', '2rem'], // Custom size between 2xl and 3xl for laptops
       },
     },
   },

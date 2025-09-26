@@ -10,9 +10,9 @@ export function DashboardContent({ gradientClass }: DashboardContentProps) {
   return (
     <div className="space-y-4 md:space-y-6">
       {/* Welcome Section */}
-      <div className={`bg-gradient-to-r ${gradientClass} text-white p-4 md:p-6 rounded-lg`}>
-        <h2 className="text-xl md:text-2xl font-bold mb-2">Welcome back, Admin!</h2>
-        <p className="text-white/80 text-sm md:text-base">Here's what's happening with your dashboard today.</p>
+      <div className="bg-gradient-to-r from-[#4C51BF] to-[#667EEA] text-white p-6 rounded-xl shadow-sm">
+        <h2 className="text-2xl font-bold mb-2">Welcome back, Admin!</h2>
+        <p className="text-white/90 text-base">Here's what's happening with your dashboard today.</p>
       </div>
 
       {/* Stats Cards */}
