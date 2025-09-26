@@ -6,9 +6,11 @@ import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
 import { Badge } from './ui/badge';
-import { Plus, Edit, Eye, Trash2, X, Save, FileText, Settings, BarChart3, HelpCircle, Clock, Award, Building, Calendar } from 'lucide-react';
+import { Plus, Edit, Eye, Trash2, X, Save, FileText, Settings, BarChart3, HelpCircle, Clock, Award, Building, Calendar, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { QuestionPaperView } from './QuestionPaperView';
+import { examAPI } from '../services/api';
+import toast from 'react-hot-toast';
 
 export interface Question {
   id: number;
@@ -191,12 +193,12 @@ const generateDummyQuestions = (subjectPercentages: any, totalQuestions: number)
 
 export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
   const [subjectPercentages, setSubjectPercentages] = useState({
-    math: 30,
-    english: 20,
-    bangla: 15,
-    gk: 10,
-    chemistry: 15,
-    physics: 10
+    Mathematics: 0,
+    English: 0,
+    Bangla: 0,
+    GK: 0,
+    Chemistry: 0,
+    Physics: 0
   });
 
   const [examConfig, setExamConfig] = useState({
@@ -208,11 +210,15 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
   });
 
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [questionsCount, setQuestionsCount] = useState<number>(0);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [showQuestions, setShowQuestions] = useState(false);
   const [showPaperView, setShowPaperView] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [examId, setExamId] = useState<number | null>(null);
+  const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
 
-  const subjects = ['math', 'english', 'bangla', 'gk', 'chemistry', 'physics'];
+  const subjects = ['Mathematics', 'English', 'Bangla', 'GK', 'Chemistry', 'Physics'];
   const departments = ['CSE', 'EEE', 'BBA', 'Pharmacy', 'Architecture', 'English'];
   const semesters = ['Spring25', 'Summer25', 'Fall25', 'Spring26', 'Summer26'];
 
@@ -223,47 +229,251 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
     }));
   };
 
-  const handleCreateExam = () => {
-    // Generate dummy questions based on configuration
-    const generatedQuestions = generateDummyQuestions(subjectPercentages, examConfig.totalQuestions);
-    setQuestions(generatedQuestions);
-    setShowQuestions(true);
+  const handleCreateExam = async () => {
+    setIsLoading(true);
     
-    // Here you would typically call your backend API
-    console.log('Creating exam with config:', examConfig);
-    console.log('Subject percentages:', subjectPercentages);
-    console.log('Generated questions:', generatedQuestions);
+    try {
+      // Prepare API payload - only include subjects with values > 0
+      const subjects: { [key: string]: number } = {};
+      
+      // Add subjects from our form that have values > 0
+      Object.entries(subjectPercentages).forEach(([key, value]) => {
+        if (value > 0) {
+          subjects[key] = value;
+        }
+      });
+      
+      // If no subjects selected, show error
+      if (Object.keys(subjects).length === 0) {
+        toast.error('Please select at least one subject with a percentage > 0');
+        setIsLoading(false);
+        return;
+      }
+
+      const examData = {
+        department: examConfig.department,
+        semester: examConfig.semester,
+        total_questions: examConfig.totalQuestions,
+        duration_minutes: examConfig.timeMinutes,
+        subject_distribution: subjects,
+        except_semesters: [] // Add logic for this if needed
+      };
+      
+      // Call API to create exam
+      const response = await examAPI.createExam(examData);
+      
+      setExamId(response.exam_id);
+      toast.success(`Exam created successfully! ID: ${response.exam_id}`);
+      
+      // Load questions for the created exam
+      await loadExamQuestions(response.exam_id);
+      
+    } catch (error) {
+      console.error('Error creating exam:', error);
+      toast.error('Failed to create exam: ' + ((error as any)?.message || 'Unknown error'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const loadExamQuestions = async (examId: number) => {
+    setIsLoadingQuestions(true);
+    
+    try {
+      const response = await examAPI.getExamQuestions(examId);
+      
+      // Handle paginated response - extract results array and count
+      const questionsData = response.results || response;
+      const totalCount = response.count || questionsData.length;
+      
+      // Store the count
+      setQuestionsCount(totalCount);
+      
+      // Transform API response to match our Question interface
+      const transformedQuestions = questionsData.map((q: any) => {
+        // Transform options from object to array format
+        let optionsArray = [];
+        if (q.options && typeof q.options === 'object') {
+          optionsArray = Object.values(q.options);
+        } else if (Array.isArray(q.options)) {
+          optionsArray = q.options;
+        }
+        
+        // Parse answer if it's a JSON string
+        let answer = q.answer;
+        if (typeof answer === 'string' && answer.startsWith('[')) {
+          try {
+            const parsed = JSON.parse(answer);
+            answer = Array.isArray(parsed) ? parsed[0] : parsed;
+          } catch (e) {
+            // Keep original if parsing fails
+          }
+        }
+        
+        return {
+          id: q.id,
+          subject: q.subject || 'General',
+          questions: q.question_text || '',
+          type: q.type === 'option' ? 'option' : 'text',
+          options: optionsArray,
+          answer: answer,
+          marks: q.marks || 1
+        };
+      });
+      
+      setQuestions(transformedQuestions);
+      setShowQuestions(true);
+      toast.success(`Loaded ${transformedQuestions.length} questions`);
+      
+    } catch (error) {
+      console.error('Error loading questions:', error);
+      toast.error('Failed to load questions: ' + ((error as any)?.message || 'Unknown error'));
+    } finally {
+      setIsLoadingQuestions(false);
+    }
   };
 
   const handleEditQuestion = (question: Question) => {
     setEditingQuestion({ ...question });
   };
 
-  const handleSaveQuestion = () => {
-    if (editingQuestion) {
-      setQuestions(prev => 
-        prev.map(q => q.id === editingQuestion.id ? editingQuestion : q)
-      );
-      setEditingQuestion(null);
+  const handleSaveQuestion = async () => {
+    if (editingQuestion && examId) {
+      setIsLoading(true);
+      
+      try {
+        // Prepare question data for API
+        let questionData;
+        
+        if (editingQuestion.type === 'option') {
+          // For multiple choice questions
+          const optionsObject: { [key: string]: string } = {};
+          editingQuestion.options?.forEach((option, index) => {
+            if (option.trim()) {
+              optionsObject[String.fromCharCode(65 + index)] = option;
+            }
+          });
+          
+          questionData = {
+            subject: editingQuestion.subject,
+            question_text: editingQuestion.questions,
+            type: 'option',
+            text: null,
+            options: optionsObject,
+            answer: `['${editingQuestion.answer}']`,
+            marks: editingQuestion.marks
+          };
+        } else {
+          // For text questions
+          questionData = {
+            subject: editingQuestion.subject,
+            question_text: editingQuestion.questions,
+            type: 'text',
+            text: editingQuestion.answer || '',
+            options: null,
+            answer: editingQuestion.answer || '',
+            marks: editingQuestion.marks
+          };
+        }
+        
+        // Check if this is a new question (negative ID means it's temporary)
+        const isNewQuestion = editingQuestion.id < 0;
+        
+        if (isNewQuestion) {
+          // Add new question
+          const response = await examAPI.addQuestion(examId, questionData);
+          
+          // Update local state with the real ID from API response
+          setQuestions(prev => 
+            prev.map(q => q.id === editingQuestion.id ? { ...editingQuestion, id: response.id } : q)
+          );
+          toast.success('Question added successfully!');
+        } else {
+          // Update existing question
+          await examAPI.editQuestion(examId, editingQuestion.id, questionData);
+          
+          // Update local state
+          setQuestions(prev => 
+            prev.map(q => q.id === editingQuestion.id ? editingQuestion : q)
+          );
+          toast.success('Question updated successfully!');
+        }
+        
+        setEditingQuestion(null);
+        
+      } catch (error) {
+        console.error('Error saving question:', error);
+        toast.error('Failed to save question: ' + ((error as any)?.message || 'Unknown error'));
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
-  const handleDeleteQuestion = (id: number) => {
-    setQuestions(prev => prev.filter(q => q.id !== id));
+  const handleDeleteQuestion = async (id: number) => {
+    if (!examId) return;
+    
+    setIsLoading(true);
+    
+    try {
+      // Call API to delete question
+      await examAPI.deleteQuestion(examId, id);
+      
+      // Update local state
+      setQuestions(prev => prev.filter(q => q.id !== id));
+      toast.success('Question deleted successfully!');
+      
+    } catch (error) {
+      console.error('Error deleting question:', error);
+      toast.error('Failed to delete question: ' + ((error as any)?.message || 'Unknown error'));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleAddNewQuestion = () => {
+    if (!examId) {
+      toast.error('Please create an exam first');
+      return;
+    }
+    
     const newQuestion: Question = {
-      id: Date.now(),
-      subject: 'Math',
+      id: -Date.now(), // Negative ID for new questions
+      subject: Object.keys(subjectPercentages).find(s => subjectPercentages[s as keyof typeof subjectPercentages] > 0) || 'Mathematics',
       questions: '',
       type: 'option',
       options: ['', '', '', ''],
       answer: '',
       marks: 1
     };
+    
+    // Add to local state and open edit dialog immediately
     setQuestions(prev => [...prev, newQuestion]);
     setEditingQuestion(newQuestion);
+  };
+
+  const handleResetExam = () => {
+    setExamId(null);
+    setQuestions([]);
+    setQuestionsCount(0);
+    setShowQuestions(false);
+    setEditingQuestion(null);
+    setExamConfig({
+      totalQuestions: 50,
+      timeMinutes: 120,
+      totalMarks: 100,
+      department: '',
+      semester: ''
+    });
+    setSubjectPercentages({
+      Mathematics: 0,
+      English: 0,
+      Bangla: 0,
+      GK: 0,
+      Chemistry: 0,
+      Physics: 0
+    });
+    toast.success('Exam cleared successfully');
   };
 
   const totalPercentage = Object.values(subjectPercentages).reduce((sum, val) => sum + val, 0);
@@ -455,10 +665,17 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
           <div className="flex justify-center pt-4">
             <Button 
               onClick={handleCreateExam}
-              disabled={totalPercentage !== 100 || !examConfig.department || !examConfig.semester}
+              disabled={totalPercentage !== 100 || !examConfig.department || !examConfig.semester || isLoading}
               className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 text-base font-bold bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#1E2078] hover:to-[#3A3F9A] shadow-lg hover:shadow-xl transition-all duration-200 disabled:from-gray-400 disabled:to-gray-500 text-white"
             >
-              Create Exam
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating Exam...
+                </>
+              ) : (
+                'Create Exam'
+              )}
             </Button>
           </div>
         </CardContent>
@@ -472,15 +689,23 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
               <div className="flex-1">
                 <CardTitle className="text-lg sm:text-xl font-bold text-gray-800 flex items-center gap-2 sm:gap-3">
                   <div className="p-1.5 sm:p-2 bg-white rounded-lg shadow-sm">
-                    <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
+                    {isLoadingQuestions ? (
+                      <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 animate-spin" />
+                    ) : (
+                      <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
+                    )}
                   </div>
-                  <span className="leading-tight">Generated Questions</span>
+                  <span className="leading-tight">
+                    {isLoadingQuestions ? 'Loading Questions...' : 'Generated Questions'}
+                  </span>
                 </CardTitle>
                 <CardDescription className="text-gray-600 font-medium mt-1 sm:mt-2 text-sm sm:text-base">
+                  {examId && <span className="text-blue-600 font-semibold">Exam ID: {examId} • </span>}
+                  <span className="text-green-600 font-semibold">Total Questions: {questionsCount} • </span>
                   Review and manage your exam questions
                 </CardDescription>
               </div>
-              <div className="flex gap-2 sm:gap-3 w-full sm:w-auto">
+              <div className="flex gap-2 sm:gap-3 w-full sm:w-auto flex-wrap">
                 <Button onClick={() => setShowPaperView(true)} variant="default" size="sm" className="flex-1 sm:flex-none bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 font-semibold shadow-md text-xs sm:text-sm">
                   <FileText className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                   <span className="hidden sm:inline">View Paper</span>
@@ -490,6 +715,11 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
                   <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                   <span className="hidden sm:inline">Add Question</span>
                   <span className="sm:hidden">Add</span>
+                </Button>
+                <Button onClick={handleResetExam} variant="outline" size="sm" className="flex-1 sm:flex-none border-2 border-red-200 hover:border-red-400 hover:bg-red-50 text-red-600 hover:text-red-700 font-semibold text-xs sm:text-sm">
+                  <X className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Reset Exam</span>
+                  <span className="sm:hidden">Reset</span>
                 </Button>
               </div>
             </div>
@@ -602,9 +832,14 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
                           variant="outline"
                           size="sm"
                           onClick={() => handleDeleteQuestion(question.id)}
-                          className="border-2 border-red-200 hover:border-red-400 hover:bg-red-50 text-red-600 hover:text-red-700 p-2"
+                          disabled={isLoading}
+                          className="border-2 border-red-200 hover:border-red-400 hover:bg-red-50 text-red-600 hover:text-red-700 p-2 disabled:border-gray-300 disabled:text-gray-400 disabled:hover:bg-transparent"
                         >
-                          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                          {isLoading ? (
+                            <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                          )}
                         </Button>
                       </div>
                     </div>
@@ -631,18 +866,18 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
                 <div className="space-y-2">
                   <Label className="text-sm sm:text-base font-medium">Subject</Label>
                   <Select
-                    value={editingQuestion.subject.toLowerCase()}
+                    value={editingQuestion.subject}
                     onValueChange={(value) => setEditingQuestion(prev => 
-                      prev ? { ...prev, subject: value.charAt(0).toUpperCase() + value.slice(1) } : null
+                      prev ? { ...prev, subject: value } : null
                     )}
                   >
                     <SelectTrigger className="h-9 sm:h-10 text-sm sm:text-base">
-                      <SelectValue />
+                      <SelectValue placeholder="Select subject" />
                     </SelectTrigger>
                     <SelectContent>
                       {subjects.map(subject => (
                         <SelectItem key={subject} value={subject}>
-                          {subject.charAt(0).toUpperCase() + subject.slice(1)}
+                          {subject}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -688,6 +923,7 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
                       <span className="font-medium w-6 text-sm sm:text-base">{String.fromCharCode(65 + index)}.</span>
                       <Input
                         value={option}
+                        placeholder={`Option ${String.fromCharCode(65 + index)}`}
                         onChange={(e) => {
                           const newOptions = [...(editingQuestion.options || [])];
                           newOptions[index] = e.target.value;
@@ -701,9 +937,9 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
                         <input
                           type="radio"
                           name="correct-answer"
-                          checked={editingQuestion.answer === option}
+                          checked={editingQuestion.answer === String.fromCharCode(65 + index)}
                           onChange={() => setEditingQuestion(prev => 
-                            prev ? { ...prev, answer: option } : null
+                            prev ? { ...prev, answer: String.fromCharCode(65 + index) } : null
                           )}
                           className="w-3 h-3 sm:w-4 sm:h-4"
                         />
@@ -736,11 +972,39 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
                   Cancel
                 </Button>
                 <Button 
-                  onClick={handleSaveQuestion}
-                  className="w-full sm:w-auto order-1 sm:order-2 bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#1E2078] hover:to-[#3A3F9A] font-semibold text-white text-sm sm:text-base h-9 sm:h-10"
+                  onClick={() => {
+                    // Validation before saving
+                    if (!editingQuestion?.questions.trim()) {
+                      toast.error('Please enter a question');
+                      return;
+                    }
+                    if (editingQuestion.type === 'option') {
+                      const validOptions = editingQuestion.options?.filter(opt => opt.trim()).length || 0;
+                      if (validOptions < 2) {
+                        toast.error('Please enter at least 2 options');
+                        return;
+                      }
+                      if (!editingQuestion.answer) {
+                        toast.error('Please select the correct answer');
+                        return;
+                      }
+                    }
+                    handleSaveQuestion();
+                  }}
+                  disabled={isLoading}
+                  className="w-full sm:w-auto order-1 sm:order-2 bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#1E2078] hover:to-[#3A3F9A] font-semibold text-white text-sm sm:text-base h-9 sm:h-10 disabled:from-gray-400 disabled:to-gray-500"
                 >
-                  <Save className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                  Save Question
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                      Save Question
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
