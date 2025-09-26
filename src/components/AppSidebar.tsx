@@ -36,7 +36,7 @@ export function AppSidebar({ currentPage, onPageChange, gradientClass, logo }: A
   ];
 
   return (
-    <Sidebar className="border-r">
+    <Sidebar className="border-r-2 border-indigo-500">
       {/* Logo Header Section - Custom header with forced visibility */}
       <div className={`h-16 flex items-center px-6 bg-gradient-to-r ${gradientClass} text-white border-b border-white-200 shrink-0`}>
         <div className="flex items-center gap-3 w-full min-w-0">

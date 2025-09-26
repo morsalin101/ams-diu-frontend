@@ -6,7 +6,7 @@ import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
 import { Badge } from './ui/badge';
-import { Plus, Edit, Eye, Trash2, X, Save, FileText } from 'lucide-react';
+import { Plus, Edit, Eye, Trash2, X, Save, FileText, Settings, BarChart3, HelpCircle, Clock, Award, Building, Calendar } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { QuestionPaperView } from './QuestionPaperView';
 
@@ -269,31 +269,44 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
   const totalPercentage = Object.values(subjectPercentages).reduce((sum, val) => sum + val, 0);
 
   return (
-    <div className="space-y-6">
-      <div className={`bg-gradient-to-r from-[#4C51BF] to-[#667EEA] ${gradientClass} rounded-lg p-6 text-white`}>
-        <h1 className="text-2xl font-bold mb-2">Create Questions</h1>
-        <p className="text-white/90">
+    <div className="space-y-4 sm:space-y-6">
+      <div className={`bg-gradient-to-r from-[#4C51BF] to-[#667EEA] ${gradientClass} rounded-lg p-4 sm:p-6 text-white`}>
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2 sm:mb-3">Create Questions</h1>
+        <p className="text-white/90 text-sm sm:text-base leading-relaxed">
           Configure exam parameters and manage questions for your courses.
         </p>
       </div>
 
       {/* Exam Configuration */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Exam Configuration</CardTitle>
-          <CardDescription>
-            Set up the basic parameters for your exam
+      <Card className="border-2 border-gray-200 mb-6 sm:mb-8">
+        <CardHeader className="pb-4 sm:pb-6 border-b border-gray-100 bg-gradient-to-r from-[#2E3094]/10 to-[#4C51BF]/10 p-4 sm:p-6">
+          <CardTitle className="text-lg sm:text-xl md:text-2xl font-bold text-gray-800 flex items-center gap-2 sm:gap-3">
+            <div className="p-2 sm:p-3 bg-white rounded-lg border border-gray-100">
+              <Settings className="h-5 w-5 sm:h-6 sm:w-6 text-[#4C51BF]" />
+            </div>
+            <span className="leading-tight">Exam Configuration</span>
+          </CardTitle>
+          <CardDescription className="text-gray-600 font-medium mt-2 sm:mt-3 text-sm sm:text-base leading-relaxed">
+            Set up the basic parameters for your exam with precision and clarity
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 sm:space-y-8 pt-4 sm:pt-6 p-4 sm:p-6">
           {/* Subject Percentages */}
-          <div>
-            <Label className="text-base font-semibold mb-4 block">Subject Distribution</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+          <div className="bg-gradient-to-br from-[#2E3094]/5 to-[#4C51BF]/10 p-4 sm:p-6 rounded-xl border-2 border-gray-200">
+            <div className="flex items-center gap-2 sm:gap-3 mb-6 sm:mb-8">
+              <div className="p-1.5 sm:p-2 bg-white rounded-lg border border-gray-100">
+                <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-[#2E3094]" />
+              </div>
+              <Label className="text-lg sm:text-xl font-bold text-gray-800">Subject Distribution</Label>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
               {subjects.map(subject => (
-                <div key={subject} className="space-y-2">
-                  <Label htmlFor={subject} className="capitalize">{subject}</Label>
-                  <div className="flex items-center gap-2">
+                <div key={subject} className="bg-white p-4 sm:p-5 rounded-xl border-2 border-gray-100 transition-all duration-200 hover:shadow-md">
+                  <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                    <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-gradient-to-r from-[#2E3094] to-[#4C51BF]"></div>
+                    <Label htmlFor={subject} className="capitalize font-bold text-gray-800 text-sm sm:text-base">{subject}</Label>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 sm:gap-3">
                     <Input
                       id={subject}
                       type="number"
@@ -301,172 +314,219 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
                       max="100"
                       value={subjectPercentages[subject as keyof typeof subjectPercentages]}
                       onChange={(e) => handleSubjectPercentageChange(subject, e.target.value)}
-                      className="w-20"
+                      className="w-20 sm:w-24 h-10 sm:h-12 text-center font-bold text-lg sm:text-xl border-2 border-gray-200 focus:border-[#4C51BF]"
                     />
-                    <span className="text-sm text-gray-500">%</span>
+                    <span className="text-base sm:text-lg text-gray-600 font-bold">%</span>
                   </div>
                 </div>
               ))}
             </div>
-            <div className="mt-2 flex items-center gap-2">
-              <span className="text-sm">Total:</span>
-              <Badge variant={totalPercentage === 100 ? "default" : "destructive"}>
-                {totalPercentage}%
-              </Badge>
+            <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 p-4 sm:p-6 bg-white rounded-xl border-2 border-gray-200">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <span className="text-base sm:text-lg font-bold text-gray-700">Total Distribution:</span>
+                <Badge 
+                  variant={totalPercentage === 100 ? "default" : "destructive"} 
+                  className={`font-bold text-base sm:text-lg px-3 sm:px-4 py-1.5 sm:py-2 ${
+                    totalPercentage === 100 
+                      ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700' 
+                      : 'bg-gradient-to-r from-red-500 to-red-600'
+                  }`}
+                >
+                  {totalPercentage}%
+                </Badge>
+              </div>
               {totalPercentage !== 100 && (
-                <span className="text-xs text-red-500">Must equal 100%</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500 animate-pulse"></div>
+                  <span className="text-xs sm:text-sm text-red-600 font-semibold">Must equal 100%</span>
+                </div>
               )}
             </div>
           </div>
 
           {/* Exam Details */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 md:gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="questions">Total Questions</Label>
-              <Input
-                id="questions"
-                type="number"
-                value={examConfig.totalQuestions}
-                onChange={(e) => setExamConfig(prev => ({
-                  ...prev,
-                  totalQuestions: parseInt(e.target.value) || 0
-                }))}
-              />
+          <div className="bg-gradient-to-br from-[#4C51BF]/5 to-[#667EEA]/10 p-4 sm:p-6 rounded-xl border-2 border-gray-200">
+            <div className="flex items-center gap-2 sm:gap-3 mb-6">
+              <div className="p-1.5 sm:p-2 bg-white rounded-lg border border-gray-100">
+                <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-[#4C51BF]" />
+              </div>
+              <Label className="text-lg sm:text-xl font-bold text-gray-800">Exam Details</Label>
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
+              <div className="bg-white p-4 sm:p-5 rounded-xl border-2 border-gray-100 transition-all duration-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <HelpCircle className="h-3 w-3 sm:h-4 sm:w-4 text-[#4C51BF]" />
+                  <Label htmlFor="questions" className="font-semibold text-gray-700 text-sm sm:text-base leading-tight">Total Questions</Label>
+                </div>
+                <Input
+                  id="questions"
+                  type="number"
+                  value={examConfig.totalQuestions}
+                  onChange={(e) => setExamConfig(prev => ({
+                    ...prev,
+                    totalQuestions: parseInt(e.target.value) || 0
+                  }))}
+                  className="font-bold text-center text-base border-2 border-gray-200 focus:border-[#4C51BF] h-10"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="time">Time (minutes)</Label>
-              <Input
-                id="time"
-                type="number"
-                value={examConfig.timeMinutes}
-                onChange={(e) => setExamConfig(prev => ({
-                  ...prev,
-                  timeMinutes: parseInt(e.target.value) || 0
-                }))}
-              />
-            </div>
+              <div className="bg-white p-4 sm:p-5 rounded-xl border-2 border-gray-100 transition-all duration-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-[#2E3094]" />
+                  <Label htmlFor="time" className="font-semibold text-gray-700 text-sm sm:text-base leading-tight">Time (minutes)</Label>
+                </div>
+                <Input
+                  id="time"
+                  type="number"
+                  value={examConfig.timeMinutes}
+                  onChange={(e) => setExamConfig(prev => ({
+                    ...prev,
+                    timeMinutes: parseInt(e.target.value) || 0
+                  }))}
+                  className="font-bold text-center text-base border-2 border-gray-200 focus:border-[#2E3094] h-10"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="marks">Total Marks</Label>
-              <Input
-                id="marks"
-                type="number"
-                value={examConfig.totalMarks}
-                onChange={(e) => setExamConfig(prev => ({
-                  ...prev,
-                  totalMarks: parseInt(e.target.value) || 0
-                }))}
-              />
-            </div>
+              <div className="bg-white p-4 sm:p-5 rounded-xl border-2 border-gray-100 transition-all duration-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <Award className="h-3 w-3 sm:h-4 sm:w-4 text-[#667EEA]" />
+                  <Label htmlFor="marks" className="font-semibold text-gray-700 text-sm sm:text-base leading-tight">Total Marks</Label>
+                </div>
+                <Input
+                  id="marks"
+                  type="number"
+                  value={examConfig.totalMarks}
+                  onChange={(e) => setExamConfig(prev => ({
+                    ...prev,
+                    totalMarks: parseInt(e.target.value) || 0
+                  }))}
+                  className="font-bold text-center text-base border-2 border-gray-200 focus:border-[#667EEA] h-10"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="department">Department</Label>
-              <Select
-                value={examConfig.department}
-                onValueChange={(value) => setExamConfig(prev => ({
-                  ...prev,
-                  department: value
-                }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select dept" />
-                </SelectTrigger>
-                <SelectContent>
-                  {departments.map(dept => (
-                    <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              <div className="bg-white p-4 sm:p-5 rounded-xl border-2 border-gray-100 transition-all duration-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <Building className="h-3 w-3 sm:h-4 sm:w-4 text-[#4C51BF]" />
+                  <Label htmlFor="department" className="font-semibold text-gray-700 text-sm sm:text-base leading-tight">Department</Label>
+                </div>
+                <Select
+                  value={examConfig.department}
+                  onValueChange={(value) => setExamConfig(prev => ({
+                    ...prev,
+                    department: value
+                  }))}
+                >
+                  <SelectTrigger className="font-bold h-10 border-2 border-gray-200 focus:border-[#4C51BF] text-sm sm:text-base">
+                    <SelectValue placeholder="Select dept" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map(dept => (
+                      <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="semester">Semester</Label>
-              <Select
-                value={examConfig.semester}
-                onValueChange={(value) => setExamConfig(prev => ({
-                  ...prev,
-                  semester: value
-                }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select semester" />
-                </SelectTrigger>
-                <SelectContent>
-                  {semesters.map(sem => (
-                    <SelectItem key={sem} value={sem}>{sem}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="bg-white p-4 sm:p-5 rounded-xl border-2 border-gray-100 transition-all duration-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-[#2E3094]" />
+                  <Label htmlFor="semester" className="font-semibold text-gray-700 text-sm sm:text-base leading-tight">Semester</Label>
+                </div>
+                <Select
+                  value={examConfig.semester}
+                  onValueChange={(value) => setExamConfig(prev => ({
+                    ...prev,
+                    semester: value
+                  }))}
+                >
+                  <SelectTrigger className="font-bold h-10 border-2 border-gray-200 focus:border-[#2E3094] text-sm sm:text-base">
+                    <SelectValue placeholder="Select semester" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {semesters.map(sem => (
+                      <SelectItem key={sem} value={sem}>{sem}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
-          <Button 
-            onClick={handleCreateExam}
-            disabled={totalPercentage !== 100 || !examConfig.department || !examConfig.semester}
-            className="w-full sm:w-auto"
-          >
-            Create Exam
-          </Button>
+          <div className="flex justify-center pt-4">
+            <Button 
+              onClick={handleCreateExam}
+              disabled={totalPercentage !== 100 || !examConfig.department || !examConfig.semester}
+              className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 text-base font-bold bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#1E2078] hover:to-[#3A3F9A] shadow-lg hover:shadow-xl transition-all duration-200 disabled:from-gray-400 disabled:to-gray-500 text-white"
+            >
+              Create Exam
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
       {/* Questions Management */}
       {showQuestions && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Generated Questions</CardTitle>
-                <CardDescription>
+        <Card className="border-2 border-gray-200 shadow-lg mb-6 sm:mb-8">
+          <CardHeader className="pb-4 sm:pb-6 border-b border-gray-100 bg-gradient-to-r from-green-50 to-blue-50 p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex-1">
+                <CardTitle className="text-lg sm:text-xl font-bold text-gray-800 flex items-center gap-2 sm:gap-3">
+                  <div className="p-1.5 sm:p-2 bg-white rounded-lg shadow-sm">
+                    <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
+                  </div>
+                  <span className="leading-tight">Generated Questions</span>
+                </CardTitle>
+                <CardDescription className="text-gray-600 font-medium mt-1 sm:mt-2 text-sm sm:text-base">
                   Review and manage your exam questions
                 </CardDescription>
               </div>
-              <div className="flex gap-2">
-                <Button onClick={() => setShowPaperView(true)} variant="default" size="sm">
-                  <FileText className="h-4 w-4 mr-2" />
-                  View Paper
+              <div className="flex gap-2 sm:gap-3 w-full sm:w-auto">
+                <Button onClick={() => setShowPaperView(true)} variant="default" size="sm" className="flex-1 sm:flex-none bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 font-semibold shadow-md text-xs sm:text-sm">
+                  <FileText className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">View Paper</span>
+                  <span className="sm:hidden">View</span>
                 </Button>
-                <Button onClick={handleAddNewQuestion} variant="outline" size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Question
+                <Button onClick={handleAddNewQuestion} variant="outline" size="sm" className="flex-1 sm:flex-none border-2 border-gray-300 hover:border-blue-400 font-semibold text-xs sm:text-sm">
+                  <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Add Question</span>
+                  <span className="sm:hidden">Add</span>
                 </Button>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="p-4 sm:p-6 space-y-4 sm:space-y-6">
             {questions.map((question, index) => (
-              <Card key={question.id} className="border border-gray-200">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary">{question.subject}</Badge>
-                        <Badge variant="outline">{question.type}</Badge>
-                        <span className="text-sm text-gray-500">Question #{index + 1}</span>
+              <Card key={question.id} className="border-2 border-gray-200 shadow-sm hover:shadow-md transition-shadow bg-white">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex flex-col lg:flex-row items-start gap-4 lg:gap-6">
+                    <div className="flex-1 space-y-3 w-full">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                        <Badge variant="secondary" className="bg-blue-100 text-blue-800 font-semibold px-2 sm:px-3 py-1 text-xs sm:text-sm">{question.subject}</Badge>
+                        <Badge variant="outline" className="border-gray-300 text-gray-700 font-medium px-2 sm:px-3 py-1 text-xs sm:text-sm">{question.type}</Badge>
+                        <span className="text-xs sm:text-sm text-gray-500 font-medium bg-gray-100 px-2 py-1 rounded">Question #{index + 1}</span>
                       </div>
-                      <p className="font-medium">{question.questions}</p>
+                      <p className="font-semibold text-gray-800 text-sm sm:text-base leading-relaxed">{question.questions}</p>
                       {question.type === 'option' && question.options && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                        <div className="grid grid-cols-1 gap-2 sm:gap-3 mt-3 sm:mt-4">
                           {question.options.map((option, optIndex) => (
                             <div 
                               key={optIndex}
-                              className={`p-2 text-sm rounded border ${
+                              className={`p-2 sm:p-3 text-xs sm:text-sm rounded-lg border-2 font-medium ${
                                 option === question.answer 
-                                  ? 'bg-green-100 border-green-300 text-green-800' 
-                                  : 'bg-white border-gray-300'
+                                  ? 'bg-green-50 border-green-300 text-green-800 shadow-sm' 
+                                  : 'bg-gray-50 border-gray-200 text-gray-700'
                               }`}
                             >
-                              {String.fromCharCode(65 + optIndex)}. {option}
+                              <span className="font-bold text-xs sm:text-sm">{String.fromCharCode(65 + optIndex)}.</span> {option}
                             </div>
                           ))}
                         </div>
                       )}
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                      <div className="text-center">
-                        <Label className="text-xs text-gray-500">Marks</Label>
+                    <div className="flex flex-row lg:flex-col items-center justify-between lg:justify-start gap-3 lg:gap-4 w-full lg:w-auto">
+                      <div className="text-center bg-gray-50 p-2 sm:p-3 rounded-lg border border-gray-200">
+                        <Label className="text-xs text-gray-600 font-semibold block mb-1">Marks</Label>
                         <Input
                           type="number"
                           value={question.marks}
@@ -476,46 +536,47 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
                               prev.map(q => q.id === question.id ? { ...q, marks: newMarks } : q)
                             );
                           }}
-                          className="w-16 h-8 text-center"
+                          className="w-14 sm:w-16 h-7 sm:h-8 text-center font-bold border-2 border-gray-200 text-sm"
                           min="1"
                         />
                       </div>
                       
-                      <div className="flex flex-col gap-1">
+                      <div className="flex flex-row lg:flex-col gap-2">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => handleEditQuestion(question)}
+                          className="border-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50 text-blue-700 p-2"
                         >
-                          <Edit className="h-3 w-3" />
+                          <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>
                         
                         <Dialog>
                           <DialogTrigger asChild>
-                            <Button variant="outline" size="sm">
-                              <Eye className="h-3 w-3" />
+                            <Button variant="outline" size="sm" className="border-2 border-green-200 hover:border-green-400 hover:bg-green-50 text-green-700 p-2">
+                              <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
                             </Button>
                           </DialogTrigger>
-                          <DialogContent className="max-w-2xl">
+                          <DialogContent className="max-w-[95vw] sm:max-w-2xl mx-2 sm:mx-0">
                             <DialogHeader>
-                              <DialogTitle>Question Preview</DialogTitle>
-                              <DialogDescription>
+                              <DialogTitle className="text-base sm:text-lg">Question Preview</DialogTitle>
+                              <DialogDescription className="text-sm sm:text-base">
                                 {question.subject} - {question.type} question
                               </DialogDescription>
                             </DialogHeader>
-                            <div className="space-y-4">
+                            <div className="space-y-3 sm:space-y-4">
                               <div>
-                                <Label className="font-semibold">Question:</Label>
-                                <p className="mt-1">{question.questions}</p>
+                                <Label className="font-semibold text-sm sm:text-base">Question:</Label>
+                                <p className="mt-1 text-sm sm:text-base">{question.questions}</p>
                               </div>
                               {question.type === 'option' && question.options && (
                                 <div>
-                                  <Label className="font-semibold">Options:</Label>
+                                  <Label className="font-semibold text-sm sm:text-base">Options:</Label>
                                   <div className="space-y-2 mt-2">
                                     {question.options.map((option, optIndex) => (
                                       <div 
                                         key={optIndex}
-                                        className={`p-3 rounded border ${
+                                        className={`p-2 sm:p-3 rounded border text-sm sm:text-base ${
                                           option === question.answer 
                                             ? 'bg-green-100 border-green-300 text-green-800' 
                                             : 'bg-white border-gray-300'
@@ -523,7 +584,7 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
                                       >
                                         <strong>{String.fromCharCode(65 + optIndex)}.</strong> {option}
                                         {option === question.answer && (
-                                          <Badge className="ml-2" variant="default">Correct</Badge>
+                                          <Badge className="ml-2 text-xs" variant="default">Correct</Badge>
                                         )}
                                       </div>
                                     ))}
@@ -531,7 +592,7 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
                                 </div>
                               )}
                               <div>
-                                <Label className="font-semibold">Marks: {question.marks}</Label>
+                                <Label className="font-semibold text-sm sm:text-base">Marks: {question.marks}</Label>
                               </div>
                             </div>
                           </DialogContent>
@@ -541,9 +602,9 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
                           variant="outline"
                           size="sm"
                           onClick={() => handleDeleteQuestion(question.id)}
-                          className="text-red-600 hover:text-red-700"
+                          className="border-2 border-red-200 hover:border-red-400 hover:bg-red-50 text-red-600 hover:text-red-700 p-2"
                         >
-                          <Trash2 className="h-3 w-3" />
+                          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>
                       </div>
                     </div>
@@ -558,24 +619,24 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
       {/* Edit Question Dialog */}
       {editingQuestion && (
         <Dialog open={!!editingQuestion} onOpenChange={() => setEditingQuestion(null)}>
-          <DialogContent className="max-w-[95vw] sm:max-w-3xl max-h-[80vh] overflow-y-auto mx-2 sm:mx-0">
+          <DialogContent className="max-w-[95vw] sm:max-w-3xl max-h-[85vh] sm:max-h-[80vh] overflow-y-auto mx-2 sm:mx-0">
             <DialogHeader>
-              <DialogTitle>Edit Question</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-base sm:text-lg">Edit Question</DialogTitle>
+              <DialogDescription className="text-sm sm:text-base">
                 Modify the question details below
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-3 sm:space-y-4 p-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-2">
-                  <Label>Subject</Label>
+                  <Label className="text-sm sm:text-base font-medium">Subject</Label>
                   <Select
                     value={editingQuestion.subject.toLowerCase()}
                     onValueChange={(value) => setEditingQuestion(prev => 
                       prev ? { ...prev, subject: value.charAt(0).toUpperCase() + value.slice(1) } : null
                     )}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-9 sm:h-10 text-sm sm:text-base">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -589,14 +650,14 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label>Question Type</Label>
+                  <Label className="text-sm sm:text-base font-medium">Question Type</Label>
                   <Select
                     value={editingQuestion.type}
                     onValueChange={(value: 'option' | 'text') => setEditingQuestion(prev => 
                       prev ? { ...prev, type: value } : null
                     )}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-9 sm:h-10 text-sm sm:text-base">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -608,22 +669,23 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
               </div>
 
               <div className="space-y-2">
-                <Label>Question</Label>
+                <Label className="text-sm sm:text-base font-medium">Question</Label>
                 <Textarea
                   value={editingQuestion.questions}
                   onChange={(e) => setEditingQuestion(prev => 
                     prev ? { ...prev, questions: e.target.value } : null
                   )}
                   rows={3}
+                  className="text-sm sm:text-base"
                 />
               </div>
 
               {editingQuestion.type === 'option' && (
-                <div className="space-y-4">
-                  <Label>Options</Label>
+                <div className="space-y-3 sm:space-y-4">
+                  <Label className="text-sm sm:text-base font-medium">Options</Label>
                   {editingQuestion.options?.map((option, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <span className="font-medium w-6">{String.fromCharCode(65 + index)}.</span>
+                    <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 p-2 sm:p-0">
+                      <span className="font-medium w-6 text-sm sm:text-base">{String.fromCharCode(65 + index)}.</span>
                       <Input
                         value={option}
                         onChange={(e) => {
@@ -633,25 +695,27 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
                             prev ? { ...prev, options: newOptions } : null
                           );
                         }}
-                        className="flex-1"
+                        className="flex-1 text-sm sm:text-base h-9 sm:h-10"
                       />
-                      <input
-                        type="radio"
-                        name="correct-answer"
-                        checked={editingQuestion.answer === option}
-                        onChange={() => setEditingQuestion(prev => 
-                          prev ? { ...prev, answer: option } : null
-                        )}
-                        className="w-4 h-4"
-                      />
-                      <Label className="text-sm">Correct</Label>
+                      <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                        <input
+                          type="radio"
+                          name="correct-answer"
+                          checked={editingQuestion.answer === option}
+                          onChange={() => setEditingQuestion(prev => 
+                            prev ? { ...prev, answer: option } : null
+                          )}
+                          className="w-3 h-3 sm:w-4 sm:h-4"
+                        />
+                        <Label className="text-xs sm:text-sm">Correct</Label>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
 
               <div className="space-y-2">
-                <Label>Marks</Label>
+                <Label className="text-sm sm:text-base font-medium">Marks</Label>
                 <Input
                   type="number"
                   value={editingQuestion.marks}
@@ -659,16 +723,23 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
                     prev ? { ...prev, marks: parseInt(e.target.value) || 1 } : null
                   )}
                   min="1"
-                  className="w-24"
+                  className="w-20 sm:w-24 text-sm sm:text-base h-9 sm:h-10"
                 />
               </div>
 
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setEditingQuestion(null)}>
+              <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setEditingQuestion(null)}
+                  className="w-full sm:w-auto order-2 sm:order-1 text-sm sm:text-base h-9 sm:h-10"
+                >
                   Cancel
                 </Button>
-                <Button onClick={handleSaveQuestion}>
-                  <Save className="h-4 w-4 mr-2" />
+                <Button 
+                  onClick={handleSaveQuestion}
+                  className="w-full sm:w-auto order-1 sm:order-2 bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#1E2078] hover:to-[#3A3F9A] font-semibold text-white text-sm sm:text-base h-9 sm:h-10"
+                >
+                  <Save className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                   Save Question
                 </Button>
               </div>
