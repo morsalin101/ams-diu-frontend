@@ -21,7 +21,9 @@ export interface Question {
   marks: number;
 }
 
-
+interface CreateQuestionsProps {
+  gradientClass: string;
+}
 
 // Comprehensive dummy data for demonstration
 const generateDummyQuestions = (subjectPercentages: any, totalQuestions: number): Question[] => {
@@ -187,7 +189,7 @@ const generateDummyQuestions = (subjectPercentages: any, totalQuestions: number)
   return generatedQuestions;
 };
 
-export function CreateQuestions() {
+export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
   const [subjectPercentages, setSubjectPercentages] = useState({
     math: 30,
     english: 20,
@@ -268,7 +270,7 @@ export function CreateQuestions() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-6 text-white">
+      <div className={`bg-gradient-to-r from-[#4C51BF] to-[#667EEA] ${gradientClass} rounded-lg p-6 text-white`}>
         <h1 className="text-2xl font-bold mb-2">Create Questions</h1>
         <p className="text-white/90">
           Configure exam parameters and manage questions for your courses.

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Plus, FileText } from 'lucide-react';
+import { LayoutDashboard, Plus } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -36,42 +36,42 @@ export function AppSidebar({ currentPage, onPageChange, gradientClass, logo }: A
   ];
 
   return (
-    <Sidebar className="border-r border-gray-200 bg-white">
-      {/* Logo Header Section */}
-      <div className="h-16 flex items-center px-6 bg-[#4C51BF] text-white border-b border-[#3d42a6] shrink-0">
+    <Sidebar className="border-r">
+      {/* Logo Header Section - Custom header with forced visibility */}
+      <div className={`h-16 flex items-center px-6 bg-gradient-to-r ${gradientClass} text-white border-b border-white-200 shrink-0`}>
         <div className="flex items-center gap-3 w-full min-w-0">
-          <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
-            <FileText className="w-4 h-4 text-[#4C51BF]" />
-          </div>
+          {logo?.src ? (
+            <img 
+              src={logo.src} 
+              alt={logo.alt || 'Logo'} 
+              className="h-8 w-8 object-contain flex-shrink-0"
+            />
+          ) : (
+            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-sm">
+              <div className="w-4 h-4 bg-blue-600 rounded-sm"></div>
+            </div>
+          )}
           <h1 className="font-bold text-lg text-white drop-shadow-sm truncate min-w-0">
-            Admin Panel
+            {logo?.title || 'Admin Panel'}
           </h1>
         </div>
       </div>
-      
-      <SidebarContent className="bg-white">
-        <SidebarGroup className="px-2 py-4">
-          <SidebarGroupLabel className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 mb-2">
-            Navigation
-          </SidebarGroupLabel>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu className="space-y-1">
+            <SidebarMenu>
               {menuItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = currentPage === item.id;
                 return (
                   <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton
                       onClick={() => onPageChange(item.id)}
-                      isActive={isActive}
-                      className={`w-full px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        isActive 
-                          ? 'bg-[#4C51BF] text-white shadow-sm border-none' 
-                          : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 bg-transparent'
-                      }`}
+                      isActive={currentPage === item.id}
+                      className={currentPage === item.id ? `bg-gradient-to-r ${gradientClass} text-white` : ''}
                     >
-                      <Icon className={`h-5 w-5 ${isActive ? 'text-white' : 'text-gray-500'}`} />
-                      <span className={`ml-3 ${isActive ? 'text-white font-medium' : 'text-gray-700'}`}>{item.title}</span>
+                      <Icon className="h-4 w-4" />
+                      <span>{item.title}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
