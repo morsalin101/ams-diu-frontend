@@ -38,46 +38,32 @@ export function StatsCards({ gradientClass }: StatsCardsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 ">
       {stats.map((stat, index) => {
         const Icon = stat.icon;
         const TrendIcon = stat.trend === 'up' ? ArrowUpRight : ArrowDownRight;
         
-        const gradients = [
-          'from-[#2E3094] to-[#4C51BF]',
-          'from-[#4C51BF] to-[#667EEA]',
-          'from-[#667EEA] to-[#2E3094]',
-          'from-[#2E3094] to-[#667EEA]'
-        ];
-        
         return (
-          <Card key={stat.title} className="relative overflow-hidden border-2 border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 bg-white">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 bg-gradient-to-br from-gray-50 to-blue-50">
-              <CardTitle className="text-sm font-bold text-gray-700">
+          <Card key={stat.title} className="relative overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
                 {stat.title}
               </CardTitle>
-              <div className={`p-3 rounded-xl bg-gradient-to-r ${gradients[index]} shadow-lg`}>
-                <Icon className="h-5 w-5 text-white" />
+              <div className={`p-2 rounded-lg bg-gradient-to-r ${gradientClass}`}>
+                <Icon className="h-4 w-4 text-white" />
               </div>
             </CardHeader>
-            <CardContent className="pt-4 pb-6"> 
-              <div className="text-2xl lg:text-3xl font-bold text-gray-800 mb-3">{stat.value}</div>
-              <div className="flex items-center gap-2 text-sm">
-                <div className={`flex items-center gap-1 px-2 py-1 rounded-full ${
-                  stat.trend === 'up' 
-                    ? 'bg-green-100 text-green-700' 
-                    : 'bg-red-100 text-red-700'
-                }`}>
-                  <TrendIcon className={`h-3 w-3 ${stat.trend === 'up' ? 'text-green-600' : 'text-red-600'}`} />
-                  <span className="font-bold">
-                    {stat.change}
-                  </span>
-                </div>
-                <span className="text-gray-600 font-medium">from last month</span>
+            <CardContent> 
+              <div className="text-2xl font-bold">{stat.value}</div>
+              <div className="flex items-center gap-1 text-xs mt-1 mb-4">
+                <TrendIcon className={`h-3 w-3 ${stat.trend === 'up' ? 'text-green-500' : 'text-red-500'}`} />
+                <span className={stat.trend === 'up' ? 'text-green-500' : 'text-red-500'}>
+                  {stat.change}
+                </span>
+                <span className="text-muted-foreground">from last month</span>
               </div>
             </CardContent>
-            <div className={`absolute bottom-0 left-0 right-0 h-2 bg-gradient-to-r ${gradients[index]}`}></div>
-            <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-white/10 to-transparent rounded-full -translate-y-8 translate-x-8"></div>
+            <div className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r ${gradientClass}`}></div>
           </Card>
         );
       })}
