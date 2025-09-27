@@ -1,14 +1,17 @@
 import { useState } from 'react';
-import { SidebarProvider, SidebarInset, SidebarTrigger, useSidebar } from './ui/sidebar';
-import { AppSidebar } from './AppSidebar';
-import { DashboardContent } from './DashboardContent';
+import { SidebarProvider, SidebarInset, SidebarTrigger, useSidebar } from '../components/ui/sidebar';
+import { AppSidebar } from '../components/AppSidebar';
+import { DashboardContent } from '../components/DashboardContent';
 import { CreateQuestions } from './CreateQuestions';
-import { ThemeColorSelector } from './ThemeColorSelector';
-import { MobileMenu } from './MobileMenu';
-import { Button } from './ui/button';
+import { AllQuestions } from './AllQuestions';
+import { Students } from './Students';
+import { ExamSchedule } from './ExamSchedule';
+import { ThemeColorSelector } from '../components/ThemeColorSelector';
+import { MobileMenu } from '../components/MobileMenu';
+import { Button } from '../components/ui/button';
 import { Bell, Settings, User, Menu } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { Badge } from './ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import { Badge } from '../components/ui/badge';
 
 // Internal component that can access sidebar context
 function DashboardContent_({ currentPage, currentGradient }: { currentPage: string; currentGradient: string }) {
@@ -20,6 +23,12 @@ function DashboardContent_({ currentPage, currentGradient }: { currentPage: stri
         return <DashboardContent gradientClass={currentGradient} />;
       case 'create-questions':
         return <CreateQuestions gradientClass={currentGradient} />;
+      case 'all-questions':
+        return <AllQuestions gradientClass={currentGradient} />;
+      case 'students':
+        return <Students gradientClass={currentGradient} />;
+      case 'exam-schedule':
+        return <ExamSchedule gradientClass={currentGradient} />;
       default:
         return <DashboardContent gradientClass={currentGradient} />;
     }

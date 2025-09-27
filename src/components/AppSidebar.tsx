@@ -1,4 +1,4 @@
-import { LayoutDashboard, Plus } from 'lucide-react';
+import { LayoutDashboard, Plus, FileText, Calendar, Users } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -32,6 +32,21 @@ export function AppSidebar({ currentPage, onPageChange, gradientClass, logo }: A
       title: 'Create Questions',
       icon: Plus,
       id: 'create-questions',
+    },
+    {
+      title: 'All Questions',
+      icon: FileText,
+      id: 'all-questions',
+    },
+    {
+      title: 'Students',
+      icon: Users,
+      id: 'students',
+    },
+    {
+      title: 'Exam Schedule',
+      icon: Calendar,
+      id: 'exam-schedule',
     },
   ];
 

@@ -63,6 +63,112 @@ export const examAPI = {
       throw error.response?.data || error.message;
     }
   },
+
+  // Get all exams
+  getAllExams: async () => {
+    try {
+      const response = await api.get('/api/all-exams/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Delete exam
+  deleteExam: async (examId) => {
+    try {
+      const response = await api.delete(`/api/exam-questions/${examId}/delete/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get questions statistics
+  getQuestionsStats: async () => {
+    try {
+      const response = await api.get('/api/questions-stats/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+};
+
+// Students API endpoints
+export const studentsAPI = {
+  // Get all students
+  getAllStudents: async () => {
+    try {
+      const response = await api.get('/api/students/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Create new student
+  createStudent: async (studentData) => {
+    try {
+      const response = await api.post('/api/students/', studentData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Update student
+  updateStudent: async (studentId, studentData) => {
+    try {
+      const response = await api.put(`/api/students/${studentId}/`, studentData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Delete student
+  deleteStudent: async (studentId) => {
+    try {
+      const response = await api.delete(`/api/students/${studentId}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+};
+
+// Schedule API endpoints
+export const scheduleAPI = {
+  // Create exam schedule
+  createSchedule: async (scheduleData) => {
+    try {
+      const response = await api.post('/api/schedules/create/', scheduleData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get all exam schedules
+  getAllSchedules: async () => {
+    try {
+      const response = await api.get('/api/schedules/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Delete exam schedule
+  deleteSchedule: async (scheduleId) => {
+    try {
+      const response = await api.delete(`/api/schedules/${scheduleId}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  }
 };
 
 export default api;
