@@ -25,12 +25,12 @@ export function DashboardContent({ gradientClass }: DashboardContentProps) {
       {/* Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         {/* Quick Actions */}
-        <div className="lg:col-span-2 order-2 lg:order-1">
+        {/* <div className="lg:col-span-2 order-2 lg:order-1">
           <QuickActions gradientClass={gradientClass} />
-        </div>
+        </div> */}
 
         {/* Recent Activity */}
-        <Card className="order-1 lg:order-2">
+        {/* <Card className="order-1 lg:order-2">
           <CardHeader className="pb-3">
             <CardTitle className="text-base md:text-lg">Recent Activity</CardTitle>
             <CardDescription className="text-xs md:text-sm">Latest actions in your system</CardDescription>
@@ -48,11 +48,11 @@ export function DashboardContent({ gradientClass }: DashboardContentProps) {
               ))}
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
 
       {/* Additional Dashboard Content */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+      {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         <Card>
           <CardHeader>
             <CardTitle>System Status</CardTitle>
@@ -107,7 +107,7 @@ export function DashboardContent({ gradientClass }: DashboardContentProps) {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </div> */}
     </div>
   );
 }

@@ -12,6 +12,20 @@ const api = axios.create({
   timeout: 30000, // 30 seconds timeout
 });
 
+// Add a request interceptor to include the auth token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 // API endpoints
 export const examAPI = {
   // Create new exam
@@ -169,6 +183,125 @@ export const scheduleAPI = {
       throw error.response?.data || error.message;
     }
   }
+};
+
+// Authentication API endpoints
+export const authAPI = {
+  // Login
+  login: async (credentials) => {
+    try {
+      const response = await api.post('/api/auth/login/', credentials);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+};
+
+// Users API endpoints
+export const usersAPI = {
+  // Get all users
+  getAllUsers: async () => {
+    try {
+      const response = await api.get('/api/users/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Create user
+  createUser: async (userData) => {
+    try {
+      const response = await api.post('/api/users/create/', userData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Update user
+  updateUser: async (userId, userData) => {
+    try {
+      const response = await api.put(`/api/users/${userId}/update/`, userData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Delete user
+  deleteUser: async (userId) => {
+    try {
+      const response = await api.delete(`/api/users/${userId}/delete/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get single user
+  getUser: async (userId) => {
+    try {
+      const response = await api.get(`/api/users/${userId}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+};
+
+// Role API endpoints
+export const roleAPI = {
+  // Get all roles
+  getAllRoles: async () => {
+    try {
+      const response = await api.get('/api/roles/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Create role
+  createRole: async (roleData) => {
+    try {
+      const response = await api.post('/api/roles/create/', roleData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get role by ID
+  getRole: async (roleId) => {
+    try {
+      const response = await api.get(`/api/roles/${roleId}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Update role
+  updateRole: async (roleId, roleData) => {
+    try {
+      const response = await api.put(`/api/roles/${roleId}/update/`, roleData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Delete role
+  deleteRole: async (roleId) => {
+    try {
+      const response = await api.delete(`/api/roles/${roleId}/delete/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
 };
 
 export default api;

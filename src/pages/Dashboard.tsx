@@ -6,6 +6,8 @@ import { CreateQuestions } from './CreateQuestions';
 import { AllQuestions } from './AllQuestions';
 import { Students } from './Students';
 import { ExamSchedule } from './ExamSchedule';
+import { UsersManagement } from './UsersManagement';
+import { RoleManagement } from './RoleManagement';
 import { ThemeColorSelector } from '../components/ThemeColorSelector';
 import { MobileMenu } from '../components/MobileMenu';
 import { Button } from '../components/ui/button';
@@ -29,6 +31,10 @@ function DashboardContent_({ currentPage, currentGradient }: { currentPage: stri
         return <Students gradientClass={currentGradient} />;
       case 'exam-schedule':
         return <ExamSchedule gradientClass={currentGradient} />;
+      case 'users-management':
+        return <UsersManagement gradientClass={currentGradient} />;
+      case 'role-management':
+        return <RoleManagement gradientClass={currentGradient} />;
       default:
         return <DashboardContent gradientClass={currentGradient} />;
     }
