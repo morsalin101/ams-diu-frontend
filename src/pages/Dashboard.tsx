@@ -8,6 +8,9 @@ import { Students } from './Students';
 import { ExamSchedule } from './ExamSchedule';
 import { UsersManagement } from './UsersManagement';
 import { RoleManagement } from './RoleManagement';
+import { RoleMenuManagement } from '../components/RoleMenuManagement';
+import { MenuManagement } from './MenuManagement';
+import { MenuAccessManagement } from './MenuAccessManagement';
 import { ThemeColorSelector } from '../components/ThemeColorSelector';
 import { MobileMenu } from '../components/MobileMenu';
 import { Button } from '../components/ui/button';
@@ -35,6 +38,12 @@ function DashboardContent_({ currentPage, currentGradient }: { currentPage: stri
         return <UsersManagement gradientClass={currentGradient} />;
       case 'role-management':
         return <RoleManagement gradientClass={currentGradient} />;
+      case 'role-menu-management':
+        return <RoleMenuManagement />;
+      case 'menu-management':
+        return <MenuManagement />;
+      case 'menu-access-management':
+        return <MenuAccessManagement />;
       default:
         return <DashboardContent gradientClass={currentGradient} />;
     }

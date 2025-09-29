@@ -304,4 +304,100 @@ export const roleAPI = {
   },
 };
 
+// Menu API endpoints
+export const menuAPI = {
+  // Get user menus
+  getUserMenus: async () => {
+    try {
+      const response = await api.get('/api/menus/user/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get all menus (for management)
+  getAllMenus: async () => {
+    try {
+      const response = await api.get('/api/menus/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Create a new menu
+  createMenu: async (menuData) => {
+    try {
+      const response = await api.post('/api/menus/create/', menuData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Update a menu (PATCH)
+  updateMenu: async (menuId, menuData) => {
+    try {
+      const response = await api.patch(`/api/menus/${menuId}/update/`, menuData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Update a menu (PUT)
+  replaceMenu: async (menuId, menuData) => {
+    try {
+      const response = await api.put(`/api/menus/${menuId}/update/`, menuData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Delete a menu
+  deleteMenu: async (menuId) => {
+    try {
+      const response = await api.delete(`/api/menus/${menuId}/delete/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Assign menus to role
+  assignMenusToRole: async (roleId, menuAssignments) => {
+    try {
+      const response = await api.post('/api/roles/assign-menus/', {
+        role_id: roleId,
+        menus: menuAssignments
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get role menus
+  getRoleMenus: async (roleId) => {
+    try {
+      const response = await api.get(`/api/roles/${roleId}/menus/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Remove menu from role
+  removeMenuFromRole: async (roleId, menuId) => {
+    try {
+      const response = await api.delete(`/api/roles/${roleId}/menus/${menuId}/remove/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+};
+
 export default api;
