@@ -415,7 +415,7 @@ export function Students({ gradientClass }: StudentsProps) {
                   <Button
                     variant="default"
                     size="sm"
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                    className="flex-1 bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#2E3094]/90 hover:to-[#4C51BF]/90"
                   >
                     <Eye className="h-3 w-3 mr-1" />
                     View

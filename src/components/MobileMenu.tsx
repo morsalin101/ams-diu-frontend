@@ -3,14 +3,11 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
 import { MoreVertical, Search, Settings } from 'lucide-react';
-import { ThemeColorSelector } from './ThemeColorSelector';
 import { Separator } from './ui/separator';
 
-interface MobileMenuProps {
-  onThemeChange: (color: string, gradient: string) => void;
-}
+interface MobileMenuProps {}
 
-export function MobileMenu({ onThemeChange }: MobileMenuProps) {
+export function MobileMenu({}: MobileMenuProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -39,14 +36,6 @@ export function MobileMenu({ onThemeChange }: MobileMenuProps) {
                 className="pl-10"
               />
             </div>
-          </div>
-
-          <Separator />
-
-          {/* Theme Settings */}
-          <div className="space-y-3">
-            <h4 className="font-medium">Theme Settings</h4>
-            <ThemeColorSelector onColorChange={onThemeChange} />
           </div>
 
           <Separator />

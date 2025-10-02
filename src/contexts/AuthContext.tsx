@@ -10,6 +10,11 @@ interface User {
     id: number;
     role_name: string;
   };
+  department_details?: {
+    id: number;
+    department_name: string;
+    department_shortname: string;
+  };
 }
 
 interface AuthContextType {

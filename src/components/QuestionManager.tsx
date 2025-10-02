@@ -224,7 +224,7 @@ export function QuestionManager({
                   onClick={() => onShowPaperViewChange(true)} 
                   variant="default" 
                   size="sm" 
-                  className="flex-1 sm:flex-none bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 font-semibold shadow-md text-xs sm:text-sm"
+                  className="flex-1 sm:flex-none bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#2E3094]/90 hover:to-[#4C51BF]/90 font-semibold shadow-md text-xs sm:text-sm"
                 >
                   <FileText className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                   <span className="hidden sm:inline">View Paper</span>

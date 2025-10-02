@@ -1,37 +1,22 @@
-import { Bell, Search, Settings, User } from 'lucide-react';
+import { Bell, Settings, User } from 'lucide-react';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
+
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
-import { ThemeColorSelector } from './ThemeColorSelector';
 import { MobileMenu } from './MobileMenu';
+import { SidebarTrigger } from './ui/sidebar';
 
-interface DashboardHeaderProps {
-  onThemeChange: (color: string, gradient: string) => void;
-}
+interface DashboardHeaderProps {}
 
-export function DashboardHeader({ onThemeChange }: DashboardHeaderProps) {
+export function DashboardHeader({}: DashboardHeaderProps) {
   return (
     <header className="flex h-14 sm:h-16 items-center gap-2 sm:gap-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 sm:px-4 md:px-6">
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
-          <div className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] text-white px-2 sm:px-3 md:px-4 py-1 md:py-2 rounded-lg">
-            <h1 className="text-xs sm:text-sm md:text-lg font-semibold">Admin Panel</h1>
-          </div>
-          <div className="relative hidden md:block flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Search..."
-              className="pl-10 w-full"
-            />
-          </div>
+          <SidebarTrigger className="md:hidden" />
         </div>
         
         <div className="flex items-center gap-1 sm:gap-2 md:gap-4">
-          <div className="hidden md:block">
-            <ThemeColorSelector onColorChange={onThemeChange} />
-          </div>
-          
           <Button variant="ghost" size="sm" className="relative p-1 md:p-2">
             <Bell className="h-4 w-4 md:h-5 md:w-5" />
             <Badge className="absolute -top-1 -right-1 h-4 w-4 md:h-5 md:w-5 flex items-center justify-center p-0 text-xs">
@@ -55,7 +40,7 @@ export function DashboardHeader({ onThemeChange }: DashboardHeaderProps) {
 
           {/* Mobile Menu */}
           <div className="md:hidden">
-            <MobileMenu onThemeChange={onThemeChange} />
+            <MobileMenu />
           </div>
         </div>
       </div>

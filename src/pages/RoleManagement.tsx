@@ -66,7 +66,7 @@ export function RoleManagement({ gradientClass }: RoleManagementProps) {
       setFormData({ role_name: '' });
       setShowCreateDialog(false);
       loadRoles();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating role:', error);
       toast.error(error.message || 'Failed to create role');
     } finally {
@@ -97,7 +97,7 @@ export function RoleManagement({ gradientClass }: RoleManagementProps) {
       setEditingRole(null);
       setFormData({ role_name: '' });
       loadRoles();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating role:', error);
       toast.error(error.message || 'Failed to update role');
     } finally {
@@ -115,7 +115,7 @@ export function RoleManagement({ gradientClass }: RoleManagementProps) {
       await roleAPI.deleteRole(roleId);
       toast.success('Role deleted successfully!');
       loadRoles();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting role:', error);
       toast.error(error.message || 'Failed to delete role');
     } finally {
@@ -131,7 +131,7 @@ export function RoleManagement({ gradientClass }: RoleManagementProps) {
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className={`bg-gradient-to-r ${gradientClass} rounded-lg p-4 sm:p-6 text-white`}>
+      <div className={`bg-gradient-to-r from-[#2E3094] to-[#4C51BF] rounded-lg p-4 sm:p-6 text-white`}>
         <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2 sm:mb-3">Role Management</h1>
         <p className="text-white/90 text-sm sm:text-base leading-relaxed">
           Manage system roles and permissions for your application.

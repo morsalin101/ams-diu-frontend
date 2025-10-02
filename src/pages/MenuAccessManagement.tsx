@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Separator } from '../components/ui/separator';
 import { roleAPI, menuAPI } from '../services/api';
 import toast from 'react-hot-toast';
-import { Key, Shield, Menu, Plus, Trash2, Eye, Edit, Trash, FileEdit } from 'lucide-react';
+import { Key, Shield, Menu, Plus, Trash2, Eye, Edit, Trash, FileEdit, RefreshCw } from 'lucide-react';
 
 interface Role {
   id: number;
@@ -19,7 +19,7 @@ interface Role {
 
 interface Menu {
   id: number;
-  title: string;
+  label: string;
   link: string;
   icon: string;
   parent_id: number | null;
@@ -79,33 +79,52 @@ export function MenuAccessManagement() {
 
   const loadAllMenus = async () => {
     try {
+      setIsLoading(true);
       const response = await menuAPI.getAllMenus();
-      // Mock data if API doesn't return menus yet
-      const mockMenus: Menu[] = [
-        { id: 1, title: 'Dashboard', link: '/dashboard', icon: 'LayoutDashboard', parent_id: null, order_index: 1, is_active: true },
-        { id: 2, title: 'Create Questions', link: '/create-questions', icon: 'Plus', parent_id: null, order_index: 2, is_active: true },
-        { id: 3, title: 'All Questions', link: '/all-questions', icon: 'FileText', parent_id: null, order_index: 3, is_active: true },
-        { id: 4, title: 'Students', link: '/students', icon: 'Users', parent_id: null, order_index: 4, is_active: true },
-        { id: 5, title: 'Exam Schedule', link: '/exam-schedule', icon: 'Calendar', parent_id: null, order_index: 5, is_active: true },
-        { id: 6, title: 'Users Management', link: '/users-management', icon: 'UserCheck', parent_id: null, order_index: 6, is_active: true },
-        { id: 7, title: 'Role Management', link: '/role-management', icon: 'Shield', parent_id: null, order_index: 7, is_active: true },
-        { id: 8, title: 'Menu Management', link: '/menu-management', icon: 'Menu', parent_id: null, order_index: 8, is_active: true },
-        { id: 9, title: 'Menu Access Management', link: '/menu-access-management', icon: 'Key', parent_id: null, order_index: 9, is_active: true },
-      ];
       
-      setAllMenus(response?.data || mockMenus);
+      console.log('All menus API response:', response); // Debug log
+      
+      if (response && response.success && response.data) {
+        // Transform API response to expected format
+        const menusArray = Array.isArray(response.data) ? response.data : [];
+        const transformedMenus = menusArray.map((menu: any) => ({
+          id: menu.id,
+          label: menu.label || menu.title,
+          link: menu.link,
+          icon: menu.icon,
+          parent_id: menu.parent_id,
+          order_index: menu.order_index || 0,
+          is_active: menu.is_active !== false
+        }));
+        
+        setAllMenus(transformedMenus);
+        toast.success(`Loaded ${transformedMenus.length} system menus`);
+      } else {
+        throw new Error('Invalid API response format');
+      }
     } catch (error) {
       console.error('Error loading menus:', error);
-      toast.error('Failed to load menus');
-      // Set mock data on error
-      const mockMenus: Menu[] = [
-        { id: 1, title: 'Dashboard', link: '/dashboard', icon: 'LayoutDashboard', parent_id: null, order_index: 1, is_active: true },
-        { id: 2, title: 'Create Questions', link: '/create-questions', icon: 'Plus', parent_id: null, order_index: 2, is_active: true },
-        { id: 3, title: 'All Questions', link: '/all-questions', icon: 'FileText', parent_id: null, order_index: 3, is_active: true },
-        { id: 4, title: 'Students', link: '/students', icon: 'Users', parent_id: null, order_index: 4, is_active: true },
-        { id: 5, title: 'Exam Schedule', link: '/exam-schedule', icon: 'Calendar', parent_id: null, order_index: 5, is_active: true },
+      toast.error('Failed to load system menus from API');
+      
+      // Comprehensive fallback menu data matching your API structure
+      const fallbackMenus: Menu[] = [
+        { id: 1, label: 'Dashboard', link: '/dashboard', icon: 'LayoutDashboard', parent_id: null, order_index: 1, is_active: true },
+        { id: 2, label: 'Create Questions', link: '/create-questions', icon: 'Plus', parent_id: null, order_index: 2, is_active: true },
+        { id: 3, label: 'All Questions', link: '/all-questions', icon: 'FileText', parent_id: null, order_index: 3, is_active: true },
+        { id: 4, label: 'Students', link: '/students', icon: 'Users', parent_id: null, order_index: 4, is_active: true },
+        { id: 5, label: 'Exam Schedule', link: '/exam-schedule', icon: 'Calendar', parent_id: null, order_index: 5, is_active: true },
+        { id: 6, label: 'Users Management', link: '/users-management', icon: 'UserCheck', parent_id: null, order_index: 6, is_active: true },
+        { id: 7, label: 'Role Management', link: '/role-management', icon: 'Shield', parent_id: null, order_index: 7, is_active: true },
+        { id: 8, label: 'Menu Management', link: '/menu-management', icon: 'Menu', parent_id: null, order_index: 8, is_active: true },
+        { id: 9, label: 'Menu Access Management', link: '/menu-access-management', icon: 'Key', parent_id: null, order_index: 9, is_active: true },
+        { id: 10, label: 'Department Management', link: '/department-management', icon: 'Building', parent_id: null, order_index: 10, is_active: true },
+        { id: 11, label: 'Subject Management', link: '/subject-management', icon: 'BookOpen', parent_id: null, order_index: 11, is_active: true },
+        { id: 12, label: 'Subject Department Mapping', link: '/subject-department-mapping', icon: 'Layers', parent_id: null, order_index: 12, is_active: true }
       ];
-      setAllMenus(mockMenus);
+      
+      setAllMenus(fallbackMenus);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -270,17 +289,37 @@ export function MenuAccessManagement() {
           {/* Available Menus */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Menu className="w-5 h-5" />
-                System Menus
-              </CardTitle>
-              <CardDescription>Manage menu access for the selected role</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Menu className="w-5 h-5" />
+                    System Menus
+                  </CardTitle>
+                  <CardDescription>Manage menu access for the selected role</CardDescription>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={loadAllMenus}
+                  disabled={isLoading}
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  Refresh Menus
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {allMenus
-                .filter(menu => menu.is_active)
-                .sort((a, b) => a.order_index - b.order_index)
-                .map((menu) => {
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+                  <span className="ml-2">Loading system menus...</span>
+                </div>
+              ) : allMenus.length > 0 ? (
+                allMenus
+                  .filter(menu => menu.is_active)
+                  .sort((a, b) => a.order_index - b.order_index)
+                  .map((menu) => {
                   const assigned = isMenuAssigned(menu.id);
                   const permissions = getMenuPermissions(menu.id);
 
@@ -294,7 +333,7 @@ export function MenuAccessManagement() {
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                           <Menu className="w-4 h-4" />
-                          <span className="font-medium">{menu.title}</span>
+                          <span className="font-medium">{menu.label}</span>
                           <Badge variant="outline" className="text-xs">
                             {menu.link}
                           </Badge>
@@ -340,7 +379,22 @@ export function MenuAccessManagement() {
                       )}
                     </div>
                   );
-                })}
+                })
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Menu className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                  <p>No system menus available</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={loadAllMenus}
+                    className="mt-2"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Retry Loading
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 

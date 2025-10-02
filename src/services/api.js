@@ -28,7 +28,67 @@ api.interceptors.request.use(
 
 // API endpoints
 export const examAPI = {
-  // Create new exam
+  // Generate exam questions
+  generateExam: async (examData) => {
+    try {
+      const response = await api.post('/api/exams/generate/', examData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Save generated exam
+  saveGeneratedExam: async (examData) => {
+    try {
+      const response = await api.post('/api/exams/save-generated/', examData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Block a question
+  blockQuestion: async (questionData) => {
+    try {
+      const response = await api.post('/api/questions/block/', questionData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Unblock a question
+  unblockQuestion: async (questionData) => {
+    try {
+      const response = await api.put('/api/questions/unblock/', questionData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get all blocked questions
+  getBlockedQuestions: async () => {
+    try {
+      const response = await api.get('/api/questions/blocked/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get department subjects
+  getDepartmentSubjects: async (departmentId) => {
+    try {
+      const response = await api.get(`/api/departments/${departmentId}/subjects/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Create new exam (legacy - kept for backward compatibility)
   createExam: async (examData) => {
     try {
       const response = await api.post('/api/create-exam/', examData);
@@ -249,6 +309,16 @@ export const usersAPI = {
       throw error.response?.data || error.message;
     }
   },
+
+  // Get current user profile
+  getCurrentUser: async () => {
+    try {
+      const response = await api.get('/api/users/profile/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
 };
 
 // Role API endpoints
@@ -393,6 +463,175 @@ export const menuAPI = {
   removeMenuFromRole: async (roleId, menuId) => {
     try {
       const response = await api.delete(`/api/roles/${roleId}/menus/${menuId}/remove/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+};
+
+// Department API endpoints
+export const departmentAPI = {
+  // Get all departments
+  getAllDepartments: async () => {
+    try {
+      const response = await api.get('/api/departments/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get department by ID
+  getDepartment: async (departmentId) => {
+    try {
+      const response = await api.get(`/api/departments/${departmentId}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Create department
+  createDepartment: async (departmentData) => {
+    try {
+      const response = await api.post('/api/departments/create/', departmentData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Update department (PUT)
+  updateDepartment: async (departmentId, departmentData) => {
+    try {
+      const response = await api.put(`/api/departments/${departmentId}/update/`, departmentData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Update department (PATCH)
+  patchDepartment: async (departmentId, departmentData) => {
+    try {
+      const response = await api.patch(`/api/departments/${departmentId}/update/`, departmentData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Delete department
+  deleteDepartment: async (departmentId) => {
+    try {
+      const response = await api.delete(`/api/departments/${departmentId}/delete/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+};
+
+// Subject API endpoints
+export const subjectAPI = {
+  // Get all subjects
+  getAllSubjects: async () => {
+    try {
+      const response = await api.get('/api/subjects/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get subject by ID
+  getSubject: async (subjectId) => {
+    try {
+      const response = await api.get(`/api/subjects/${subjectId}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Create subject
+  createSubject: async (subjectData) => {
+    try {
+      const response = await api.post('/api/subjects/create/', subjectData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Update subject (PUT)
+  updateSubject: async (subjectId, subjectData) => {
+    try {
+      const response = await api.put(`/api/subjects/${subjectId}/update/`, subjectData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Update subject (PATCH)
+  patchSubject: async (subjectId, subjectData) => {
+    try {
+      const response = await api.patch(`/api/subjects/${subjectId}/update/`, subjectData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Delete subject
+  deleteSubject: async (subjectId) => {
+    try {
+      const response = await api.delete(`/api/subjects/${subjectId}/delete/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+};
+
+// Subject-Department Mapping API endpoints
+export const subjectDepartmentAPI = {
+  // Get all mappings
+  getAllMappings: async () => {
+    try {
+      const response = await api.get('/api/subject-departments/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Create mapping
+  createMapping: async (mappingData) => {
+    try {
+      const response = await api.post('/api/subject-departments/create/', mappingData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Delete mapping
+  deleteMapping: async (mappingId) => {
+    try {
+      const response = await api.delete(`/api/subject-departments/${mappingId}/delete/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get subjects for a specific department
+  getDepartmentSubjects: async (departmentId) => {
+    try {
+      const response = await api.get(`/api/subject-departments/department/${departmentId}/`);
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;

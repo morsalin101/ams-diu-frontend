@@ -358,7 +358,7 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
-                      className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-300"
+                      className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] h-2 rounded-full transition-all duration-300"
                       style={{ width: `${(exam.present_question / exam.total_questions) * 100}%` }}
                     ></div>
                   </div>
