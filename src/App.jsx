@@ -23,6 +23,7 @@ import DepartmentManagement from './pages/DepartmentManagement';
 import SubjectManagement from './pages/SubjectManagement';
 import SubjectDepartmentMapping from './pages/SubjectDepartmentMapping';
 import BlockedQuestions from './pages/BlockedQuestions';
+import { StudentAssignTeacherExam } from './pages/StudentAssignTeacherExam';
 import LayoutTestPage from './pages/LayoutTestPage';
 
 // Component mapping for dynamic routes
@@ -40,6 +41,7 @@ const componentMap = {
   SubjectManagement,
   SubjectDepartmentMapping,
   BlockedQuestions,
+  StudentAssignTeacherExam,
 };
 
 function ProtectedRoutes() {

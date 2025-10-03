@@ -319,6 +319,16 @@ export const usersAPI = {
       throw error.response?.data || error.message;
     }
   },
+
+  // Get all teachers
+  getTeachers: async () => {
+    try {
+      const response = await api.get('/api/users/teachers/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
 };
 
 // Role API endpoints
@@ -632,6 +642,51 @@ export const subjectDepartmentAPI = {
   getDepartmentSubjects: async (departmentId) => {
     try {
       const response = await api.get(`/api/subject-departments/department/${departmentId}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+};
+
+// Student Assignment API endpoints
+export const studentAssignmentAPI = {
+  // Get all student assignments
+  getAllAssignments: async () => {
+    try {
+      const response = await api.get('/api/student-assignments/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Bulk assign students to teacher and exam
+  assignBulk: async (assignmentData) => {
+    try {
+      const response = await api.post('/api/student-assignments/assign-bulk/', assignmentData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Delete student assignment
+  deleteAssignment: async (assignmentId) => {
+    try {
+      const response = await api.delete(`/api/student-assignments/${assignmentId}/delete/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Bulk delete student assignments
+  deleteBulk: async (assignmentIds) => {
+    try {
+      const response = await api.delete('/api/student-assignments/delete-bulk/', {
+        data: { assignment_ids: assignmentIds }
+      });
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
