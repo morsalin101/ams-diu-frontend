@@ -4,6 +4,7 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Users, Plus, Edit, Trash2, Search, Mail, User, Calendar, Loader2, RefreshCw, UserPlus, Eye } from 'lucide-react';
 import { studentsAPI } from '../services/api';
@@ -27,6 +28,7 @@ export function Students({ gradientClass }: StudentsProps) {
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [dateFilter, setDateFilter] = useState('all');
   const [totalCount, setTotalCount] = useState(0);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   
@@ -50,10 +52,10 @@ export function Students({ gradientClass }: StudentsProps) {
     loadStudents();
   }, []);
 
-  // Filter students when search term changes
+  // Filter students when search term or date filter changes
   useEffect(() => {
     filterStudents();
-  }, [students, searchTerm]);
+  }, [students, searchTerm, dateFilter]);
 
   const loadStudents = async () => {
     setIsLoading(true);
@@ -83,6 +85,15 @@ export function Students({ gradientClass }: StudentsProps) {
         student.f_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         student.email.toLowerCase().includes(searchTerm.toLowerCase())
       );
+    }
+
+    // Filter by date (today's filter)
+    if (dateFilter === 'today') {
+      const today = new Date().toISOString().split('T')[0];
+      filtered = filtered.filter(student => {
+        const studentDate = new Date(student.created_at).toISOString().split('T')[0];
+        return studentDate === today;
+      });
     }
 
     setFilteredStudents(filtered);
@@ -216,17 +227,31 @@ export function Students({ gradientClass }: StudentsProps) {
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row gap-4 items-end">
-            {/* Search */}
-            <div className="flex-1 space-y-2">
-              <label className="text-sm font-medium text-gray-700">Search Students</label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search by name, username, ID, or email..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+            {/* Search and Filter */}
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Search Students</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Search by name, username, ID, or email..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Date Filter</label>
+                <Select value={dateFilter} onValueChange={setDateFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filter by date" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Students</SelectItem>
+                    <SelectItem value="today">Today Only</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

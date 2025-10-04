@@ -8,6 +8,7 @@ import { Badge } from '../components/ui/badge';
 import { Settings, BarChart3, HelpCircle, Clock, Award, Building, Calendar, Loader2, FileText, Plus, X, Edit, Eye, Trash2, Save, RefreshCw, AlertTriangle, BookOpen } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Textarea } from '../components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { examAPI, subjectAPI, departmentAPI, subjectDepartmentAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
@@ -573,114 +574,198 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
         </CardContent>
       </Card>
 
-      {/* Generated Questions */}
-      {showQuestions && generatedQuestions.length > 0 && (
-        <Card className="border-2 border-gray-200">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                <span>Generated Questions</span>
-                <Badge variant="outline">{generatedQuestions.length} questions</Badge>
-              </div>
-              {canWrite() && (
-                <Button onClick={handleRegenerateExam} variant="outline" size="sm">
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Regenerate
-                </Button>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {generatedQuestions.map((question, index) => (
-                <div key={question.id} className="border rounded-lg p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">{question.subject}</Badge>
-                      <Badge variant="secondary">{question.marks} marks</Badge>
-                    </div>
-                    {canWrite() && (
-                      <Button
-                        onClick={() => {
-                          setBlockingQuestion(question);
-                          setShowBlockDialog(true);
-                        }}
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        Block
-                      </Button>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <p className="font-medium">{index + 1}. {question.question_text || question.questions}</p>
-                    
-                    {question.type === 'option' && question.options && (
-                      <div className="ml-4 space-y-1">
-                        {(() => {
-                          // Handle object-based options like {"A": "option1", "B": "option2"}
-                          if (typeof question.options === 'object' && !Array.isArray(question.options)) {
-                            const optionEntries = Object.entries(question.options as Record<string, string>);
-                            const correctAnswers = Array.isArray(question.answer) ? question.answer : [question.answer];
-                            
-                            return optionEntries.map(([key, value]) => (
-                              <div key={key} className="flex items-center gap-2">
-                                <span className="text-sm font-medium">{key})</span>
-                                <span className={correctAnswers.includes(key) ? 'font-semibold text-green-600' : ''}>
-                                  {value}
-                                </span>
-                                {correctAnswers.includes(key) && (
-                                  <Badge variant="outline" className="text-xs">Correct</Badge>
-                                )}
-                              </div>
-                            ));
-                          }
-                          
-                          // Handle array or string options (legacy format)
-                          let options: string[] = [];
-                          if (typeof question.options === 'string') {
-                            try {
-                              options = JSON.parse(question.options);
-                            } catch {
-                              options = question.options.split(',');
-                            }
-                          } else if (Array.isArray(question.options)) {
-                            options = question.options;
-                          }
-                          
-                          return options.map((option, optIndex) => (
-                            <div key={optIndex} className="flex items-center gap-2">
-                              <span className="text-sm font-medium">
-                                {String.fromCharCode(65 + optIndex)})
-                              </span>
-                              <span className={option === question.answer ? 'font-semibold text-green-600' : ''}>
-                                {option}
-                              </span>
-                              {option === question.answer && (
-                                <Badge variant="outline" className="text-xs">Correct</Badge>
-                              )}
-                            </div>
-                          ));
-                        })()}
-                      </div>
-                    )}
-                    
-                    {question.type === 'text' && (
-                      <div className="ml-4 p-2 bg-green-50 rounded border-l-4 border-green-400">
-                        <p className="text-sm"><strong>Answer:</strong> {Array.isArray(question.answer) ? question.answer.join(', ') : question.answer}</p>
-                      </div>
-                    )}
-                  </div>
+      {/* Generated Questions - Tab-wise by Subject */}
+      {showQuestions && generatedQuestions.length > 0 && (() => {
+        // Group questions by subject
+        const questionsBySubject = generatedQuestions.reduce((acc, question) => {
+          const subject = question.subject;
+          if (!acc[subject]) {
+            acc[subject] = [];
+          }
+          acc[subject].push(question);
+          return acc;
+        }, {} as Record<string, Question[]>);
+
+        const subjects = Object.keys(questionsBySubject);
+        const defaultSubject = subjects[0] || '';
+
+        return (
+          <Card className="border-2 border-gray-200">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  <span>Generated Questions</span>
+                  <Badge variant="outline">{generatedQuestions.length} questions</Badge>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                {canWrite() && (
+                  <Button onClick={handleRegenerateExam} variant="outline" size="sm">
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Regenerate
+                  </Button>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue={defaultSubject} className="w-full">
+                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:flex lg:w-auto mb-6">
+                  {subjects.map((subject) => (
+                    <TabsTrigger 
+                      key={subject} 
+                      value={subject}
+                      className="flex items-center gap-2 px-4 py-2"
+                    >
+                      <BookOpen className="h-4 w-4" />
+                      <span className="truncate">{subject}</span>
+                      <Badge variant="secondary" className="ml-1 text-xs">
+                        {questionsBySubject[subject].length}
+                      </Badge>
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+
+                {subjects.map((subject) => (
+                  <TabsContent key={subject} value={subject} className="space-y-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-gray-800">
+                        {subject} Questions
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">
+                          {questionsBySubject[subject].length} questions
+                        </Badge>
+                        <Badge variant="secondary">
+                          {questionsBySubject[subject].reduce((sum, q) => sum + q.marks, 0)} marks total
+                        </Badge>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      {questionsBySubject[subject].map((question, index) => (
+                        <div key={question.id} className="border rounded-lg p-4 bg-gray-50/50">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="bg-white">
+                                Q{index + 1}
+                              </Badge>
+                              <Badge variant="secondary">{question.marks} marks</Badge>
+                              <Badge variant="outline" className="text-xs">
+                                {question.type === 'option' ? 'MCQ' : 'Text Answer'}
+                              </Badge>
+                            </div>
+                            {canWrite() && (
+                              <Button
+                                onClick={() => {
+                                  setBlockingQuestion(question);
+                                  setShowBlockDialog(true);
+                                }}
+                                variant="ghost"
+                                size="sm"
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-4 w-4 mr-1" />
+                                Block
+                              </Button>
+                            )}
+                          </div>
+                          
+                          <div className="space-y-3">
+                            <div className="bg-white p-3 rounded border">
+                              <p className="font-medium text-gray-800">
+                                {question.question_text || question.questions}
+                              </p>
+                            </div>
+                            
+                            {question.type === 'option' && question.options && (
+                              <div className="ml-4 space-y-2">
+                                {(() => {
+                                  // Handle object-based options like {"A": "option1", "B": "option2"}
+                                  if (typeof question.options === 'object' && !Array.isArray(question.options)) {
+                                    const optionEntries = Object.entries(question.options as Record<string, string>);
+                                    const correctAnswers = Array.isArray(question.answer) ? question.answer : [question.answer];
+                                    
+                                    return optionEntries.map(([key, value]) => (
+                                      <div key={key} className={`flex items-center gap-3 p-2 rounded ${
+                                        correctAnswers.includes(key) 
+                                          ? 'bg-green-50 border border-green-200' 
+                                          : 'bg-white border border-gray-200'
+                                      }`}>
+                                        <span className="text-sm font-semibold text-gray-600 min-w-[20px]">
+                                          {key})
+                                        </span>
+                                        <span className={correctAnswers.includes(key) ? 'font-semibold text-green-700' : 'text-gray-700'}>
+                                          {value}
+                                        </span>
+                                        {correctAnswers.includes(key) && (
+                                          <Badge variant="outline" className="ml-auto text-xs bg-green-100 text-green-700 border-green-300">
+                                            ✓ Correct
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    ));
+                                  }
+                                  
+                                  // Handle array or string options (legacy format)
+                                  let options: string[] = [];
+                                  if (typeof question.options === 'string') {
+                                    try {
+                                      options = JSON.parse(question.options);
+                                    } catch {
+                                      options = question.options.split(',');
+                                    }
+                                  } else if (Array.isArray(question.options)) {
+                                    options = question.options;
+                                  }
+                                  
+                                  return options.map((option, optIndex) => {
+                                    const isCorrect = option === question.answer;
+                                    return (
+                                      <div key={optIndex} className={`flex items-center gap-3 p-2 rounded ${
+                                        isCorrect 
+                                          ? 'bg-green-50 border border-green-200' 
+                                          : 'bg-white border border-gray-200'
+                                      }`}>
+                                        <span className="text-sm font-semibold text-gray-600 min-w-[20px]">
+                                          {String.fromCharCode(65 + optIndex)})
+                                        </span>
+                                        <span className={isCorrect ? 'font-semibold text-green-700' : 'text-gray-700'}>
+                                          {option}
+                                        </span>
+                                        {isCorrect && (
+                                          <Badge variant="outline" className="ml-auto text-xs bg-green-100 text-green-700 border-green-300">
+                                            ✓ Correct
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    );
+                                  });
+                                })()}
+                              </div>
+                            )}
+                            
+                            {question.type === 'text' && (
+                              <div className="ml-4 p-3 bg-green-50 rounded border border-green-200">
+                                <div className="flex items-start gap-2">
+                                  <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300 text-xs">
+                                    Answer
+                                  </Badge>
+                                  <p className="text-sm font-medium text-green-700">
+                                    {Array.isArray(question.answer) ? question.answer.join(', ') : question.answer}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </TabsContent>
+                ))}
+              </Tabs>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Block Question Dialog */}
       <Dialog open={showBlockDialog} onOpenChange={setShowBlockDialog}>

@@ -47,6 +47,11 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   const [selectedExamForSchedule, setSelectedExamForSchedule] = useState<Exam | null>(null);
   const [scheduleTime, setScheduleTime] = useState<string>('');
+  
+  // Form state
+  const [selectedExamId, setSelectedExamId] = useState<string>('');
+  const [startTime, setStartTime] = useState<string>('');
+  const [isActive, setIsActive] = useState<boolean>(true);
 
   useEffect(() => {
     loadExams();
@@ -84,6 +89,39 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
     } catch (error) {
       console.error('Error loading schedules:', error);
       toast.error('Failed to load schedules');
+    }
+  };
+
+  const handleCreateSchedule = async () => {
+    if (!selectedExamId || !startTime) {
+      toast.error('Please select an exam and start time');
+      return;
+    }
+
+    setIsCreatingSchedule(true);
+    try {
+      const scheduleData = {
+        exam_id: parseInt(selectedExamId),
+        start_time: new Date(startTime).toISOString(),
+        is_active: isActive
+      };
+
+      const response = await scheduleAPI.createSchedule(scheduleData);
+      toast.success('Exam schedule created successfully!');
+      
+      // Reset form
+      setSelectedExamId('');
+      setStartTime('');
+      setIsActive(true);
+      
+      // Reload schedules
+      loadSchedules();
+      
+    } catch (error) {
+      console.error('Error creating schedule:', error);
+      toast.error('Failed to create schedule: ' + ((error as any)?.message || 'Unknown error'));
+    } finally {
+      setIsCreatingSchedule(false);
     }
   };
 
@@ -256,7 +294,6 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
             )}
           </CardContent>
         </Card>
-
         {/* Right Panel - Scheduled Exams */}
         <Card className="border-2 border-gray-200">
           <CardHeader className="pb-4 border-b border-gray-100 bg-gradient-to-r from-green-50 to-emerald-50">
@@ -284,7 +321,6 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="p-6">
             {schedules.length === 0 ? (
               <div className="text-center py-8">
                 <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-400" />

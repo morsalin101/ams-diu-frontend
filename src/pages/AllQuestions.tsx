@@ -9,6 +9,7 @@ import { FileText, Eye, Edit, Search, Filter, Calendar, Building, Users, Clock, 
 import { QuestionManager, Question } from '../components/QuestionManager';
 import { QuestionPaperView } from '../components/QuestionPaperView';
 import { examAPI } from '../services/api';
+import { usePermissions } from '../hooks/usePermissions';
 import toast from 'react-hot-toast';
 
 interface Exam {
@@ -28,12 +29,14 @@ interface AllQuestionsProps {
 }
 
 export function AllQuestions({ gradientClass }: AllQuestionsProps) {
+  const { canRead, canWrite, canEdit, canDelete } = usePermissions();
   const [exams, setExams] = useState<Exam[]>([]);
   const [filteredExams, setFilteredExams] = useState<Exam[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [semesterFilter, setSemesterFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
   const [totalCount, setTotalCount] = useState(0);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   
@@ -55,7 +58,7 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
   // Filter exams when search term or filters change
   useEffect(() => {
     filterExams();
-  }, [exams, searchTerm, departmentFilter, semesterFilter]);
+  }, [exams, searchTerm, departmentFilter, semesterFilter, dateFilter]);
 
   const loadAllExams = async () => {
     setIsLoading(true);
@@ -95,6 +98,15 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
     // Filter by semester
     if (semesterFilter !== 'all') {
       filtered = filtered.filter(exam => exam.semester === semesterFilter);
+    }
+
+    // Filter by date (today's filter)
+    if (dateFilter === 'today') {
+      const today = new Date().toISOString().split('T')[0];
+      filtered = filtered.filter(exam => {
+        const examDate = new Date(exam.created_at).toISOString().split('T')[0];
+        return examDate === today;
+      });
     }
 
     setFilteredExams(filtered);
@@ -257,6 +269,20 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
               </Select>
             </div>
 
+            {/* Date Filter */}
+            <div className="w-full sm:w-48 space-y-2">
+              <label className="text-sm font-medium text-gray-700">Date Filter</label>
+              <Select value={dateFilter} onValueChange={setDateFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Dates" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Dates</SelectItem>
+                  <SelectItem value="today">Today Only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Refresh Button */}
             <Button
               onClick={loadAllExams}
@@ -366,38 +392,44 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
 
                 {/* Action Buttons */}
                 <div className="flex gap-2 pt-2">
-                  <Button
-                    onClick={() => handleViewQuestions(exam.id, true)}
-                    variant="default"
-                    size="sm"
-                    className="flex-1 bg-gradient-to-r from-[#4C51BF] to-[#667EEA] ${gradientClass} hover:from-blue-700 hover:to-purple-700"
-                  >
-                    <Eye className="h-3 w-3 mr-1" />
-                    View
-                  </Button>
-                  <Button
-                    onClick={() => handleViewQuestions(exam.id, false)}
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 border-gray-300 hover:border-blue-400"
-                  >
-                    <Edit className="h-3 w-3 mr-1" />
-                    Edit
-                  </Button>
-                  <Button
-                    onClick={() => handleDeleteExam(exam.id)}
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 border-red-600 text-red-600 hover:bg-red-50"
-                    disabled={deletingId === exam.id}
-                  >
-                    {deletingId === exam.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <Trash2 className="h-4 w-4 mr-2" />
-                    )}
-                    Delete
-                  </Button>
+                  {canRead() && (
+                    <Button
+                      onClick={() => handleViewQuestions(exam.id, true)}
+                      variant="default"
+                      size="sm"
+                      className="flex-1 bg-gradient-to-r from-[#4C51BF] to-[#667EEA] ${gradientClass} hover:from-blue-700 hover:to-purple-700"
+                    >
+                      <Eye className="h-3 w-3 mr-1" />
+                      View
+                    </Button>
+                  )}
+                  {canEdit() && (
+                    <Button
+                      onClick={() => handleViewQuestions(exam.id, false)}
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 border-gray-300 hover:border-blue-400"
+                    >
+                      <Edit className="h-3 w-3 mr-1" />
+                      Edit
+                    </Button>
+                  )}
+                  {canDelete() && (
+                    <Button
+                      onClick={() => handleDeleteExam(exam.id)}
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 border-red-600 text-red-600 hover:bg-red-50"
+                      disabled={deletingId === exam.id}
+                    >
+                      {deletingId === exam.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Trash2 className="h-4 w-4 mr-2" />
+                      )}
+                      Delete
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

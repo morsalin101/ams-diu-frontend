@@ -7,8 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Badge } from '../components/ui/badge';
 import { Checkbox } from '../components/ui/checkbox';
 import { Users, UserPlus, Trash2, Search, Filter, Calendar, BookOpen, User, Building, AlertTriangle, Loader2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { StudentAssignmentDialog } from '../components/StudentAssignmentDialog';
 import { studentAssignmentAPI, studentsAPI, usersAPI, examAPI, scheduleAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
@@ -223,8 +223,8 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
       return;
     }
 
-    if (!assignmentForm.teacher_id || !assignmentForm.exam_id || !assignmentForm.schedule_id) {
-      toast.error('Please fill in all assignment details');
+    if (!assignmentForm.teacher_id || !assignmentForm.schedule_id) {
+      toast.error('Please select a teacher and schedule');
       return;
     }
 
@@ -233,7 +233,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
       const assignmentData = {
         student_ids: selectedStudents,
         teacher_id: parseInt(assignmentForm.teacher_id),
-        exam_id: parseInt(assignmentForm.exam_id),
+        exam_id: assignmentForm.exam_id ? parseInt(assignmentForm.exam_id) : null,
         schedule_id: parseInt(assignmentForm.schedule_id)
       };
 
@@ -315,10 +315,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
     !assignments.some(assignment => assignment.student === student.id)
   );
 
-  // Filter available students based on date filter - MOVED UP
-  const filteredAvailableStudents = availableStudents.filter(student => {
-    return !filterDate || (filterDate === 'today' && isToday(student.created_at));
-  });
+
 
   // Filter assignments
   const filteredAssignments = assignments.filter(assignment => {
@@ -337,10 +334,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
     return matchesSearch && matchesTeacher && matchesExam && matchesDate;
   });
 
-  // Filter schedules based on date filter
-  const filteredSchedules = schedules.filter(schedule => {
-    return !filterDate || (filterDate === 'today' && isToday(schedule.created_at));
-  });
+
 
   // Permission check
   if (!canRead()) {
@@ -398,10 +392,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Available Students</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {filterDate ? filteredAvailableStudents.length : availableStudents.length}
-                  {filterDate && (
-                    <span className="text-sm text-gray-500 ml-1">({availableStudents.length} total)</span>
-                  )}
+                  {availableStudents.length}
                 </p>
               </div>
             </div>
@@ -491,154 +482,30 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
 
             <div className="flex gap-2">
               {canWrite() && (
-                <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
-                  <DialogTrigger asChild>
-                    <Button className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#1E2078] hover:to-[#3A3F9A]">
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Assign Students
-                    </Button>
-                  </DialogTrigger>
+                <>
+                  <Button 
+                    onClick={() => setShowAssignDialog(true)}
+                    className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#1E2078] hover:to-[#3A3F9A]"
+                  >
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Assign Students
+                  </Button>
                   
-                  <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto" style={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
-                    <DialogHeader>
-                      <DialogTitle>Assign Students to Teacher and Exam</DialogTitle>
-                      <DialogDescription>
-                        Select students and assign them to a teacher and exam schedule.
-                      </DialogDescription>
-                    </DialogHeader>
-                    
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {/* Student Selection */}
-                      <div className="space-y-4">
-                        <Label className="text-base font-semibold">Select Students</Label>
-                        <div className="border rounded-lg p-4 max-h-80 overflow-y-auto">
-                          {filteredAvailableStudents.length === 0 ? (
-                            <p className="text-center text-gray-500 py-8">No available students to assign</p>
-                          ) : (
-                            <div className="space-y-2">
-                              {filteredAvailableStudents.map((student) => (
-                                <div key={student.id} className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded">
-                                  <Checkbox
-                                    checked={selectedStudents.includes(student.id)}
-                                    onCheckedChange={(checked) => {
-                                      if (checked) {
-                                        setSelectedStudents([...selectedStudents, student.id]);
-                                      } else {
-                                        setSelectedStudents(selectedStudents.filter(id => id !== student.id));
-                                      }
-                                    }}
-                                  />
-                                  <div className="flex-1">
-                                    <p className="font-medium">{student.full_name}</p>
-                                    <p className="text-sm text-gray-500">@{student.username} | ID: {student.f_id}</p>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-500">
-                          Selected: {selectedStudents.length} students
-                        </p>
-                      </div>
-
-                      {/* Assignment Details */}
-                      <div className="space-y-4">
-                        <Label className="text-base font-semibold">Assignment Details</Label>
-                        
-                        <div className="space-y-4">
-                          <div>
-                            <Label htmlFor="teacher">Teacher</Label>
-                            <Select
-                              value={assignmentForm.teacher_id}
-                              onValueChange={(value) => setAssignmentForm(prev => ({ ...prev, teacher_id: value }))}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select teacher" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {teachers.map(teacher => (
-                                  <SelectItem key={teacher.id} value={teacher.id.toString()}>
-                                    {teacher.username} ({teacher.department_details.department_shortname})
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <div>
-                            <Label htmlFor="exam">Exam</Label>
-                            <Select
-                              value={assignmentForm.exam_id}
-                              onValueChange={(value) => setAssignmentForm(prev => ({ ...prev, exam_id: value }))}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select exam" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {exams.length === 0 ? (
-                                  <div className="p-2 text-sm text-gray-500 text-center">No exams available</div>
-                                ) : (
-                                  exams.map(exam => (
-                                    <SelectItem key={exam.id} value={exam.id.toString()}>
-                                      {exam.department} - {exam.semester}
-                                    </SelectItem>
-                                  ))
-                                )}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <div>
-                            <Label htmlFor="schedule">Schedule</Label>
-                            <Select
-                              value={assignmentForm.schedule_id}
-                              onValueChange={(value) => setAssignmentForm(prev => ({ ...prev, schedule_id: value }))}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select schedule" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {filteredSchedules.map(schedule => (
-                                  <SelectItem key={schedule.id} value={schedule.id.toString()}>
-                                    {schedule.exam_details ? (
-                                      `${schedule.exam_details.department} - ${schedule.exam_details.semester} | ${new Date(schedule.start_time).toLocaleDateString()} | ${new Date(schedule.start_time).toLocaleTimeString()} - ${new Date(schedule.end_time).toLocaleTimeString()}`
-                                    ) : (
-                                      `Schedule ${schedule.id} | ${new Date(schedule.start_time).toLocaleDateString()} | ${new Date(schedule.start_time).toLocaleTimeString()} - ${new Date(schedule.end_time).toLocaleTimeString()}`
-                                    )}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-
-                        <div className="flex justify-end gap-2 pt-4">
-                          <Button variant="outline" onClick={() => setShowAssignDialog(false)}>
-                            Cancel
-                          </Button>
-                          <Button 
-                            onClick={handleBulkAssign}
-                            disabled={isLoading || selectedStudents.length === 0}
-                            className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#1E2078] hover:to-[#3A3F9A]"
-                          >
-                            {isLoading ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Assigning...
-                              </>
-                            ) : (
-                              <>
-                                <UserPlus className="mr-2 h-4 w-4" />
-                                Assign Students ({selectedStudents.length})
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                  <StudentAssignmentDialog
+                    open={showAssignDialog}
+                    onOpenChange={setShowAssignDialog}
+                    availableStudents={availableStudents}
+                    teachers={teachers}
+                    schedules={schedules}
+                    selectedStudents={selectedStudents}
+                    onSelectedStudentsChange={setSelectedStudents}
+                    assignmentForm={assignmentForm}
+                    onAssignmentFormChange={setAssignmentForm}
+                    onAssign={handleBulkAssign}
+                    isLoading={isLoading}
+                    filterDate={filterDate}
+                  />
+                </>
               )}
 
               {canDelete() && selectedAssignments.length > 0 && (

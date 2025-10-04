@@ -78,6 +78,48 @@ export const examAPI = {
     }
   },
 
+  // Get all blocked questions (new endpoint)
+  getAllBlockedQuestions: async () => {
+    try {
+      const response = await api.get('/api/get-all-blocked-questions/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get all results by teacher
+  getAllResultsByTeacher: async (teacherId) => {
+    try {
+      const response = await api.get(`/api/get-all-results-by-teacher/${teacherId}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get all published exams
+  getPublishedExams: async () => {
+    try {
+      const response = await api.get('/api/published-exams/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Toggle exam result publication status
+  toggleExamPublication: async (examId) => {
+    try {
+      const response = await api.post('/api/result/published/', {
+        exam_id: examId
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
   // Get department subjects
   getDepartmentSubjects: async (departmentId) => {
     try {

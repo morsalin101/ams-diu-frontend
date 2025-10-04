@@ -22,7 +22,9 @@ import { MenuAccessManagement } from './pages/MenuAccessManagement';
 import DepartmentManagement from './pages/DepartmentManagement';
 import SubjectManagement from './pages/SubjectManagement';
 import SubjectDepartmentMapping from './pages/SubjectDepartmentMapping';
-import BlockedQuestions from './pages/BlockedQuestions';
+import { BlockedQuestions } from './pages/BlockedQuestions';
+import { PublishedExams } from './pages/PublishedExams';
+import { Results } from './pages/Results';
 import { StudentAssignTeacherExam } from './pages/StudentAssignTeacherExam';
 import LayoutTestPage from './pages/LayoutTestPage';
 
@@ -41,6 +43,8 @@ const componentMap = {
   SubjectManagement,
   SubjectDepartmentMapping,
   BlockedQuestions,
+  PublishedExams,
+  Results,
   StudentAssignTeacherExam,
 };
 

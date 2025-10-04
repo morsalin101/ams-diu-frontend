@@ -2,82 +2,106 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
-import { AlertTriangle, RefreshCw, CheckCircle, Eye, Calendar, User, MessageSquare } from 'lucide-react';
-import { examAPI } from '../services/api';
+import { AlertTriangle, RefreshCw, Eye, Calendar, User, MessageSquare, Search, Slash, FileText, Clock, Building2, Loader2, BookOpen, CheckCircle } from 'lucide-react';
 import { usePermissions } from '../hooks/usePermissions';
 import toast from 'react-hot-toast';
+import { examAPI } from '../services/api';
 
 interface BlockedQuestion {
   id: number;
   subject: string;
   questions: string;
-  type: string;
-  text?: string;
-  options?: string;
-  answer: string;
+  type: 'option' | 'text';
+  text?: string | null;
+  options?: Record<string, string> | null;
+  answer: string[] | string;
   marks: number;
   semester: string;
   department_shortname: string;
   original_question_id: number;
   remarks: string;
   creator: number;
-  creator_username: string;
+  creator_username?: string;
   issue_solved: boolean;
   created_at: string;
   updated_at: string;
 }
 
-const BlockedQuestions: React.FC = () => {
+export function BlockedQuestions({ gradientClass }: { gradientClass: string }) {
   const [blockedQuestions, setBlockedQuestions] = useState<BlockedQuestion[]>([]);
+  const [filteredQuestions, setFilteredQuestions] = useState<BlockedQuestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<BlockedQuestion | null>(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
-  const { canRead, canWrite } = usePermissions();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [subjectFilter, setSubjectFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  
+  const { canRead } = usePermissions();
 
   useEffect(() => {
     if (canRead()) {
       loadBlockedQuestions();
     }
-  }, [canRead]);
+  }, []);
+
+  useEffect(() => {
+    filterQuestions();
+  }, [blockedQuestions, searchTerm, subjectFilter, statusFilter]);
+
+  const filterQuestions = () => {
+    let filtered = blockedQuestions;
+
+    // Search filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(question =>
+        question.questions.toLowerCase().includes(term) ||
+        question.subject.toLowerCase().includes(term) ||
+        question.remarks.toLowerCase().includes(term) ||
+        question.creator_username?.toLowerCase().includes(term)
+      );
+    }
+
+    // Subject filter
+    if (subjectFilter !== 'all') {
+      filtered = filtered.filter(question => question.subject === subjectFilter);
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'solved') {
+        filtered = filtered.filter(question => question.issue_solved);
+      } else if (statusFilter === 'unsolved') {
+        filtered = filtered.filter(question => !question.issue_solved);
+      }
+    }
+
+    setFilteredQuestions(filtered);
+  };
 
   const loadBlockedQuestions = async () => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      const response = await examAPI.getBlockedQuestions();
+      // Use the examAPI function with proper base URL
+      const data = await examAPI.getAllBlockedQuestions();
       
-      // Handle both array response and object response
-      const questions = Array.isArray(response) ? response : (response.data || []);
-      setBlockedQuestions(questions);
+      if (data.success && data.questions) {
+        setBlockedQuestions(data.questions);
+        toast.success(`Loaded ${data.count} blocked questions`);
+      } else {
+        throw new Error(data.message || 'Failed to load blocked questions');
+      }
     } catch (error: any) {
       console.error('Error loading blocked questions:', error);
-      toast.error('Failed to load blocked questions');
+      toast.error(error.message || 'Failed to load blocked questions');
       setBlockedQuestions([]);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleUnblockQuestion = async (question: BlockedQuestion) => {
-    if (!canWrite()) {
-      toast.error('You do not have permission to unblock questions');
-      return;
-    }
-
-    try {
-      const response = await examAPI.unblockQuestion({
-        question_id: question.original_question_id
-      });
-
-      if (response && (response.success !== false)) {
-        toast.success('Question unblocked successfully');
-        loadBlockedQuestions(); // Refresh the list
-      } else {
-        toast.error(response.message || 'Failed to unblock question');
-      }
-    } catch (error: any) {
-      console.error('Error unblocking question:', error);
-      toast.error(error.message || 'Failed to unblock question');
     }
   };
 
@@ -91,18 +115,13 @@ const BlockedQuestions: React.FC = () => {
     });
   };
 
-  const parseOptions = (optionsString: string) => {
-    try {
-      return JSON.parse(optionsString);
-    } catch {
-      return optionsString ? optionsString.split(',') : [];
-    }
-  };
-
   const openDetailsDialog = (question: BlockedQuestion) => {
     setSelectedQuestion(question);
     setShowDetailsDialog(true);
   };
+
+  // Get unique subjects for filter
+  const uniqueSubjects = Array.from(new Set(blockedQuestions.map(q => q.subject)));
 
   // Permission check
   if (!canRead()) {
@@ -118,42 +137,93 @@ const BlockedQuestions: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] rounded-lg p-6 text-white">
-        <h1 className="text-2xl md:text-3xl font-bold mb-3">Blocked Questions</h1>
-        <p className="text-white/90 leading-relaxed">
-          Manage questions that have been blocked due to issues or concerns.
+      <div className={`rounded-lg p-4 sm:p-6 text-white bg-gradient-to-tr from-[#2E3094] to-[#4C51BF]`}>
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2 sm:mb-3 flex items-center gap-3">
+          <AlertTriangle className="h-8 w-8" />
+          Blocked Questions
+        </h1>
+        <p className="text-white/90 text-sm sm:text-base leading-relaxed">
+          View and review questions that have been blocked from exam generation.
         </p>
+        <div className="mt-3 flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            <span>{filteredQuestions.length} questions</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4" />
+            <span>{filteredQuestions.filter(q => q.issue_solved).length} resolved</span>
+          </div>
+        </div>
       </div>
 
-      {/* Actions Bar */}
+      {/* Filters */}
       <Card className="border-2 border-gray-200">
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
-              <span className="font-semibold text-gray-800">
-                Total Blocked Questions: {blockedQuestions.length}
-              </span>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Search className="h-5 w-5" />
+            Filters & Search
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="search">Search Questions</Label>
+              <Input
+                id="search"
+                placeholder="Search by question, subject, or creator..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
-            <Button
-              onClick={loadBlockedQuestions}
-              disabled={isLoading}
-              variant="outline"
-            >
-              {isLoading ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-                  Loading...
-                </>
-              ) : (
-                <>
+
+            <div className="space-y-2">
+              <Label htmlFor="subject">Subject</Label>
+              <Select value={subjectFilter} onValueChange={setSubjectFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All subjects" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Subjects</SelectItem>
+                  {uniqueSubjects.map(subject => (
+                    <SelectItem key={subject} value={subject}>{subject}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="unsolved">Unsolved</SelectItem>
+                  <SelectItem value="solved">Solved</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>&nbsp;</Label>
+              <Button 
+                onClick={loadBlockedQuestions} 
+                variant="outline" 
+                className="w-full"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
                   <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh
-                </>
-              )}
-            </Button>
+                )}
+                Refresh
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -166,15 +236,22 @@ const BlockedQuestions: React.FC = () => {
             <p className="text-gray-600">Loading blocked questions...</p>
           </div>
         </div>
-      ) : blockedQuestions.length === 0 ? (
-        <Card className="p-8 text-center">
-          <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-400" />
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">No blocked questions</h3>
-          <p className="text-gray-600">All questions are currently available for use.</p>
+      ) : filteredQuestions.length === 0 ? (
+        <Card className="border-2 border-dashed border-gray-300">
+          <CardContent className="text-center py-8">
+            <Slash className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-600 mb-2">No Blocked Questions</h3>
+            <p className="text-gray-500">
+              {blockedQuestions.length === 0 
+                ? "No questions have been blocked yet."
+                : "No questions match your current filters."
+              }
+            </p>
+          </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
-          {blockedQuestions.map((question) => (
+        <div className="space-y-4">
+          {filteredQuestions.map((question) => (
             <Card key={question.id} className="border-2 border-red-100 bg-red-50/30">
               <CardContent className="p-6">
                 <div className="flex flex-col lg:flex-row gap-4">
@@ -207,7 +284,7 @@ const BlockedQuestions: React.FC = () => {
                     <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
                       <div className="flex items-center gap-1">
                         <User className="h-4 w-4" />
-                        <span>Blocked by: {question.creator_username}</span>
+                        <span>Blocked by: {question.creator_username || `User ${question.creator}`}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Calendar className="h-4 w-4" />
@@ -232,20 +309,8 @@ const BlockedQuestions: React.FC = () => {
                       className="flex-1 lg:flex-none"
                     >
                       <Eye className="h-4 w-4 mr-2" />
-                      Details
+                      View Details
                     </Button>
-                    
-                    {canWrite() && (
-                      <Button
-                        onClick={() => handleUnblockQuestion(question)}
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 lg:flex-none border-green-200 hover:border-green-400 hover:bg-green-50 text-green-700"
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Unblock
-                      </Button>
-                    )}
                   </div>
                 </div>
               </CardContent>
@@ -286,20 +351,28 @@ const BlockedQuestions: React.FC = () => {
               {selectedQuestion.type === 'option' && selectedQuestion.options && (
                 <div className="p-4 bg-blue-50 rounded-lg">
                   <h4 className="font-semibold mb-2">Options:</h4>
-                  <div className="space-y-1">
-                    {parseOptions(selectedQuestion.options).map((option: string, index: number) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <span className="font-medium">
-                          {String.fromCharCode(65 + index)})
-                        </span>
-                        <span className={option === selectedQuestion.answer ? 'font-semibold text-green-600' : ''}>
-                          {option}
-                        </span>
-                        {option === selectedQuestion.answer && (
-                          <Badge variant="outline" className="text-xs">Correct</Badge>
-                        )}
-                      </div>
-                    ))}
+                  <div className="space-y-2">
+                    {typeof selectedQuestion.options === 'object' && selectedQuestion.options !== null ? (
+                      Object.entries(selectedQuestion.options).map(([key, value]) => {
+                        const correctAnswers = Array.isArray(selectedQuestion.answer) ? selectedQuestion.answer : [selectedQuestion.answer];
+                        const isCorrect = correctAnswers.includes(key);
+                        return (
+                          <div key={key} className={`flex items-center gap-2 p-2 rounded ${
+                            isCorrect ? 'bg-green-100 border border-green-300' : 'bg-white border border-gray-200'
+                          }`}>
+                            <span className="font-medium text-gray-700">{key})</span>
+                            <span className={isCorrect ? 'font-semibold text-green-700' : 'text-gray-700'}>
+                              {String(value)}
+                            </span>
+                            {isCorrect && (
+                              <Badge variant="outline" className="text-xs bg-green-100 text-green-700 border-green-300">✓ Correct</Badge>
+                            )}
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="text-sm text-gray-600">{String(selectedQuestion.options)}</div>
+                    )}
                   </div>
                 </div>
               )}
@@ -308,7 +381,9 @@ const BlockedQuestions: React.FC = () => {
               {selectedQuestion.type === 'text' && (
                 <div className="p-4 bg-green-50 rounded-lg">
                   <h4 className="font-semibold mb-2">Answer:</h4>
-                  <p className="text-gray-800">{selectedQuestion.answer}</p>
+                  <p className="text-gray-800">
+                    {Array.isArray(selectedQuestion.answer) ? selectedQuestion.answer.join(', ') : selectedQuestion.answer}
+                  </p>
                 </div>
               )}
 
@@ -316,7 +391,7 @@ const BlockedQuestions: React.FC = () => {
               <div className="p-4 bg-red-50 rounded-lg border-l-4 border-red-400">
                 <h4 className="font-semibold mb-2 text-red-800">Blocking Information:</h4>
                 <div className="space-y-2 text-sm">
-                  <p><strong>Blocked by:</strong> {selectedQuestion.creator_username}</p>
+                  <p><strong>Blocked by:</strong> {selectedQuestion.creator_username || `User ${selectedQuestion.creator}`}</p>
                   <p><strong>Date:</strong> {formatDate(selectedQuestion.created_at)}</p>
                   <p><strong>Remarks:</strong> {selectedQuestion.remarks}</p>
                   <p>
@@ -329,32 +404,20 @@ const BlockedQuestions: React.FC = () => {
               </div>
 
               {/* Actions */}
-              {canWrite() && (
-                <div className="flex justify-end gap-2 pt-4">
-                  <Button
-                    onClick={() => setShowDetailsDialog(false)}
-                    variant="outline"
-                  >
-                    Close
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      handleUnblockQuestion(selectedQuestion);
-                      setShowDetailsDialog(false);
-                    }}
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Unblock Question
-                  </Button>
-                </div>
-              )}
+              <div className="flex justify-end pt-4">
+                <Button
+                  onClick={() => setShowDetailsDialog(false)}
+                  variant="outline"
+                >
+                  Close
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Edit functionality removed for now */}
     </div>
   );
-};
-
-export default BlockedQuestions;
+}
