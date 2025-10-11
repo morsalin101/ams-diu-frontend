@@ -51,7 +51,7 @@ export const examAPI = {
   // Block a question
   blockQuestion: async (questionData) => {
     try {
-      const response = await api.post('/api/questions/block/', questionData);
+      const response = await api.post('/api/question/block/', questionData);
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
