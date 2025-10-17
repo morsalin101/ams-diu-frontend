@@ -25,6 +25,9 @@ import SubjectDepartmentMapping from './pages/SubjectDepartmentMapping';
 import { BlockedQuestions } from './pages/BlockedQuestions';
 import { PublishedExams } from './pages/PublishedExams';
 import { Results } from './pages/Results';
+import { VivaManagement } from './pages/VivaManagement';
+import { MarksDistribution } from './pages/MarksDistribution';
+import { VivaAssign } from './pages/VivaAssign';
 import { StudentAssignTeacherExam } from './pages/StudentAssignTeacherExam';
 import LayoutTestPage from './pages/LayoutTestPage';
 
@@ -45,6 +48,9 @@ const componentMap = {
   BlockedQuestions,
   PublishedExams,
   Results,
+  VivaManagement,
+  MarksDistribution,
+  VivaAssign,
   StudentAssignTeacherExam,
 };
 

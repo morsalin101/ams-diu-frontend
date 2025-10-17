@@ -371,6 +371,16 @@ export const usersAPI = {
       throw error.response?.data || error.message;
     }
   },
+
+  // Get all students
+  getStudents: async () => {
+    try {
+      const response = await api.get('/api/students/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
 };
 
 // Role API endpoints
@@ -528,7 +538,26 @@ export const departmentAPI = {
   getAllDepartments: async () => {
     try {
       const response = await api.get('/api/departments/');
-      return response.data;
+      const responseData = response.data;
+      
+      // Handle the new API response structure
+      if (responseData.success && responseData.data) {
+        // Map the new structure to the expected format
+        const mappedDepartments = responseData.data.map(dept => ({
+          id: dept.id,
+          name: dept.department_name,
+          shortname: dept.department_shortname
+        }));
+        
+        return {
+          success: true,
+          data: mappedDepartments, // For backward compatibility
+          departments: mappedDepartments, // For new components
+          message: responseData.message
+        };
+      }
+      
+      return responseData;
     } catch (error) {
       throw error.response?.data || error.message;
     }
@@ -729,6 +758,125 @@ export const studentAssignmentAPI = {
       const response = await api.delete('/api/student-assignments/delete-bulk/', {
         data: { assignment_ids: assignmentIds }
       });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+};
+
+// Viva Rubrics API endpoints
+export const vivaRubricsAPI = {
+  // Get all viva rubrics
+  getAllRubrics: async () => {
+    try {
+      const response = await api.get('/api/all-rubrics/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Create new viva rubrics
+  createRubrics: async (rubricsData) => {
+    try {
+      const response = await api.post('/api/create-rubrics/', rubricsData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Update viva rubrics
+  updateRubrics: async (rubricsId, rubricsData) => {
+    try {
+      const response = await api.put(`/api/rubrics/${rubricsId}/update/`, rubricsData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Delete viva rubrics
+  deleteRubrics: async (rubricsId) => {
+    try {
+      const response = await api.delete(`/api/rubrics/${rubricsId}/delete/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+};
+
+// Marks Distribution API endpoints
+export const marksDistributionAPI = {
+  // Get all marks distribution
+  getAllMarksDistribution: async () => {
+    try {
+      const response = await api.get('/api/all-marks-distribution/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Create new marks distribution
+  createMarksDistribution: async (distributionData) => {
+    try {
+      const response = await api.post('/api/create-marks-distribution/', distributionData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Delete marks distribution
+  deleteMarksDistribution: async (distributionId) => {
+    try {
+      const response = await api.delete(`/api/marks-distribution/${distributionId}/delete/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get marks distribution by department
+  getByDepartment: async (departmentId) => {
+    try {
+      const response = await api.get(`/api/marks-distribution/department/${departmentId}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+};
+
+// Viva Assignment API endpoints
+export const vivaAssignmentAPI = {
+  // Get all viva assignments
+  getAllAssignments: async () => {
+    try {
+      const response = await api.get('/api/viva-assignments/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Create viva assignment(s)
+  createAssignments: async (assignmentData) => {
+    try {
+      const response = await api.post('/api/viva-assignments/create/', assignmentData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Delete viva assignment
+  deleteAssignment: async (assignmentId) => {
+    try {
+      const response = await api.delete(`/api/viva-assignments/${assignmentId}/delete/`);
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;

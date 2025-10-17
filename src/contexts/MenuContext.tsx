@@ -15,7 +15,13 @@ import {
   Building,
   BookOpen,
   Layers,
-  AlertTriangle
+  AlertTriangle,
+  Cpu,
+  Percent,
+  Mic,
+  FileCheck,
+  Slash,
+  FilePlus,
 } from 'lucide-react';
 
 // Icon mapping for dynamic menu items
@@ -23,6 +29,7 @@ const iconMap: { [key: string]: any } = {
   'LayoutDashboard': LayoutDashboard,
   'Plus': Plus,
   'FileText': FileText,
+  'Cpu': Cpu,
   'Users': Users,
   'Calendar': Calendar,
   'UserCheck': UserCheck,
@@ -34,6 +41,11 @@ const iconMap: { [key: string]: any } = {
   'BookOpen': BookOpen,
   'Layers': Layers,
   'AlertTriangle': AlertTriangle,
+  'Percent': Percent,
+  'Mic': Mic,
+  'FileCheck': FileCheck,
+  'Slash': Slash,
+  'FilePlus': FilePlus,
 };
 
 interface MenuItem {

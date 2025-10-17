@@ -319,7 +319,7 @@ export function PublishedExams({ gradientClass }: PublishedExamsProps) {
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className={`rounded-lg p-4 sm:p-6 text-white ${gradientClass}`}>
+      <div className={`rounded-lg p-4 sm:p-6 text-white bg-gradient-to-r from-[#2E3094] to-[#4C51BF]`}>
         <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2 sm:mb-3 flex items-center gap-3">
           <FileCheck className="h-8 w-8" />
           Published Exams
