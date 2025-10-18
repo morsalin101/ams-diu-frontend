@@ -252,7 +252,7 @@ export function VivaAssign({ gradientClass }: VivaAssignmentManagementProps) {
   );
 
   // Filter assignments
-  const filteredAssignments = assignments.filter(assignment => {
+  const   filteredAssignments = assignments.filter(assignment => {
     const matchesSearch = 
       assignment.student_username.toLowerCase().includes(searchTerm.toLowerCase()) ||
       assignment.teacher_username.toLowerCase().includes(searchTerm.toLowerCase()) ||
