@@ -884,4 +884,37 @@ export const vivaAssignmentAPI = {
   },
 };
 
+// Viva Marks API endpoints
+export const vivaMarksAPI = {
+  // Add viva marks for a student
+  addVivaMarks: async (studentId, marksData) => {
+    try {
+      const response = await api.post(`/api/add-viva-marks/${studentId}/`, marksData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Delete viva marks for a student
+  deleteVivaMarks: async (studentId) => {
+    try {
+      const response = await api.delete(`/api/delete-viva-marks/${studentId}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get rubrics by department
+  getRubricsByDepartment: async (departmentId) => {
+    try {
+      const response = await api.get(`/api/rubrics/department/${departmentId}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+};
+
 export default api;

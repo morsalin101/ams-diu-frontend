@@ -5,6 +5,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { 
   FilePlus, 
   Search, 
@@ -23,9 +24,11 @@ import {
   XCircle,
   Target,
   Users,
-  Trophy
+  Trophy,
+  GraduationCap
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { VivaModal } from '../components/VivaModal';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import toast from 'react-hot-toast';
@@ -57,6 +60,11 @@ interface ExamResult {
     wrong_answers: number;
     score_percentage: number;
   }>;
+  viva_marks: {
+    marks: number;
+    rubrics_marks: { [key: string]: number };
+    remarks: string | null;
+  };
 }
 
 interface ApiResponse {
@@ -99,6 +107,7 @@ export function Results({ gradientClass }: ResultsProps) {
   
   // Dialog states
   const [showResultDialog, setShowResultDialog] = useState(false);
+  const [showVivaModal, setShowVivaModal] = useState(false);
   const [selectedResult, setSelectedResult] = useState<ExamResult | null>(null);
 
   // Load exam results
@@ -172,6 +181,16 @@ export function Results({ gradientClass }: ResultsProps) {
   const openResultDialog = (result: ExamResult) => {
     setSelectedResult(result);
     setShowResultDialog(true);
+  };
+
+  const openVivaModal = (result: ExamResult) => {
+    setSelectedResult(result);
+    setShowVivaModal(true);
+  };
+
+  const handleVivaMarksAdded = () => {
+    // Reload the results to get updated viva marks
+    loadExamResults();
   };
 
   const formatPercentage = (percentage: number) => {
@@ -373,16 +392,25 @@ export function Results({ gradientClass }: ResultsProps) {
         </CardContent>
       </Card>
 
-      {/* Results List */}
-      <div className="space-y-4">
-        {isLoading ? (
-          <div className="text-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-            <p className="text-gray-600">Loading exam results...</p>
-          </div>
-        ) : filteredResults.length === 0 ? (
-          <Card className="border-2 border-dashed border-gray-300">
-            <CardContent className="text-center py-8">
+      {/* Results Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Trophy className="h-5 w-5" />
+            Student Exam Results
+          </CardTitle>
+          <CardDescription>
+            View and manage student exam results with viva assessment capabilities
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="text-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+              <p className="text-gray-600">Loading exam results...</p>
+            </div>
+          ) : filteredResults.length === 0 ? (
+            <div className="text-center py-8">
               <FilePlus className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-600 mb-2">No Results Found</h3>
               <p className="text-gray-500">
@@ -391,110 +419,128 @@ export function Results({ gradientClass }: ResultsProps) {
                   : "No results match your current filters."
                 }
               </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {filteredResults.map((result) => {
-              const PerformanceIcon = getPerformanceBadgeIcon(result.results.score_percentage);
-              return (
-                <Card key={`${result.student_id}-${result.exam_id}`} className="border-2 border-gray-200 hover:border-gray-300 transition-colors">
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2">
-                          <User className="h-5 w-5 text-gray-500" />
-                          <span className="font-semibold text-lg">{result.student_name}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <Badge 
-                          variant="outline" 
-                          className={`${getPerformanceColor(result.results.score_percentage)} font-medium`}
-                        >
-                          <PerformanceIcon className="h-3 w-3 mr-1" />
-                          {formatPercentage(result.results.score_percentage)}
-                        </Badge>
-                        <Button
-                          onClick={() => openResultDialog(result)}
-                          variant="outline"
-                          size="sm"
-                          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          Details
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Quick Stats */}
-                    <div className="grid grid-cols-3 gap-4 mb-4 text-center">
-                      <div className="bg-green-50 p-3 rounded-lg">
-                        <CheckCircle2 className="h-5 w-5 text-green-600 mx-auto mb-1" />
-                        <div className="font-bold text-green-600">{result.results.correct_answers}</div>
-                        <div className="text-xs text-green-700">Correct</div>
-                      </div>
-                      <div className="bg-red-50 p-3 rounded-lg">
-                        <XCircle className="h-5 w-5 text-red-600 mx-auto mb-1" />
-                        <div className="font-bold text-red-600">{result.results.wrong_answers}</div>
-                        <div className="text-xs text-red-700">Wrong</div>
-                      </div>
-                      <div className="bg-blue-50 p-3 rounded-lg">
-                        <BookOpen className="h-5 w-5 text-blue-600 mx-auto mb-1" />
-                        <div className="font-bold text-blue-600">{result.exam_details.total_questions}</div>
-                        <div className="text-xs text-blue-700">Total</div>
-                      </div>
-                    </div>
-
-                    {/* Exam Info */}
-                    <div className="grid grid-cols-1 gap-2 text-sm text-gray-600">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4" />
-                        <span>{result.exam_details.department}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        <span>{result.exam_details.semester}</span>
-                      </div>
-                    </div>
-
-                    {/* Top Subjects Preview */}
-                    <div className="mt-4">
-                      <h4 className="text-sm font-medium text-gray-700 mb-2">Subject Performance:</h4>
-                      <div className="space-y-1">
-                        {result.subjects
-                          .sort((a, b) => b.score_percentage - a.score_percentage)
-                          .slice(0, 2)
-                          .map((subject) => (
-                            <div key={subject.subject_id} className="flex items-center justify-between text-xs">
-                              <span className="text-gray-600">{subject.subject_name}</span>
-                              <Badge 
-                                variant="outline" 
-                                className={`${getPerformanceColor(subject.score_percentage)} text-xs`}
-                              >
-                                {formatPercentage(subject.score_percentage)}
-                              </Badge>
-                            </div>
-                          ))}
-                        {result.subjects.length > 2 && (
-                          <div className="text-xs text-gray-500 text-center mt-1">
-                            +{result.subjects.length - 2} more subjects
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Department</TableHead>
+                    <TableHead>Semester</TableHead>
+                    <TableHead>Correct Answers</TableHead>
+                    <TableHead>Wrong Answers</TableHead>
+                    <TableHead>Score %</TableHead>
+                    <TableHead>Viva Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredResults.map((result) => {
+                    const isVivaCompleted = result.viva_marks?.marks > 0;
+                    const PerformanceIcon = getPerformanceBadgeIcon(result.results.score_percentage);
+                    
+                    return (
+                      <TableRow key={`${result.student_id}-${result.exam_id}`} className="hover:bg-gray-50">
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-gray-500" />
+                            <span className="font-medium">{result.student_name}</span>
                           </div>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4 text-gray-500" />
+                            <span className="text-sm">{result.exam_details.department}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs">
+                            {result.exam_details.semester}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                            <span className="font-medium text-green-600">
+                              {result.results.correct_answers}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <XCircle className="h-4 w-4 text-red-600" />
+                            <span className="font-medium text-red-600">
+                              {result.results.wrong_answers}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant="outline" 
+                            className={`${getPerformanceColor(result.results.score_percentage)} font-medium`}
+                          >
+                            <PerformanceIcon className="h-3 w-3 mr-1" />
+                            {formatPercentage(result.results.score_percentage)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {isVivaCompleted ? (
+                            <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">
+                              <Award className="h-3 w-3 mr-1" />
+                              Completed ({result.viva_marks.marks})
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-yellow-50 text-yellow-800 border-yellow-200">
+                              <AlertTriangle className="h-3 w-3 mr-1" />
+                              Pending
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center gap-2 justify-end">
+                            <Button
+                              onClick={() => openResultDialog(result)}
+                              variant="outline"
+                              size="sm"
+                              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              View Results
+                            </Button>
+                            <Button
+                              onClick={() => openVivaModal(result)}
+                              variant={isVivaCompleted ? "outline" : "default"}
+                              size="sm"
+                              className={isVivaCompleted 
+                                ? "text-purple-600 hover:text-purple-700 hover:bg-purple-50" 
+                                : "bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#1E2078] hover:to-[#3A3F9A] text-white"
+                              }
+                            >
+                              <GraduationCap className="h-4 w-4 mr-1" />
+                              {isVivaCompleted ? 'Update Viva' : 'Give Viva Marks'}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Result Details Dialog */}
       <Dialog open={showResultDialog} onOpenChange={setShowResultDialog}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent 
+          className="max-w-[95vw] w-[95vw] max-h-[95vh] overflow-y-auto"
+          style={{ 
+            minHeight: '90vh',
+            minWidth: '95vw'
+          }}
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5" />
@@ -619,16 +665,99 @@ export function Results({ gradientClass }: ResultsProps) {
                 </CardContent>
               </Card>
 
+              {/* Viva Assessment */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <GraduationCap className="h-5 w-5" />
+                    Viva Assessment
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {selectedResult?.viva_marks?.marks > 0 ? (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="font-semibold text-green-800">Viva Completed</h4>
+                        <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">
+                          <Award className="h-3 w-3 mr-1" />
+                          {selectedResult.viva_marks.marks} marks
+                        </Badge>
+                      </div>
+                      {selectedResult.viva_marks.remarks && (
+                        <div className="mt-3">
+                          <p className="text-sm font-medium text-green-700 mb-1">Examiner's Remarks:</p>
+                          <p className="text-sm text-green-600 bg-white p-2 rounded border">
+                            {selectedResult.viva_marks.remarks}
+                          </p>
+                        </div>
+                      )}
+                      {Object.keys(selectedResult.viva_marks.rubrics_marks).length > 0 && (
+                        <div className="mt-3">
+                          <p className="text-sm font-medium text-green-700 mb-2">Rubric Breakdown:</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {Object.entries(selectedResult.viva_marks.rubrics_marks).map(([rubricId, marks]) => (
+                              <div key={rubricId} className="text-xs bg-white p-2 rounded border">
+                                <span className="font-medium">Rubric {rubricId}:</span> {marks} marks
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
+                      <AlertTriangle className="h-8 w-8 text-yellow-600 mx-auto mb-2" />
+                      <p className="text-yellow-800 font-medium">Viva examination has not been completed</p>
+                      <Button 
+                        onClick={() => {
+                          setShowResultDialog(false);
+                          openVivaModal(selectedResult!);
+                        }}
+                        className="mt-3 bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#1E2078] hover:to-[#3A3F9A]"
+                        size="sm"
+                      >
+                        <GraduationCap className="h-4 w-4 mr-1" />
+                        Give Viva Marks
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
               {/* Actions */}
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-3">
                 <Button variant="outline" onClick={() => setShowResultDialog(false)}>
                   Close
                 </Button>
+                {selectedResult && (
+                  <Button 
+                    onClick={() => {
+                      setShowResultDialog(false);
+                      openVivaModal(selectedResult);
+                    }}
+                    variant={selectedResult.viva_marks?.marks > 0 ? "outline" : "default"}
+                    className={selectedResult.viva_marks?.marks > 0 
+                      ? "text-purple-600 hover:text-purple-700 hover:bg-purple-50" 
+                      : "bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#1E2078] hover:to-[#3A3F9A]"
+                    }
+                  >
+                    <GraduationCap className="h-4 w-4 mr-1" />
+                    {selectedResult.viva_marks?.marks > 0 ? 'Update Viva Marks' : 'Give Viva Marks'}
+                  </Button>
+                )}
               </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Viva Modal */}
+      <VivaModal
+        open={showVivaModal}
+        onOpenChange={setShowVivaModal}
+        studentResult={selectedResult}
+        onVivaMarksAdded={handleVivaMarksAdded}
+      />
     </div>
   );
 }
