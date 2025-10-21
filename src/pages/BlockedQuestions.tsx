@@ -6,7 +6,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
-import { AlertTriangle, RefreshCw, Eye, Calendar, User, MessageSquare, Search, Slash, FileText, Clock, Building2, Loader2, BookOpen, CheckCircle } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Eye, Calendar, User, MessageSquare, Search, Slash, FileText, Clock, Building2, Loader2, BookOpen, CheckCircle, Edit } from 'lucide-react';
 import { usePermissions } from '../hooks/usePermissions';
 import toast from 'react-hot-toast';
 import { examAPI } from '../services/api';
@@ -37,11 +37,27 @@ export function BlockedQuestions({ gradientClass }: { gradientClass: string }) {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<BlockedQuestion | null>(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   
-  const { canRead } = usePermissions();
+  // Edit form state
+  const [editFormData, setEditFormData] = useState({
+    subject: '',
+    questions: '',
+    type: 'option' as 'option' | 'text',
+    text: '',
+    options: '',
+    answer: '',
+    marks: 0,
+    semester: '',
+    department_shortname: '',
+    remarks: '',
+    issue_solved: false
+  });
+  
+  const { canRead, canWrite } = usePermissions();
 
   useEffect(() => {
     if (canRead()) {
@@ -118,6 +134,60 @@ export function BlockedQuestions({ gradientClass }: { gradientClass: string }) {
   const openDetailsDialog = (question: BlockedQuestion) => {
     setSelectedQuestion(question);
     setShowDetailsDialog(true);
+  };
+
+  const openEditDialog = (question: BlockedQuestion) => {
+    setSelectedQuestion(question);
+    setEditFormData({
+      subject: question.subject,
+      questions: question.questions,
+      type: question.type,
+      text: question.text || '',
+      options: typeof question.options === 'object' ? JSON.stringify(question.options) : (question.options || ''),
+      answer: Array.isArray(question.answer) ? question.answer.join(', ') : question.answer,
+      marks: question.marks,
+      semester: question.semester,
+      department_shortname: question.department_shortname,
+      remarks: question.remarks,
+      issue_solved: question.issue_solved
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleRestoreQuestion = async () => {
+    if (!selectedQuestion || !canWrite()) {
+      toast.error('You do not have permission to edit questions');
+      return;
+    }
+
+    try {
+      const questionData = {
+        subject: editFormData.subject,
+        questions: editFormData.questions,
+        type: editFormData.type,
+        text: editFormData.text || null,
+        options: editFormData.type === 'option' ? editFormData.options : null,
+        answer: editFormData.answer,
+        marks: editFormData.marks,
+        semester: editFormData.semester,
+        department_shortname: editFormData.department_shortname,
+        remarks: editFormData.remarks,
+        issue_solved: editFormData.issue_solved
+      };
+
+      const data = await examAPI.restoreBlockedQuestion(selectedQuestion.id, questionData);
+      
+      if (data.success) {
+        toast.success('Question restored and updated successfully');
+        setShowEditDialog(false);
+        loadBlockedQuestions();
+      } else {
+        throw new Error(data.message || 'Failed to restore question');
+      }
+    } catch (error: any) {
+      console.error('Error restoring question:', error);
+      toast.error(error.message || 'Failed to restore question');
+    }
   };
 
   // Get unique subjects for filter
@@ -311,6 +381,17 @@ export function BlockedQuestions({ gradientClass }: { gradientClass: string }) {
                       <Eye className="h-4 w-4 mr-2" />
                       View Details
                     </Button>
+                    {canWrite() && (
+                      <Button
+                        onClick={() => openEditDialog(question)}
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 lg:flex-none text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Edit & Restore
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -417,7 +498,175 @@ export function BlockedQuestions({ gradientClass }: { gradientClass: string }) {
         </DialogContent>
       </Dialog>
 
-      {/* Edit functionality removed for now */}
+      {/* Edit Question Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit & Restore Blocked Question</DialogTitle>
+            <DialogDescription>
+              Update the question details and restore it to the question pool.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedQuestion && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-subject">Subject</Label>
+                  <Input
+                    id="edit-subject"
+                    value={editFormData.subject}
+                    onChange={(e) => setEditFormData({...editFormData, subject: e.target.value})}
+                    placeholder="Subject name"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-marks">Marks</Label>
+                  <Input
+                    id="edit-marks"
+                    type="number"
+                    value={editFormData.marks}
+                    onChange={(e) => setEditFormData({...editFormData, marks: parseInt(e.target.value) || 0})}
+                    placeholder="Question marks"
+                    min="1"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-semester">Semester</Label>
+                  <Input
+                    id="edit-semester"
+                    value={editFormData.semester}
+                    onChange={(e) => setEditFormData({...editFormData, semester: e.target.value})}
+                    placeholder="Semester"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-department">Department</Label>
+                  <Input
+                    id="edit-department"
+                    value={editFormData.department_shortname}
+                    onChange={(e) => setEditFormData({...editFormData, department_shortname: e.target.value})}
+                    placeholder="Department short name (e.g., CSE)"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-type">Question Type</Label>
+                <Select value={editFormData.type} onValueChange={(value: 'option' | 'text') => setEditFormData({...editFormData, type: value})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="option">Multiple Choice</SelectItem>
+                    <SelectItem value="text">Text Answer</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-question">Question</Label>
+                <textarea
+                  id="edit-question"
+                  value={editFormData.questions}
+                  onChange={(e) => setEditFormData({...editFormData, questions: e.target.value})}
+                  placeholder="Enter the question text"
+                  rows={3}
+                  className="w-full p-3 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              {editFormData.type === 'option' && (
+                <div className="space-y-2">
+                  <Label htmlFor="edit-options">Options (JSON format)</Label>
+                  <textarea
+                    id="edit-options"
+                    value={editFormData.options}
+                    onChange={(e) => setEditFormData({...editFormData, options: e.target.value})}
+                    placeholder='{"A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D"}'
+                    rows={4}
+                    className="w-full p-3 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                  />
+                </div>
+              )}
+
+              {editFormData.type === 'text' && (
+                <div className="space-y-2">
+                  <Label htmlFor="edit-text">Additional Text</Label>
+                  <textarea
+                    id="edit-text"
+                    value={editFormData.text}
+                    onChange={(e) => setEditFormData({...editFormData, text: e.target.value})}
+                    placeholder="Additional text or context for the question"
+                    rows={3}
+                    className="w-full p-3 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-answer">Answer</Label>
+                <Input
+                  id="edit-answer"
+                  value={editFormData.answer}
+                  onChange={(e) => setEditFormData({...editFormData, answer: e.target.value})}
+                  placeholder={editFormData.type === 'option' ? "Correct option(s) (e.g., A, B)" : "Correct answer"}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-remarks">Remarks</Label>
+                <textarea
+                  id="edit-remarks"
+                  value={editFormData.remarks}
+                  onChange={(e) => setEditFormData({...editFormData, remarks: e.target.value})}
+                  placeholder="Reason for blocking or additional notes"
+                  rows={3}
+                  className="w-full p-3 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="edit-issue-solved"
+                  checked={editFormData.issue_solved}
+                  onChange={(e) => setEditFormData({...editFormData, issue_solved: e.target.checked})}
+                  className="rounded border-gray-300"
+                />
+                <Label htmlFor="edit-issue-solved">Mark issue as solved</Label>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <Button
+                  onClick={() => setShowEditDialog(false)}
+                  variant="outline"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleRestoreQuestion}
+                  className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Restore Question
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

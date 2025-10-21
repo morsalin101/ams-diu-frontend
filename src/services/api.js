@@ -88,6 +88,16 @@ export const examAPI = {
     }
   },
 
+  // Restore and update a blocked question
+  restoreBlockedQuestion: async (questionId, questionData) => {
+    try {
+      const response = await api.put(`/api/blocked-question/${questionId}/restore/`, questionData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
   // Get all results by teacher
   getAllResultsByTeacher: async (teacherId) => {
     try {
@@ -223,10 +233,20 @@ export const studentsAPI = {
     }
   },
 
+  // Get student by ID
+  getStudentById: async (studentId) => {
+    try {
+      const response = await api.get(`/api/students/${studentId}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
   // Create new student
   createStudent: async (studentData) => {
     try {
-      const response = await api.post('/api/students/', studentData);
+      const response = await api.post('/api/students/create/', studentData);
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -236,7 +256,7 @@ export const studentsAPI = {
   // Update student
   updateStudent: async (studentId, studentData) => {
     try {
-      const response = await api.put(`/api/students/${studentId}/`, studentData);
+      const response = await api.patch(`/api/students/${studentId}/update/`, studentData);
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -246,7 +266,7 @@ export const studentsAPI = {
   // Delete student
   deleteStudent: async (studentId) => {
     try {
-      const response = await api.delete(`/api/students/${studentId}/`);
+      const response = await api.delete(`/api/students/${studentId}/delete/`);
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -542,17 +562,10 @@ export const departmentAPI = {
       
       // Handle the new API response structure
       if (responseData.success && responseData.data) {
-        // Map the new structure to the expected format
-        const mappedDepartments = responseData.data.map(dept => ({
-          id: dept.id,
-          name: dept.department_name,
-          shortname: dept.department_shortname
-        }));
-        
+        // Return the data as-is since it already has the correct structure
         return {
           success: true,
-          data: mappedDepartments, // For backward compatibility
-          departments: mappedDepartments, // For new components
+          data: responseData.data, // Keep original structure with department_name and department_shortname
           message: responseData.message
         };
       }

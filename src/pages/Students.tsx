@@ -16,6 +16,10 @@ interface Student {
   f_id: string;
   full_name: string;
   email: string;
+  department_shortname?: string;
+  ssc?: number;
+  hsc?: number;
+  diploma?: number;
   created_at: string;
 }
 
@@ -35,7 +39,9 @@ export function Students({ gradientClass }: StudentsProps) {
   // Form states
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showViewDialog, setShowViewDialog] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Form data
@@ -44,7 +50,11 @@ export function Students({ gradientClass }: StudentsProps) {
     password: '',
     f_id: '',
     full_name: '',
-    email: ''
+    email: '',
+    department_shortname: '',
+    ssc: '',
+    hsc: '',
+    diploma: ''
   });
 
   // Load students on component mount
@@ -83,7 +93,8 @@ export function Students({ gradientClass }: StudentsProps) {
         student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         student.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
         student.f_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.email.toLowerCase().includes(searchTerm.toLowerCase())
+        student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (student.department_shortname && student.department_shortname.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 
@@ -100,7 +111,7 @@ export function Students({ gradientClass }: StudentsProps) {
   };
 
   const handleAddStudent = async () => {
-    if (!formData.username || !formData.password || !formData.f_id || !formData.full_name || !formData.email) {
+    if (!formData.username || !formData.password || !formData.f_id || !formData.full_name || !formData.email || !formData.department_shortname || !formData.ssc || !formData.hsc || !formData.diploma) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -118,7 +129,11 @@ export function Students({ gradientClass }: StudentsProps) {
         password: '',
         f_id: '',
         full_name: '',
-        email: ''
+        email: '',
+        department_shortname: '',
+        ssc: '',
+        hsc: '',
+        diploma: ''
       });
       setShowAddDialog(false);
     } catch (error) {
@@ -155,7 +170,11 @@ export function Students({ gradientClass }: StudentsProps) {
         password: '',
         f_id: '',
         full_name: '',
-        email: ''
+        email: '',
+        department_shortname: '',
+        ssc: '',
+        hsc: '',
+        diploma: ''
       });
       setEditingStudent(null);
       setShowEditDialog(false);
@@ -185,13 +204,22 @@ export function Students({ gradientClass }: StudentsProps) {
   const openEditDialog = (student: Student) => {
     setEditingStudent(student);
     setFormData({
-      username: student.username,
+      username: student.username || '',
       password: '', // Don't populate password for security
-      f_id: student.f_id,
-      full_name: student.full_name,
-      email: student.email
+      f_id: student.f_id || '',
+      full_name: student.full_name || '',
+      email: student.email || '',
+      department_shortname: student.department_shortname || '',
+      ssc: student.ssc ? student.ssc.toString() : '',
+      hsc: student.hsc ? student.hsc.toString() : '',
+      diploma: student.diploma ? student.diploma.toString() : ''
     });
     setShowEditDialog(true);
+  };
+
+  const openViewDialog = (student: Student) => {
+    setViewingStudent(student);
+    setShowViewDialog(true);
   };
 
   const formatDate = (dateString: string) => {
@@ -301,15 +329,26 @@ export function Students({ gradientClass }: StudentsProps) {
                         placeholder="John Doe"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email *</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                        placeholder="student@example.com"
-                      />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email *</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={formData.email}
+                          onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                          placeholder="student@example.com"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="department_shortname">Department *</Label>
+                        <Input
+                          id="department_shortname"
+                          value={formData.department_shortname}
+                          onChange={(e) => setFormData(prev => ({ ...prev, department_shortname: e.target.value }))}
+                          placeholder="CSE"
+                        />
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="password">Password *</Label>
@@ -320,6 +359,44 @@ export function Students({ gradientClass }: StudentsProps) {
                         onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
                         placeholder="Enter password"
                       />
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="ssc">SSC Score *</Label>
+                        <Input
+                          id="ssc"
+                          type="number"
+                          value={formData.ssc}
+                          onChange={(e) => setFormData(prev => ({ ...prev, ssc: e.target.value }))}
+                          placeholder="85"
+                          min="0"
+                          max="100"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="hsc">HSC Score *</Label>
+                        <Input
+                          id="hsc"
+                          type="number"
+                          value={formData.hsc}
+                          onChange={(e) => setFormData(prev => ({ ...prev, hsc: e.target.value }))}
+                          placeholder="90"
+                          min="0"
+                          max="100"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="diploma">Diploma Score *</Label>
+                        <Input
+                          id="diploma"
+                          type="number"
+                          value={formData.diploma}
+                          onChange={(e) => setFormData(prev => ({ ...prev, diploma: e.target.value }))}
+                          placeholder="88"
+                          min="0"
+                          max="100"
+                        />
+                      </div>
                     </div>
                     <div className="flex gap-2 pt-4">
                       <Button
@@ -383,7 +460,7 @@ export function Students({ gradientClass }: StudentsProps) {
         </div>
       </div>
 
-      {/* Students Grid */}
+      {/* Students Table */}
       {isLoading ? (
         <div className="flex justify-center items-center py-12">
           <div className="text-center">
@@ -402,77 +479,103 @@ export function Students({ gradientClass }: StudentsProps) {
           </p>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
-          {filteredStudents.map((student) => (
-            <Card key={student.id} className="border-2 border-gray-200 hover:shadow-lg transition-shadow duration-200">
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start">
-                  <CardTitle className="text-lg font-bold text-gray-800">
-                    {student.full_name}
-                  </CardTitle>
-                  <Badge variant="outline" className="text-xs">
-                    ID: {student.f_id}
-                  </Badge>
-                </div>
-                <CardDescription className="text-sm text-gray-600">
-                  Registered {formatDate(student.created_at)}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Student Details */}
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-blue-600" />
-                    <span className="font-medium">@{student.username}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-green-600" />
-                    <span className="truncate">{student.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-purple-600" />
-                    <span>Student #{student.id}</span>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-2 pt-2">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="flex-1 bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#2E3094]/90 hover:to-[#4C51BF]/90"
-                  >
-                    <Eye className="h-3 w-3 mr-1" />
-                    View
-                  </Button>
-                  <Button
-                    onClick={() => openEditDialog(student)}
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 border-gray-300 hover:border-blue-400"
-                  >
-                    <Edit className="h-3 w-3 mr-1" />
-                    Edit
-                  </Button>
-                  <Button
-                    onClick={() => handleDeleteStudent(student.id)}
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 border-red-600 text-red-600 hover:bg-red-50"
-                    disabled={deletingId === student.id}
-                  >
-                    {deletingId === student.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <Trash2 className="h-4 w-4 mr-2" />
-                    )}
-                    Delete
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Student Info
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Contact
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Department
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Academic Scores
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredStudents.map((student) => (
+                  <tr key={student.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {student.full_name}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            @{student.username} • ID: {student.f_id}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{student.email}</div>
+                      <div className="text-sm text-gray-500">
+                        Registered: {formatDate(student.created_at)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Badge variant="outline" className="text-xs">
+                        {student.department_shortname || 'N/A'}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <div className="space-y-1">
+                        <div>SSC: <span className="font-medium">{student.ssc ?? 'N/A'}</span></div>
+                        <div>HSC: <span className="font-medium">{student.hsc ?? 'N/A'}</span></div>
+                        <div>Diploma: <span className="font-medium">{student.diploma ?? 'N/A'}</span></div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          onClick={() => openViewDialog(student)}
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50"
+                          title="View Student"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          onClick={() => openEditDialog(student)}
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-green-600 hover:bg-green-50"
+                          title="Edit Student"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          onClick={() => handleDeleteStudent(student.id)}
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-red-600 hover:bg-red-50"
+                          disabled={deletingId === student.id}
+                          title="Delete Student"
+                        >
+                          {deletingId === student.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       )}
 
       {/* Edit Student Dialog */}
@@ -514,15 +617,26 @@ export function Students({ gradientClass }: StudentsProps) {
                 placeholder="John Doe"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit_email">Email *</Label>
-              <Input
-                id="edit_email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                placeholder="student@example.com"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit_email">Email *</Label>
+                <Input
+                  id="edit_email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="student@example.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_department_shortname">Department *</Label>
+                <Input
+                  id="edit_department_shortname"
+                  value={formData.department_shortname}
+                  onChange={(e) => setFormData(prev => ({ ...prev, department_shortname: e.target.value }))}
+                  placeholder="CSE"
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit_password">New Password (optional)</Label>
@@ -533,6 +647,44 @@ export function Students({ gradientClass }: StudentsProps) {
                 onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
                 placeholder="Leave blank to keep current password"
               />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit_ssc">SSC Score *</Label>
+                <Input
+                  id="edit_ssc"
+                  type="number"
+                  value={formData.ssc}
+                  onChange={(e) => setFormData(prev => ({ ...prev, ssc: e.target.value }))}
+                  placeholder="85"
+                  min="0"
+                  max="100"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_hsc">HSC Score *</Label>
+                <Input
+                  id="edit_hsc"
+                  type="number"
+                  value={formData.hsc}
+                  onChange={(e) => setFormData(prev => ({ ...prev, hsc: e.target.value }))}
+                  placeholder="90"
+                  min="0"
+                  max="100"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_diploma">Diploma Score *</Label>
+                <Input
+                  id="edit_diploma"
+                  type="number"
+                  value={formData.diploma}
+                  onChange={(e) => setFormData(prev => ({ ...prev, diploma: e.target.value }))}
+                  placeholder="88"
+                  min="0"
+                  max="100"
+                />
+              </div>
             </div>
             <div className="flex gap-2 pt-4">
               <Button
@@ -562,6 +714,96 @@ export function Students({ gradientClass }: StudentsProps) {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Student Dialog */}
+      <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Student Details</DialogTitle>
+            <DialogDescription>
+              Complete information about the student
+            </DialogDescription>
+          </DialogHeader>
+          {viewingStudent && (
+            <div className="space-y-6">
+              {/* Basic Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-800">Basic Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-sm font-medium text-gray-600">Full Name</Label>
+                    <p className="text-sm font-medium text-gray-900">{viewingStudent.full_name}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-sm font-medium text-gray-600">Student ID</Label>
+                    <p className="text-sm font-medium text-gray-900">{viewingStudent.f_id}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-sm font-medium text-gray-600">Username</Label>
+                    <p className="text-sm font-medium text-gray-900">@{viewingStudent.username}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-sm font-medium text-gray-600">Department</Label>
+                    <Badge variant="outline">{viewingStudent.department_shortname || 'Not Specified'}</Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-800">Contact Information</h3>
+                <div className="space-y-1">
+                  <Label className="text-sm font-medium text-gray-600">Email Address</Label>
+                  <p className="text-sm font-medium text-gray-900">{viewingStudent.email}</p>
+                </div>
+              </div>
+
+              {/* Academic Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-800">Academic Scores</h3>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-blue-50 p-3 rounded-lg">
+                    <Label className="text-sm font-medium text-blue-700">SSC Score</Label>
+                    <p className="text-2xl font-bold text-blue-600">{viewingStudent.ssc ?? 'N/A'}</p>
+                  </div>
+                  <div className="bg-green-50 p-3 rounded-lg">
+                    <Label className="text-sm font-medium text-green-700">HSC Score</Label>
+                    <p className="text-2xl font-bold text-green-600">{viewingStudent.hsc ?? 'N/A'}</p>
+                  </div>
+                  <div className="bg-purple-50 p-3 rounded-lg">
+                    <Label className="text-sm font-medium text-purple-700">Diploma Score</Label>
+                    <p className="text-2xl font-bold text-purple-600">{viewingStudent.diploma ?? 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* System Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-800">System Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-sm font-medium text-gray-600">Student Database ID</Label>
+                    <p className="text-sm font-medium text-gray-900">#{viewingStudent.id}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-sm font-medium text-gray-600">Registration Date</Label>
+                    <p className="text-sm font-medium text-gray-900">{formatDate(viewingStudent.created_at)}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <Button
+                  onClick={() => setShowViewDialog(false)}
+                  className="min-w-[100px]"
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

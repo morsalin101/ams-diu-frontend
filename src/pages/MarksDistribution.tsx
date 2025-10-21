@@ -38,6 +38,7 @@ interface MarksDistribution {
   hsc: number;
   diploma: number;
   main_marks: number;
+  viva_marks: number;
 }
 
 interface Department {
@@ -66,7 +67,8 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
     ssc: '',
     hsc: '',
     diploma: '',
-    main_marks: ''
+    main_marks: '',
+    viva_marks: ''
   });
 
   useEffect(() => {
@@ -141,7 +143,7 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
     }
 
     // Validate total equals 100
-    const total = parseInt(formData.ssc) + parseInt(formData.hsc) + parseInt(formData.diploma) + parseInt(formData.main_marks);
+    const total = parseInt(formData.ssc) + parseInt(formData.hsc) + parseInt(formData.diploma) + parseInt(formData.main_marks) + parseInt(formData.viva_marks);
     if (total !== 100) {
       toast.error('Total marks distribution must equal 100%');
       return;
@@ -153,7 +155,8 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
         ssc: parseInt(formData.ssc),
         hsc: parseInt(formData.hsc),
         diploma: parseInt(formData.diploma),
-        main_marks: parseInt(formData.main_marks)
+        main_marks: parseInt(formData.main_marks),
+        viva_marks: parseInt(formData.viva_marks)
       };
 
       const data = await marksDistributionAPI.createMarksDistribution(distributionData);
@@ -203,7 +206,8 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
       ssc: '',
       hsc: '',
       diploma: '',
-      main_marks: ''
+      main_marks: '',
+      viva_marks: ''
     });
   };
 
@@ -217,7 +221,8 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
     const hsc = parseInt(formData.hsc) || 0;
     const diploma = parseInt(formData.diploma) || 0;
     const main_marks = parseInt(formData.main_marks) || 0;
-    return ssc + hsc + diploma + main_marks;
+    const viva_marks = parseInt(formData.viva_marks) || 0;
+    return ssc + hsc + diploma + main_marks + viva_marks;
   };
 
   const getTotalColor = () => {
@@ -392,7 +397,7 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
                         </Badge>
                         <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                           <CheckCircle className="h-3 w-3 mr-1" />
-                          Total: {distribution.ssc + distribution.hsc + distribution.diploma + distribution.main_marks}%
+                          Total: {distribution.ssc + distribution.hsc + distribution.diploma + distribution.main_marks + distribution.viva_marks}%
                         </Badge>
                       </div>
 
@@ -402,7 +407,7 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
                         </h3>
                         
                         {/* Marks Distribution Grid */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                           <div className="bg-blue-50 p-3 rounded-lg">
                             <p className="text-sm font-medium text-blue-700">SSC</p>
                             <p className="text-lg font-bold text-blue-600">{distribution.ssc}%</p>
@@ -418,6 +423,10 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
                           <div className="bg-purple-50 p-3 rounded-lg">
                             <p className="text-sm font-medium text-purple-700">Main Marks</p>
                             <p className="text-lg font-bold text-purple-600">{distribution.main_marks}%</p>
+                          </div>
+                          <div className="bg-indigo-50 p-3 rounded-lg">
+                            <p className="text-sm font-medium text-indigo-700">Viva Marks</p>
+                            <p className="text-lg font-bold text-indigo-600">{distribution.viva_marks}%</p>
                           </div>
                         </div>
                       </div>
@@ -502,7 +511,7 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
               </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="create-diploma">Diploma (%)</Label>
                 <Input
@@ -525,6 +534,20 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
                   value={formData.main_marks}
                   onChange={(e) => setFormData({...formData, main_marks: e.target.value})}
                   placeholder="Main marks"
+                  min="0"
+                  max="100"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="create-viva-marks">Viva Marks (%)</Label>
+                <Input
+                  id="create-viva-marks"
+                  type="number"
+                  value={formData.viva_marks}
+                  onChange={(e) => setFormData({...formData, viva_marks: e.target.value})}
+                  placeholder="Viva marks"
                   min="0"
                   max="100"
                   required
