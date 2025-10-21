@@ -71,8 +71,24 @@ export function Students({ gradientClass }: StudentsProps) {
     setIsLoading(true);
     try {
       const response = await studentsAPI.getAllStudents();
-      const studentsData = response.results || response;
-      const count = response.count || studentsData.length;
+      console.log('API Response:', response); // Debug log
+      
+      let studentsData = [];
+      if (Array.isArray(response)) {
+        studentsData = response;
+      } else if (response && Array.isArray(response.students)) {
+        // Handle the new API format with 'students' array
+        studentsData = response.students;
+      } else if (response && Array.isArray(response.results)) {
+        studentsData = response.results;
+      } else if (response && Array.isArray(response.data)) {
+        studentsData = response.data;
+      } else {
+        console.warn('Unexpected API response format:', response);
+        studentsData = [];
+      }
+      
+      const count = response?.count || studentsData.length;
       
       setStudents(studentsData);
       setTotalCount(count);
@@ -80,20 +96,25 @@ export function Students({ gradientClass }: StudentsProps) {
     } catch (error) {
       console.error('Error loading students:', error);
       toast.error('Failed to load students: ' + ((error as any)?.message || 'Unknown error'));
+      // Reset to empty array on error
+      setStudents([]);
+      setTotalCount(0);
     } finally {
       setIsLoading(false);
     }
   };
 
   const filterStudents = () => {
-    let filtered = students;
+    // Ensure students is always an array
+    const studentsArray = Array.isArray(students) ? students : [];
+    let filtered = studentsArray;
 
     if (searchTerm) {
       filtered = filtered.filter(student => 
-        student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.f_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.f_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (student.department_shortname && student.department_shortname.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
@@ -102,6 +123,7 @@ export function Students({ gradientClass }: StudentsProps) {
     if (dateFilter === 'today') {
       const today = new Date().toISOString().split('T')[0];
       filtered = filtered.filter(student => {
+        if (!student.created_at) return false;
         const studentDate = new Date(student.created_at).toISOString().split('T')[0];
         return studentDate === today;
       });
@@ -119,7 +141,7 @@ export function Students({ gradientClass }: StudentsProps) {
     setIsSubmitting(true);
     try {
       const newStudent = await studentsAPI.createStudent(formData);
-      setStudents(prev => [...prev, newStudent]);
+      setStudents(prev => Array.isArray(prev) ? [...prev, newStudent] : [newStudent]);
       setTotalCount(prev => prev + 1);
       toast.success('Student added successfully!');
       
@@ -160,7 +182,7 @@ export function Students({ gradientClass }: StudentsProps) {
       const updatedStudent = await studentsAPI.updateStudent(editingStudent.id, updateData);
       
       setStudents(prev => 
-        prev.map(s => s.id === editingStudent.id ? { ...s, ...updatedStudent } : s)
+        Array.isArray(prev) ? prev.map(s => s.id === editingStudent.id ? { ...s, ...updatedStudent } : s) : []
       );
       toast.success('Student updated successfully!');
       
@@ -190,7 +212,7 @@ export function Students({ gradientClass }: StudentsProps) {
     setDeletingId(id);
     try {
       await studentsAPI.deleteStudent(id);
-      setStudents(prev => prev.filter(s => s.id !== id));
+      setStudents(prev => Array.isArray(prev) ? prev.filter(s => s.id !== id) : []);
       setTotalCount(prev => prev - 1);
       toast.success('Student deleted successfully');
     } catch (error) {
@@ -452,7 +474,7 @@ export function Students({ gradientClass }: StudentsProps) {
         <div className="flex items-center gap-2">
           <Users className="h-5 w-5 text-blue-600" />
           <span className="font-semibold text-gray-800">
-            Showing {filteredStudents.length} of {totalCount} students
+            Showing {Array.isArray(filteredStudents) ? filteredStudents.length : 0} of {totalCount} students
           </span>
         </div>
         <div className="text-sm text-gray-600">
@@ -468,7 +490,7 @@ export function Students({ gradientClass }: StudentsProps) {
             <p className="text-gray-600">Loading students...</p>
           </div>
         </div>
-      ) : filteredStudents.length === 0 ? (
+      ) : !Array.isArray(filteredStudents) || filteredStudents.length === 0 ? (
         <Card className="p-8 text-center">
           <Users className="h-12 w-12 mx-auto mb-4 text-gray-400" />
           <h3 className="text-lg font-semibold text-gray-800 mb-2">No students found</h3>
@@ -502,7 +524,7 @@ export function Students({ gradientClass }: StudentsProps) {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredStudents.map((student) => (
+                {(Array.isArray(filteredStudents) ? filteredStudents : []).map((student) => (
                   <tr key={student.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
