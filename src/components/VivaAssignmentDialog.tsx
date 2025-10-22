@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Checkbox } from './ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { UserPlus, Search, Loader2, Clock, MapPin } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { vivaAssignmentAPI } from '../services/api';
 import toast from 'react-hot-toast';
 
@@ -17,7 +18,10 @@ interface Student {
   f_id: string;
   full_name: string;
   email: string;
-  department_shortname: string;
+  department_shortname?: string;
+  ssc?: number;
+  hsc?: number;
+  diploma?: number;
   created_at: string;
 }
 
@@ -202,10 +206,10 @@ export function VivaAssignmentDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
-        className="max-w-[98vw] w-[98vw] max-h-[95vh] overflow-hidden flex flex-col"
+        className="max-w-[98vw] w-[98vw] max-h-[95vh] overflow-y-auto flex flex-col"
         style={{ 
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-          minHeight: '85vh',
+          minHeight: '90vh',
           minWidth: '98vw'
         }}
       >
@@ -270,11 +274,11 @@ export function VivaAssignmentDialog({
                 </div>
               </div>
               
-              {/* Student List */}
+              {/* Student List - Table Format */}
               <div className="flex-1 border-2 border-gray-200 rounded-lg overflow-hidden">
-                <div className="h-full overflow-y-auto p-4">
+                <div className="h-full overflow-y-auto">
                   {filteredStudents.length === 0 ? (
-                    <div className="text-center py-12">
+                    <div className="text-center py-12 p-4">
                       <div className="text-gray-400 mb-4">
                         <UserPlus className="h-16 w-16 mx-auto" />
                       </div>
@@ -286,35 +290,51 @@ export function VivaAssignmentDialog({
                       )}
                     </div>
                   ) : (
-                    <div className="space-y-3">
-                      {filteredStudents.map((student) => (
-                        <div 
-                          key={student.id} 
-                          className="flex items-center space-x-4 p-4 hover:bg-gray-50 rounded-lg border border-gray-100 transition-colors"
-                        >
-                          <Checkbox
-                            checked={selectedStudents.includes(student.id)}
-                            onCheckedChange={(checked) => handleStudentToggle(student.id, checked as boolean)}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-lg text-gray-900 truncate">{student.full_name}</p>
-                            <div className="flex gap-4 text-sm text-gray-600 mt-1">
-                              <span>@{student.username}</span>
-                              <span>•</span>
-                              <span>ID: {student.f_id}</span>
-                              <span>•</span>
-                              <span>{student.department_shortname}</span>
+                    <Table className="text-sm">
+                      <TableHeader className="sticky top-0 bg-white z-10">
+                        <TableRow>
+                          <TableHead className="w-12 text-center">
+                            <Checkbox
+                              checked={selectedStudents.length === filteredStudents.length && filteredStudents.length > 0}
+                              onCheckedChange={handleSelectAll}
+                            />
+                          </TableHead>
+                          <TableHead className="font-semibold">Name</TableHead>
+                          <TableHead className="font-semibold">Student ID</TableHead>
+                          <TableHead className="font-semibold">Username</TableHead>
+                          <TableHead className="font-semibold">Department</TableHead>
+                          <TableHead className="font-semibold text-center">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredStudents.map((student) => (
+                          <TableRow 
+                            key={student.id} 
+                            className="hover:bg-gray-50 cursor-pointer"
+                            onClick={() => handleStudentToggle(student.id, !selectedStudents.includes(student.id))}
+                          >
+                            <TableCell className="text-center">
+                              <Checkbox
+                                checked={selectedStudents.includes(student.id)}
+                                onCheckedChange={(checked) => handleStudentToggle(student.id, checked as boolean)}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </TableCell>
+                            <TableCell className="font-medium">{student.full_name}</TableCell>
+                            <TableCell className="font-mono text-sm">{student.f_id}</TableCell>
+                            <TableCell className="text-gray-600">@{student.username}</TableCell>
+                            <TableCell className="text-gray-600">{student.department_shortname || 'N/A'}</TableCell>
+                            <TableCell className="text-center">
                               {isCreatedToday(student.created_at) && (
-                                <>
-                                  <span>•</span>
-                                  <span className="text-green-600 font-medium">New Today</span>
-                                </>
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  New Today
+                                </span>
                               )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   )}
                 </div>
               </div>

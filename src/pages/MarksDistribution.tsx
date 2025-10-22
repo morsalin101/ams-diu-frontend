@@ -43,8 +43,8 @@ interface MarksDistribution {
 
 interface Department {
   id: number;
-  name: string;
-  shortname: string;
+  department_name: string;
+  department_shortname: string;
 }
 
 export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
@@ -126,7 +126,8 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
     try {
       const data = await departmentAPI.getAllDepartments();
       if (data.success) {
-        setDepartments(data.departments);
+        // Handle the new API response format with 'data' array
+        setDepartments(data.data || []);
       }
     } catch (error: any) {
       console.error('Error loading departments:', error);
@@ -279,7 +280,7 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
               <SelectItem value="all">All Departments</SelectItem>
               {departments && departments.map(dept => (
                 <SelectItem key={dept.id} value={dept.id.toString()}>
-                  {dept.shortname} - {dept.name}
+                  {dept.department_shortname} - {dept.department_name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -474,7 +475,7 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
                 <SelectContent>
                   {departments && departments.map(dept => (
                     <SelectItem key={dept.id} value={dept.id.toString()}>
-                      {dept.shortname} - {dept.name}
+                      {dept.department_shortname} - {dept.department_name}
                     </SelectItem>
                   ))}
                 </SelectContent>

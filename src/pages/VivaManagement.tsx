@@ -40,8 +40,8 @@ interface VivaRubrics {
 
 interface Department {
   id: number;
-  name: string;
-  shortname: string;
+  department_name: string;
+  department_shortname: string;
 }
 
 export function VivaManagement({ gradientClass }: VivaManagementProps) {
@@ -123,7 +123,8 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
     try {
       const data = await departmentAPI.getAllDepartments();
       if (data.success) {
-        setDepartments(data.departments);
+        // Handle the new API response format with 'data' array
+        setDepartments(data.data || []);
       }
     } catch (error: any) {
       console.error('Error loading departments:', error);
@@ -289,7 +290,7 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
                        <SelectItem value="all">All Departments</SelectItem>
                        {departments && departments.map(dept => (
                          <SelectItem key={dept.id} value={dept.id.toString()}>
-                           {dept.shortname} - {dept.name}
+                           {dept.department_shortname} - {dept.department_name}
                          </SelectItem>
                        ))}
                      </SelectContent>
@@ -458,7 +459,7 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
                 <SelectContent>
                   {departments && departments.map(dept => (
                     <SelectItem key={dept.id} value={dept.id.toString()}>
-                      {dept.shortname} - {dept.name}
+                      {dept.department_shortname} - {dept.department_name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -523,7 +524,7 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
                 <SelectContent>
                   {departments && departments.map(dept => (
                     <SelectItem key={dept.id} value={dept.id.toString()}>
-                      {dept.shortname} - {dept.name}
+                      {dept.department_shortname} - {dept.department_name}
                     </SelectItem>
                   ))}
                 </SelectContent>

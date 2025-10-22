@@ -39,7 +39,10 @@ interface Student {
   f_id: string;
   full_name: string;
   email: string;
-  department_shortname: string;
+  department_shortname?: string;
+  ssc?: number;
+  hsc?: number;
+  diploma?: number;
   created_at: string;
 }
 
@@ -160,12 +163,25 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
   const loadStudents = async () => {
     try {
       const response = await studentsAPI.getAllStudents();
-      if (response && (response.success !== false)) {
-        const data = response.data || response;
-        // Handle paginated response with results array
-        const studentsData = data.results || data;
-        setStudents(Array.isArray(studentsData) ? studentsData : []);
+      console.log('Students API Response:', response); // Debug log
+      
+      let studentsData = [];
+      if (Array.isArray(response)) {
+        studentsData = response;
+      } else if (response && Array.isArray(response.students)) {
+        // Handle the new API format with 'students' array
+        studentsData = response.students;
+      } else if (response && Array.isArray(response.results)) {
+        studentsData = response.results;
+      } else if (response && Array.isArray(response.data)) {
+        studentsData = response.data;
+      } else {
+        console.warn('Unexpected students API response format:', response);
+        studentsData = [];
       }
+      
+      setStudents(Array.isArray(studentsData) ? studentsData : []);
+      console.log('Loaded students count:', studentsData.length); // Debug log
     } catch (error: any) {
       console.error('Error loading students:', error);
       toast.error('Failed to load students');
@@ -312,8 +328,13 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
 
   // Filter available students (not assigned) - MOVED UP
   const availableStudents = students.filter(student => 
-    !assignments.some(assignment => assignment.student === student.id)
+    student && student.id && !assignments.some(assignment => assignment.student === student.id)
   );
+  
+  // Debug log
+  console.log('Total students loaded:', students.length);
+  console.log('Available students (not assigned):', availableStudents.length);
+  console.log('Total assignments:', assignments.length);
 
 
 

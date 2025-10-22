@@ -6,7 +6,7 @@ import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
-import { Calendar, Clock, Building, Users, Plus, Loader2, Trash2, CheckCircle, AlertCircle, FileText, RefreshCw, ArrowRight } from 'lucide-react';
+import { Calendar, Clock, Building, Users, Plus, Loader2, Trash2, CheckCircle, AlertCircle, FileText, RefreshCw, ArrowRight, Search } from 'lucide-react';
 import { examAPI, scheduleAPI } from '../services/api';
 import toast from 'react-hot-toast';
 
@@ -38,10 +38,17 @@ interface ExamScheduleProps {
 export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
   const [exams, setExams] = useState<Exam[]>([]);
   const [todaysExams, setTodaysExams] = useState<Exam[]>([]);
+  const [filteredLeftExams, setFilteredLeftExams] = useState<Exam[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [filteredSchedules, setFilteredSchedules] = useState<Schedule[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isCreatingSchedule, setIsCreatingSchedule] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  
+  // Filter states
+  const [leftFilter, setLeftFilter] = useState<'today' | 'all' | 'unscheduled'>('today');
+  const [rightFilter, setRightFilter] = useState<'today' | 'all'>('all');
+  const [semesterSearch, setSemesterSearch] = useState('');
   
   // Dialog state for scheduling
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
@@ -52,6 +59,14 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
     loadExams();
     loadSchedules();
   }, []);
+
+  useEffect(() => {
+    filterLeftPanelExams();
+  }, [exams, todaysExams, leftFilter]);
+
+  useEffect(() => {
+    filterRightPanelSchedules();
+  }, [schedules, exams, rightFilter, semesterSearch]);
 
   const loadExams = async () => {
     setIsLoading(true);
@@ -87,6 +102,52 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
     }
   };
 
+  const filterLeftPanelExams = () => {
+    let filtered: Exam[] = [];
+    
+    switch (leftFilter) {
+      case 'today':
+        filtered = todaysExams;
+        break;
+      case 'all':
+        filtered = exams;
+        break;
+      case 'unscheduled':
+        filtered = exams.filter(exam => !isExamScheduled(exam.id));
+        break;
+      default:
+        filtered = todaysExams;
+    }
+    
+    setFilteredLeftExams(filtered);
+  };
+
+  const filterRightPanelSchedules = () => {
+    let filtered = schedules;
+    
+    // Filter by date
+    if (rightFilter === 'today') {
+      const today = new Date().toISOString().split('T')[0];
+      filtered = filtered.filter(schedule => {
+        const scheduleDate = new Date(schedule.start_time).toISOString().split('T')[0];
+        return scheduleDate === today;
+      });
+    }
+    
+    // Filter by semester search
+    if (semesterSearch.trim()) {
+      filtered = filtered.filter(schedule => {
+        const exam = getExamDetails(schedule.exam);
+        return exam && (
+          exam.semester.toLowerCase().includes(semesterSearch.toLowerCase()) ||
+          exam.department.toLowerCase().includes(semesterSearch.toLowerCase())
+        );
+      });
+    }
+    
+    setFilteredSchedules(filtered);
+  };
+
   const handleQuestionClick = (exam: Exam) => {
     setSelectedExamForSchedule(exam);
     setScheduleTime('');
@@ -114,7 +175,7 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
       setShowScheduleDialog(false);
       setSelectedExamForSchedule(null);
       setScheduleTime('');
-      loadSchedules();
+      await loadSchedules();
       
     } catch (error) {
       console.error('Error adding to schedule:', error);
@@ -180,27 +241,49 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
           <CardHeader className="pb-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
             <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-800">
               <Calendar className="h-5 w-5 text-blue-600" />
-              Today's Questions
+              Questions
             </CardTitle>
             <CardDescription>
               Click on any question to schedule it for an exam
             </CardDescription>
+            
+            {/* Left Panel Filter */}
+            <div className="mt-4">
+              <Select value={leftFilter} onValueChange={(value: 'today' | 'all' | 'unscheduled') => setLeftFilter(value)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Filter questions" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="today">Today Only</SelectItem>
+                  <SelectItem value="all">All Exams</SelectItem>
+                  <SelectItem value="unscheduled">Unscheduled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           <CardContent className="p-6">
             {isLoading ? (
               <div className="text-center py-8">
                 <Loader2 className="h-8 w-8 mx-auto mb-4 animate-spin text-blue-600" />
-                <p className="text-gray-600">Loading today's questions...</p>
+                <p className="text-gray-600">Loading questions...</p>
               </div>
-            ) : todaysExams.length === 0 ? (
+            ) : filteredLeftExams.length === 0 ? (
               <div className="text-center py-8">
                 <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">No Questions Today</h3>
-                <p className="text-gray-600">No questions were created today.</p>
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                  {leftFilter === 'today' ? 'No Questions Today' : 
+                   leftFilter === 'unscheduled' ? 'No Unscheduled Questions' : 
+                   'No Questions Available'}
+                </h3>
+                <p className="text-gray-600">
+                  {leftFilter === 'today' ? 'No questions were created today.' :
+                   leftFilter === 'unscheduled' ? 'All questions have been scheduled.' :
+                   'No questions are available.'}
+                </p>
               </div>
             ) : (
               <div className="space-y-3 max-h-96 overflow-y-auto">
-                {todaysExams.map((exam) => (
+                {filteredLeftExams.map((exam) => (
                   <Card 
                     key={exam.id} 
                     className="border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer"
@@ -216,8 +299,14 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
                             {exam.department} - {exam.semester}
                           </p>
                         </div>
-                        <Badge variant="outline" className="bg-blue-50 text-blue-700">
-                          Today
+                        <Badge variant="outline" className={
+                          leftFilter === 'today' ? "bg-blue-50 text-blue-700" :
+                          leftFilter === 'unscheduled' ? "bg-orange-50 text-orange-700" :
+                          isExamScheduled(exam.id) ? "bg-green-50 text-green-700" : "bg-gray-50 text-gray-700"
+                        }>
+                          {leftFilter === 'today' ? 'Today' :
+                           leftFilter === 'unscheduled' ? 'Unscheduled' :
+                           isExamScheduled(exam.id) ? 'Scheduled' : 'Available'}
                         </Badge>
                       </div>
                       
@@ -260,8 +349,8 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
         {/* Right Panel - Scheduled Exams */}
         <Card className="border-2 border-gray-200">
           <CardHeader className="pb-4 border-b border-gray-100 bg-gradient-to-r from-green-50 to-emerald-50">
-            <div className="flex justify-between items-center">
-              <div>
+            <div className="flex justify-between items-start">
+              <div className="flex-1">
                 <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-800">
                   <Clock className="h-5 w-5 text-green-600" />
                   Scheduled Exams
@@ -269,31 +358,62 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
                 <CardDescription>
                   View and manage all scheduled exams
                 </CardDescription>
+                
+                {/* Right Panel Filters */}
+                <div className="mt-4 space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <Select value={rightFilter} onValueChange={(value: 'today' | 'all') => setRightFilter(value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Filter by date" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Schedules</SelectItem>
+                        <SelectItem value="today">Today Only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      onClick={loadSchedules}
+                      variant="outline"
+                      size="sm"
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Input
+                      placeholder="Search by semester or department..."
+                      value={semesterSearch}
+                      onChange={(e) => setSemesterSearch(e.target.value)}
+                      className="w-full pl-10"
+                    />
+                  </div>
+                </div>
               </div>
-              <Button
-                onClick={loadSchedules}
-                variant="outline"
-                size="sm"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4" />
-                )}
-              </Button>
             </div>
           </CardHeader>
           <CardContent className="p-6">
-            {schedules.length === 0 ? (
+            {filteredSchedules.length === 0 ? (
               <div className="text-center py-8">
                 <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">No Schedules Found</h3>
-                <p className="text-gray-600">Schedule exams from today's questions on the left.</p>
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                  {rightFilter === 'today' ? 'No Schedules Today' : 
+                   semesterSearch ? 'No Matching Schedules' : 'No Schedules Found'}
+                </h3>
+                <p className="text-gray-600">
+                  {rightFilter === 'today' ? 'No exams are scheduled for today.' :
+                   semesterSearch ? 'Try adjusting your search criteria.' :
+                   'Schedule exams from questions on the left.'}
+                </p>
               </div>
             ) : (
               <div className="space-y-4 max-h-96 overflow-y-auto">
-                {schedules.map((schedule) => {
+                {filteredSchedules.map((schedule) => {
                   const exam = getExamDetails(schedule.exam);
                   return (
                     <Card key={schedule.id} className="border border-gray-200 hover:shadow-md transition-shadow">
