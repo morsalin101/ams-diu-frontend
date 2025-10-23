@@ -778,6 +778,33 @@ export const studentAssignmentAPI = {
   },
 };
 
+// File upload / scraping endpoints
+export const fileAPI = {
+  // Upload one or many .docx files to be scraped for questions
+  scrapeDocx: async (files) => {
+    try {
+      const formData = new FormData();
+      if (Array.isArray(files)) {
+        files.forEach((file, idx) => formData.append('files', file));
+      } else if (files) {
+        formData.append('files', files);
+      }
+
+      // Use axios instance so auth header is included
+      const response = await api.post('/api/scrape-docx/', formData, {
+        headers: {
+          // Let axios set the correct multipart boundary
+          'Content-Type': 'multipart/form-data'
+        },
+        timeout: 120000 // allow more time for large uploads
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  }
+};
+
 // Viva Rubrics API endpoints
 export const vivaRubricsAPI = {
   // Get all viva rubrics

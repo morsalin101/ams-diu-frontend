@@ -30,6 +30,7 @@ import { MarksDistribution } from './pages/MarksDistribution';
 import { VivaAssign } from './pages/VivaAssign';
 import { StudentAssignTeacherExam } from './pages/StudentAssignTeacherExam';
 import LayoutTestPage from './pages/LayoutTestPage';
+import InsertQuestions from './pages/InsertQuestions';
 
 // Component mapping for dynamic routes
 const componentMap = {
@@ -52,6 +53,7 @@ const componentMap = {
   MarksDistribution,
   VivaAssign,
   StudentAssignTeacherExam,
+    InsertQuestions,
 };
 
 function ProtectedRoutes() {
