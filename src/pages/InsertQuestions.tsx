@@ -134,7 +134,7 @@ export default function InsertQuestions() {
                   <Button variant="ghost" onClick={clearFiles}>
                     <Trash2 className="h-4 w-4 mr-2" /> Clear
                   </Button>
-                  <Button onClick={handleUpload} disabled={isUploading}>
+                  <Button onClick={handleUpload} disabled={isUploading} className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#1E2078] hover:to-[#3A3F9A] text-white">
                     {isUploading ? 'Uploading...' : 'Upload & Scrape'}
                   </Button>
                 </div>
@@ -145,7 +145,7 @@ export default function InsertQuestions() {
                   <div key={idx} className="flex items-center justify-between text-sm">
                     <div className="truncate mr-4">{f.name} <span className="text-gray-400">({Math.round(f.size / 1024)} KB)</span></div>
                     <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => removeFile(idx)}>Remove</Button>
+                      <Button className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#1E2078] hover:to-[#3A3F9A] text-white" variant="ghost" size="sm" onClick={() => removeFile(idx)}>Remove</Button>
                     </div>
                   </div>
                 ))}
@@ -166,7 +166,7 @@ export default function InsertQuestions() {
             {/* Insert button + insert response */}
             {responseJson && (
               <div className="mt-3 flex items-start gap-3">
-                <Button onClick={handleInsert} disabled={isInserting}>
+                <Button onClick={handleInsert} disabled={isInserting} className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#1E2078] hover:to-[#3A3F9A] text-white">
                   {isInserting ? 'Inserting...' : 'Insert Questions'}
                 </Button>
                 <div className="flex-1">

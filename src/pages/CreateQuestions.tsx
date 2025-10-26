@@ -322,7 +322,7 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
     setExamSaved(false);
     setExamConfig({
       semester: '',
-      duration_minutes: '',
+      duration_minutes: 90,
       language: 'english',
       faculty: 'FSIT'
     });
