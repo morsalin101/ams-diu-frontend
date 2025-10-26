@@ -803,6 +803,16 @@ export const fileAPI = {
       throw error.response?.data || error.message;
     }
   }
+  ,
+  // Insert scrapped questions in bulk
+  insertScrappedQuestions: async (payload) => {
+    try {
+      const response = await api.post('/api/scrapped-questions/insert/', payload, { timeout: 120000 });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  }
 };
 
 // Viva Rubrics API endpoints

@@ -75,7 +75,7 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
   const [blockRemarks, setBlockRemarks] = useState('');
 
   const faculties = ['FSIT', 'ENGINEERING'];
-  const languages = ['english', 'bangla'];
+  const languages = ['english', 'both'];
   const semesters = ['Fall-2025', 'Spring-2025', 'Summer-2025', 'Fall-2026', 'Spring-2026'];
 
   // Load department subjects on component mount
@@ -322,7 +322,7 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
     setExamSaved(false);
     setExamConfig({
       semester: '',
-      duration_minutes: 90,
+      duration_minutes: '',
       language: 'english',
       faculty: 'FSIT'
     });

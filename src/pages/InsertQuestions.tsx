@@ -12,6 +12,8 @@ export default function InsertQuestions() {
   const [isUploading, setIsUploading] = useState(false);
   const [responseJson, setResponseJson] = useState<any>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const [isInserting, setIsInserting] = useState(false);
+  const [insertResponse, setInsertResponse] = useState<any>(null);
 
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -65,6 +67,27 @@ export default function InsertQuestions() {
       toast.error(err?.message || 'Upload failed');
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleInsert = async () => {
+    if (!responseJson) {
+      toast.error('No scraped data available to insert. Upload first.');
+      return;
+    }
+
+    try {
+      setIsInserting(true);
+      setInsertResponse(null);
+      // send the raw scraped JSON to insert endpoint
+      const res = await fileAPI.insertScrappedQuestions(responseJson);
+      setInsertResponse(res);
+      toast.success('Insert request completed');
+    } catch (err: any) {
+      console.error('Insert error', err);
+      toast.error(err?.message || 'Insert failed');
+    } finally {
+      setIsInserting(false);
     }
   };
 
@@ -139,6 +162,22 @@ export default function InsertQuestions() {
                 <div className="text-gray-400">Response will appear here after upload</div>
               )}
             </div>
+
+            {/* Insert button + insert response */}
+            {responseJson && (
+              <div className="mt-3 flex items-start gap-3">
+                <Button onClick={handleInsert} disabled={isInserting}>
+                  {isInserting ? 'Inserting...' : 'Insert Questions'}
+                </Button>
+                <div className="flex-1">
+                  {insertResponse && (
+                    <div className="mt-2 bg-white text-sm text-gray-800 p-2 rounded border overflow-auto max-h-40">
+                      <pre className="whitespace-pre-wrap">{JSON.stringify(insertResponse, null, 2)}</pre>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
