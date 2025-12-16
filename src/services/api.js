@@ -776,6 +776,26 @@ export const studentAssignmentAPI = {
       throw error.response?.data || error.message;
     }
   },
+
+  // Get assignments for a specific teacher
+  getAssignmentsByTeacher: async (teacherId) => {
+    try {
+      const response = await api.get(`/api/student-assignments/${teacherId}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get teacher schedule
+  getTeacherSchedule: async (teacherId) => {
+    try {
+      const response = await api.get(`/api/get-schedule/${teacherId}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
 };
 
 // File upload / scraping endpoints
@@ -960,6 +980,62 @@ export const vivaMarksAPI = {
   getRubricsByDepartment: async (departmentId) => {
     try {
       const response = await api.get(`/api/rubrics/department/${departmentId}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+};
+
+// Threshold API endpoints
+export const thresholdAPI = {
+  // Set department threshold mappings (bulk create/update)
+  setThresholdMappings: async (data) => {
+    try {
+      const response = await api.post('/api/admission/threshold-mapping/', data);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get department threshold mappings
+  getThresholdMappings: async (params = {}) => {
+    try {
+      const response = await api.get('/api/admission/get-threshold-mapping/', { params });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get specific threshold mapping by ID
+  getThresholdById: async (thresholdId) => {
+    try {
+      const response = await api.get(`/api/admission/threshold/${thresholdId}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Delete threshold mapping
+  deleteThreshold: async (thresholdId) => {
+    try {
+      const response = await api.delete(`/api/admission/threshold/${thresholdId}/delete/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+};
+
+// Admission Results API endpoints
+export const admissionResultsAPI = {
+  // Get admission results with optional filtering
+  getResults: async (params = {}) => {
+    try {
+      const response = await api.get('/api/admission/results/', { params });
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;

@@ -31,6 +31,10 @@ import { VivaAssign } from './pages/VivaAssign';
 import { StudentAssignTeacherExam } from './pages/StudentAssignTeacherExam';
 import LayoutTestPage from './pages/LayoutTestPage';
 import InsertQuestions from './pages/InsertQuestions';
+import ThresholdManagement from './pages/ThresholdManagement';
+import MyStudents from './pages/MyStudents';
+import AllResults from './pages/AllResults';
+import MySchedule from './pages/MySchedule';
 
 // Component mapping for dynamic routes
 const componentMap = {
@@ -53,7 +57,11 @@ const componentMap = {
   MarksDistribution,
   VivaAssign,
   StudentAssignTeacherExam,
-    InsertQuestions,
+  InsertQuestions,
+  ThresholdManagement,
+  MyStudents,
+  AllResults,
+  MySchedule,
 };
 
 function ProtectedRoutes() {
