@@ -35,6 +35,8 @@ import ThresholdManagement from './pages/ThresholdManagement';
 import MyStudents from './pages/MyStudents';
 import AllResults from './pages/AllResults';
 import MySchedule from './pages/MySchedule';
+import { ExamineeResult } from './pages/ExamineeResult';
+import { AcceptedStudents } from './pages/AcceptedStudents';
 
 // Component mapping for dynamic routes
 const componentMap = {
@@ -62,6 +64,8 @@ const componentMap = {
   MyStudents,
   AllResults,
   MySchedule,
+  ExamineeResult,
+  AcceptedStudents,
 };
 
 function ProtectedRoutes() {
@@ -106,6 +110,8 @@ function ProtectedRoutes() {
         <Route path="/role-management" element={<RoleManagement />} />
         <Route path="/menu-management" element={<MenuManagement />} />
         <Route path="/menu-access-management" element={<MenuAccessManagement />} />
+        <Route path="/examinee-result" element={<ExamineeResult />} />
+        <Route path="/accepted-students" element={<AcceptedStudents />} />
         
         {/* Test route for layout debugging */}
         <Route path="/layout-test" element={<LayoutTestPage />} />

@@ -1032,10 +1032,92 @@ export const thresholdAPI = {
 
 // Admission Results API endpoints
 export const admissionResultsAPI = {
+  // Get semester options for admission pages
+  getSemesterOptions: async () => {
+    try {
+      const response = await api.get('/api/admission/semester-options/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get semester admission configurations
+  getConfigurations: async (params = {}) => {
+    try {
+      const response = await api.get('/api/admission/configurations/', { params });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Create or update a semester admission configuration
+  createOrUpdateConfiguration: async (data) => {
+    try {
+      const response = await api.post('/api/admission/configurations/', data);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Update an existing semester admission configuration
+  updateConfiguration: async (configurationId, data) => {
+    try {
+      const response = await api.patch(`/api/admission/configurations/${configurationId}/`, data);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Calculate or refresh semester admission results for one exam
+  calculateResults: async (data) => {
+    try {
+      const response = await api.post('/api/admission/calculate-results/', data);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
   // Get admission results with optional filtering
   getResults: async (params = {}) => {
     try {
-      const response = await api.get('/api/admission/results/', { params });
+      const mergedParams = {
+        page_size: 100,
+        ...params,
+      };
+      const response = await api.get('/api/admission/results/', { params: mergedParams });
+      const responseData = response.data;
+
+      if (!responseData?.next) {
+        return responseData;
+      }
+
+      let nextUrl = responseData.next;
+      const allResults = [...(responseData.results || [])];
+
+      while (nextUrl) {
+        const nextResponse = await api.get(nextUrl);
+        allResults.push(...(nextResponse.data?.results || []));
+        nextUrl = nextResponse.data?.next;
+      }
+
+      return {
+        ...responseData,
+        results: allResults,
+      };
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Bulk update admission result status
+  bulkUpdateStatus: async (data) => {
+    try {
+      const response = await api.post('/api/admission/results/bulk-status-update/', data);
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;

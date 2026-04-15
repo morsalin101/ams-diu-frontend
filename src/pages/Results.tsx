@@ -31,8 +31,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { VivaModal } from '../components/VivaModal';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
+import { formatSemesterLabel, sortSemesterValues } from '../lib/semester';
 import toast from 'react-hot-toast';
-import { examAPI } from '../services/api';
+import { admissionResultsAPI, examAPI } from '../services/api';
 
 interface ResultsProps {
   gradientClass: string;
@@ -109,6 +110,7 @@ export function Results({ gradientClass }: ResultsProps) {
   const [showResultDialog, setShowResultDialog] = useState(false);
   const [showVivaModal, setShowVivaModal] = useState(false);
   const [selectedResult, setSelectedResult] = useState<ExamResult | null>(null);
+  const [preparingExamId, setPreparingExamId] = useState<number | null>(null);
 
   // Load exam results
   useEffect(() => {
@@ -193,6 +195,21 @@ export function Results({ gradientClass }: ResultsProps) {
     loadExamResults();
   };
 
+  const handlePrepareAdmissionBoard = async (examId: number) => {
+    try {
+      setPreparingExamId(examId);
+      const response = await admissionResultsAPI.calculateResults({ exam_id: examId });
+      toast.success(
+        response?.message || `Admission board prepared for exam ${examId}`,
+      );
+    } catch (error: any) {
+      console.error('Error preparing admission board:', error);
+      toast.error(error?.message || 'Failed to prepare admission board');
+    } finally {
+      setPreparingExamId(null);
+    }
+  };
+
   const formatPercentage = (percentage: number) => {
     return `${percentage.toFixed(1)}%`;
   };
@@ -221,7 +238,7 @@ export function Results({ gradientClass }: ResultsProps) {
   };
 
   // Get unique values for filters
-  const uniqueSemesters = Array.from(new Set(examResults.map(r => r.exam_details.semester)));
+  const uniqueSemesters = sortSemesterValues(examResults.map((result) => result.exam_details.semester));
 
   // Calculate statistics
   const averageScore = examResults.length > 0 
@@ -349,7 +366,7 @@ export function Results({ gradientClass }: ResultsProps) {
                 <SelectContent>
                   <SelectItem value="all">All Semesters</SelectItem>
                   {uniqueSemesters.map(semester => (
-                    <SelectItem key={semester} value={semester}>{semester}</SelectItem>
+                    <SelectItem key={semester} value={semester}>{formatSemesterLabel(semester)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -456,7 +473,7 @@ export function Results({ gradientClass }: ResultsProps) {
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className="text-xs">
-                            {result.exam_details.semester}
+                            {formatSemesterLabel(result.exam_details.semester)}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -520,6 +537,20 @@ export function Results({ gradientClass }: ResultsProps) {
                               <GraduationCap className="h-4 w-4 mr-1" />
                               {isVivaCompleted ? 'Update Viva' : 'Give Viva Marks'}
                             </Button>
+                            <Button
+                              onClick={() => handlePrepareAdmissionBoard(result.exam_id)}
+                              variant="outline"
+                              size="sm"
+                              disabled={preparingExamId === result.exam_id}
+                              className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                            >
+                              {preparingExamId === result.exam_id ? (
+                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                              ) : (
+                                <RefreshCw className="h-4 w-4 mr-1" />
+                              )}
+                              Prepare Board
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -564,7 +595,7 @@ export function Results({ gradientClass }: ResultsProps) {
                       </h3>
                       <div className="space-y-1 text-sm">
                         <p><strong>Department:</strong> {selectedResult.exam_details.department}</p>
-                        <p><strong>Semester:</strong> {selectedResult.exam_details.semester}</p>
+                        <p><strong>Semester:</strong> {formatSemesterLabel(selectedResult.exam_details.semester)}</p>
                         <p><strong>Total Questions:</strong> {selectedResult.exam_details.total_questions}</p>
                       </div>
                     </div>

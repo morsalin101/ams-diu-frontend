@@ -148,6 +148,22 @@ export const MenuProvider: React.FC<{ children: React.ReactNode }> = ({ children
           link: "/exam-schedule",
           component: "ExamSchedule",
           permissions: { edit: true, read: true, write: true, delete: true }
+        },
+        {
+          id: 6,
+          label: "Examinee Result",
+          icon: "FileCheck",
+          link: "/examinee-result",
+          component: "ExamineeResult",
+          permissions: { edit: true, read: true, write: true, delete: true }
+        },
+        {
+          id: 7,
+          label: "Accepted Students",
+          icon: "FileText",
+          link: "/accepted-students",
+          component: "AcceptedStudents",
+          permissions: { edit: true, read: true, write: true, delete: true }
         }
       ];
       setMenuItems(defaultMenus);

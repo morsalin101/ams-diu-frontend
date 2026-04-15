@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { examAPI, subjectAPI, departmentAPI, subjectDepartmentAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
+import { buildAcademicSemesterOptions } from '../lib/semester';
 import toast from 'react-hot-toast';
 
 interface CreateQuestionsProps {
@@ -76,7 +77,7 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
 
   const faculties = ['FSIT', 'ENGINEERING'];
   const languages = ['english', 'both'];
-  const semesters = ['Fall-2025', 'Spring-2025', 'Summer-2025', 'Fall-2026', 'Spring-2026'];
+  const semesters = buildAcademicSemesterOptions();
 
   // Load department subjects on component mount
   useEffect(() => {
