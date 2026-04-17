@@ -14,6 +14,7 @@ import {
   Save,
   Search,
   Users,
+  XCircle,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -77,12 +78,27 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isSavingConfig, setIsSavingConfig] = useState(false);
   const [isAccepting, setIsAccepting] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
+  const [topCandidateCount, setTopCandidateCount] = useState("");
 
   const deferredSearchTerm = useDeferredValue(searchTerm);
   const parsedThresholdValue = useMemo(() => {
     const thresholdValue = threshold.trim() === "" ? null : Number(threshold);
     return thresholdValue !== null && !Number.isNaN(thresholdValue) ? thresholdValue : null;
   }, [threshold]);
+
+  const parsedTopCandidateCount = useMemo(() => {
+    if (topCandidateCount.trim() === "") {
+      return null;
+    }
+
+    const countValue = Number(topCandidateCount);
+    if (!Number.isInteger(countValue) || countValue < 0) {
+      return null;
+    }
+
+    return countValue;
+  }, [topCandidateCount]);
 
   useEffect(() => {
     if (!hasReadAccess) {
@@ -209,8 +225,9 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
       }
 
       const visibleByDefault = isThresholdEligible(result, parsedThresholdValue);
+      const visibleForManualDecision = result.result_status === "REJECTED";
 
-      if (visibleByDefault) {
+      if (visibleByDefault || visibleForManualDecision) {
         return true;
       }
 
@@ -221,7 +238,8 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
       ? nextFilteredResults
           .filter(
             (result) =>
-              !isThresholdEligible(result, parsedThresholdValue),
+              !isThresholdEligible(result, parsedThresholdValue) &&
+              result.result_status !== "REJECTED",
           )
           .map((result) => result.id)
       : [];
@@ -236,13 +254,35 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
   const visibleRows = buildResultSheetRows(filteredResults);
   const selectableResults = filteredResults.filter(
     (result) =>
-      (isThresholdEligible(result, parsedThresholdValue) || searchRevealIdSet.has(result.id)) &&
+      (
+        isThresholdEligible(result, parsedThresholdValue) ||
+        searchRevealIdSet.has(result.id) ||
+        result.result_status === "REJECTED"
+      ) &&
       result.result_status !== "SELECTED",
   );
 
   const allVisibleWaitingSelected =
     selectableResults.length > 0 &&
     selectableResults.every((result) => selectedStudentIds.includes(result.student));
+
+  useEffect(() => {
+    if (parsedTopCandidateCount === null) {
+      return;
+    }
+
+    const nextSelectedIds = selectableResults
+      .slice(0, parsedTopCandidateCount)
+      .map((result) => result.student);
+
+    setSelectedStudentIds((currentIds) => {
+      const hasSameSelection =
+        currentIds.length === nextSelectedIds.length &&
+        currentIds.every((id, index) => id === nextSelectedIds[index]);
+
+      return hasSameSelection ? currentIds : nextSelectedIds;
+    });
+  }, [parsedTopCandidateCount, selectableResults]);
 
   const hasConfigurationChanges =
     configuration === null ||
@@ -397,12 +437,49 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
     }
   };
 
+  const handleReject = async () => {
+    if (!department?.id || !selectedSemester) {
+      toast.error("Select a semester first.");
+      return;
+    }
+
+    if (selectedStudentIds.length === 0) {
+      toast.error("Select at least one eligible candidate.");
+      return;
+    }
+
+    setIsRejecting(true);
+    try {
+      const activeConfiguration = hasConfigurationChanges
+        ? await persistConfiguration()
+        : configuration;
+
+      if (!activeConfiguration?.id) {
+        throw new Error("Admission configuration is required before rejecting candidates.");
+      }
+
+      await admissionResultsAPI.bulkUpdateStatus({
+        configuration_id: activeConfiguration.id,
+        student_ids: selectedStudentIds,
+        result_status: "REJECTED",
+      });
+
+      toast.success("Selected candidates have been rejected.");
+      await refreshBoard();
+    } catch (rejectError: any) {
+      console.error("Error rejecting candidates:", rejectError);
+      toast.error(rejectError?.message || "Failed to reject candidates");
+    } finally {
+      setIsRejecting(false);
+    }
+  };
+
   if (!hasReadAccess) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">Access Denied</h3>
+          <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-red-500" />
+          <h3 className="mb-2 text-lg font-semibold text-gray-800">Access Denied</h3>
           <p className="text-gray-600">You don't have permission to access this page.</p>
         </div>
       </div>
@@ -414,11 +491,11 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
       <div
         className={`rounded-lg p-6 text-white bg-gradient-to-r from-[#2E3094] to-[#4C51BF] ${gradientClass}`}
       >
-        <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
-          <FileCheck className="h-8 w-8" />
+        <h1 className="flex items-center gap-3 mb-2 text-2xl font-bold sm:text-3xl">
+          <FileCheck className="w-8 h-8" />
           Examinee Result
         </h1>
-        <p className="text-white/90 text-sm sm:text-base leading-relaxed">
+        <p className="text-sm leading-relaxed text-white/90 sm:text-base">
           Review candidates for the selected semester with optional threshold filtering.
           If threshold is empty, all non-selected candidates are shown (including absent).
           If threshold has any value (including 0), only totals at or above it are shown by
@@ -428,7 +505,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
 
       {isFallback && department && (
         <Alert className="border-amber-200 bg-amber-50">
-          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <AlertTriangle className="w-4 h-4 text-amber-600" />
           <AlertDescription className="text-amber-800">
             This user has no department assigned. Using the CSE fallback board for now.
           </AlertDescription>
@@ -437,7 +514,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
 
       {departmentError && !department && (
         <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
+          <AlertTriangle className="w-4 h-4" />
           <AlertDescription>{departmentError}</AlertDescription>
         </Alert>
       )}
@@ -445,16 +522,16 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
       <Card className="border-2 border-gray-200">
         <CardHeader className="pb-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
           <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-800">
-            <Users className="h-5 w-5 text-blue-600" />
+            <Users className="w-5 h-5 text-blue-600" />
             Board Controls
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-4 sm:p-6 space-y-4">
-          <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
+        <CardContent className="p-4 space-y-4 sm:p-6">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
             <div className="space-y-2">
               <Label>Department</Label>
-              <div className="h-10 rounded-md border bg-gray-50 px-3 flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-800">
+              <div className="flex items-center justify-between h-10 px-3 border rounded-md bg-gray-50">
+                <span className="text-sm font-medium text-gray-800 max-w-[180px] truncate block" title={department?.department_name}>
                   {isDepartmentLoading ? "Resolving department..." : department?.department_name || "Unavailable"}
                 </span>
                 {department && (
@@ -476,7 +553,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
             <div className="space-y-2">
               <Label htmlFor="search-candidates">Search</Label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Search className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
                 <Input
                   id="search-candidates"
                   value={searchTerm}
@@ -519,16 +596,16 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
                 className="flex-1"
               >
                 {isLoading ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
-                  <RefreshCw className="h-4 w-4 mr-2" />
+                  <RefreshCw className="w-4 h-4 mr-2" />
                 )}
                 Refresh
               </Button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr_auto_auto] gap-4 items-end">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr_auto] gap-4 items-end">
             <div className="space-y-2">
               <Label htmlFor="seat-limit">Seat Limit</Label>
               <Input
@@ -562,38 +639,18 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
                 className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700"
               >
                 {isSavingConfig ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
-                  <Save className="h-4 w-4 mr-2" />
+                  <Save className="w-4 h-4 mr-2" />
                 )}
                 Save Setup
-              </Button>
-            )}
-
-            {hasWriteAccess && (
-              <Button
-                onClick={handleAccept}
-                disabled={
-                  !department ||
-                  !selectedSemester ||
-                  selectedStudentIds.length === 0 ||
-                  isAccepting
-                }
-                className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#23257a] hover:to-[#4046a8]"
-              >
-                {isAccepting ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                )}
-                Accept
               </Button>
             )}
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card>
           <CardContent className="p-4">
             <p className="text-sm font-medium text-gray-600">Total Candidates</p>
@@ -635,7 +692,8 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
         <AlertDescription className="text-slate-700">
           Threshold behavior: empty threshold shows all non-selected candidates, including
           absent. Any numeric threshold (even 0) applies a marks filter and hides non-matching
-          rows by default. Manual search bypasses threshold visibility.
+          rows by default, while rejected candidates remain visible for manual decisions.
+          Manual search bypasses threshold visibility for other non-matching rows.
         </AlertDescription>
       </Alert>
 
@@ -649,33 +707,94 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between gap-3">
-            <span>Candidate Board</span>
-            {selectedSemester ? (
-              <Badge variant="outline">{formatSemesterLabel(selectedSemester)}</Badge>
-            ) : null}
+          <CardTitle className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-wrap items-center gap-3">
+              <span>Candidate Board</span>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="top-candidate-count"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={topCandidateCount}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    if (/^\d*$/.test(value)) {
+                      setTopCandidateCount(value);
+                    }
+                  }}
+                  placeholder="e.g. 20"
+                  className="w-24 h-8"
+                />
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {selectedSemester ? (
+                <Badge variant="outline">{formatSemesterLabel(selectedSemester)}</Badge>
+              ) : null}
+              {hasWriteAccess && (
+                <Button
+                  onClick={handleAccept}
+                  disabled={
+                    !department ||
+                    !selectedSemester ||
+                    selectedStudentIds.length === 0 ||
+                    isAccepting ||
+                    isRejecting
+                  }
+                  className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#23257a] hover:to-[#4046a8]"
+                >
+                  {isAccepting ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                  )}
+                  Accept
+                </Button>
+              )}
+              {hasWriteAccess && (
+                <Button
+                  onClick={handleReject}
+                  disabled={
+                    !department ||
+                    !selectedSemester ||
+                    selectedStudentIds.length === 0 ||
+                    isRejecting ||
+                    isAccepting
+                  }
+                  className="bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700"
+                >
+                  {isRejecting ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <XCircle className="w-4 h-4 mr-2" />
+                  )}
+                  Reject
+                </Button>
+              )}
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
           {isDepartmentLoading || isLoading ? (
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+                <Loader2 className="w-8 h-8 mx-auto mb-4 text-blue-600 animate-spin" />
                 <p className="text-gray-600">Loading examinee results...</p>
               </div>
             </div>
           ) : !selectedSemester ? (
-            <div className="text-center py-12 text-gray-500">
+            <div className="py-12 text-center text-gray-500">
               Select a semester to load examinee results.
             </div>
           ) : filteredResults.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
+            <div className="py-12 text-center text-gray-500">
               {results.length === 0
                 ? "No examinee results are available for this semester yet."
                 : "No candidates match the current filter and search."}
             </div>
           ) : (
-            <div className="rounded-md border overflow-hidden">
+            <div className="overflow-hidden border rounded-md">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -704,10 +823,15 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
                     const row = visibleRows[index];
                     const isSearchReveal = searchRevealIdSet.has(result.id);
                     const isSelectable =
-                      (isThresholdEligible(result, parsedThresholdValue) || isSearchReveal) &&
+                      (
+                        isThresholdEligible(result, parsedThresholdValue) ||
+                        isSearchReveal ||
+                        result.result_status === "REJECTED"
+                      ) &&
                       result.result_status !== "SELECTED";
                     const isChecked = selectedStudentIds.includes(result.student);
                     const isAbsentCandidate = result.result_status === "ABSENT";
+                    const isRejectedCandidate = result.result_status === "REJECTED";
 
                     return (
                       <TableRow
@@ -758,9 +882,9 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
                             >
                               {row.remarks}
                             </Badge>
-                            {isAbsentCandidate ? (
+                            {isAbsentCandidate || isRejectedCandidate ? (
                               <p className="text-xs text-slate-500">
-                                Manual acceptance allowed
+                                Manual acceptance or rejection allowed
                               </p>
                             ) : null}
                             {isSearchReveal ? (

@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useState } from "react";
+import { startTransition, useEffect, useMemo, useState } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
@@ -20,6 +20,7 @@ import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Checkbox } from "../components/ui/checkbox";
+import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
@@ -93,6 +94,7 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
   const [summary, setSummary] = useState(DEFAULT_SUMMARY);
   const [examRecords, setExamRecords] = useState<ExamLookupRecord[]>([]);
   const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
+  const [topCandidateCount, setTopCandidateCount] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isReverting, setIsReverting] = useState(false);
@@ -205,9 +207,22 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
   const selectedTabResults = visibleResults.filter((result) =>
     selectedStudentIds.includes(result.student),
   );
-  const canRevertSelected = hasWriteAccess && activeTab === "selected";
+  const canRevertCurrentTab =
+    hasWriteAccess && (activeTab === "selected" || activeTab === "rejected");
+  const parsedTopCandidateCount = useMemo(() => {
+    if (topCandidateCount.trim() === "") {
+      return null;
+    }
+
+    const countValue = Number(topCandidateCount);
+    if (!Number.isInteger(countValue) || countValue < 0) {
+      return null;
+    }
+
+    return countValue;
+  }, [topCandidateCount]);
   const allSelectedVisible =
-    canRevertSelected &&
+    canRevertCurrentTab &&
     visibleResults.length > 0 &&
     visibleResults.every((result) => selectedStudentIds.includes(result.student));
   const facultyName = resolveFacultyName({
@@ -389,6 +404,24 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
     setSelectedStudentIds([]);
   }, [activeTab, selectedSemester]);
 
+  useEffect(() => {
+    if (parsedTopCandidateCount === null || !canRevertCurrentTab) {
+      return;
+    }
+
+    const nextSelectedIds = visibleResults
+      .slice(0, parsedTopCandidateCount)
+      .map((result) => result.student);
+
+    setSelectedStudentIds((currentIds) => {
+      const hasSameSelection =
+        currentIds.length === nextSelectedIds.length &&
+        currentIds.every((id, index) => id === nextSelectedIds[index]);
+
+      return hasSameSelection ? currentIds : nextSelectedIds;
+    });
+  }, [parsedTopCandidateCount, visibleResults, canRevertCurrentTab]);
+
   const handleToggleStudent = (studentId: number, checked: boolean) => {
     setSelectedStudentIds((currentIds) => {
       if (checked) {
@@ -409,12 +442,12 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
   };
 
   const handleRevert = async () => {
-    if (!canRevertSelected) {
+    if (!canRevertCurrentTab) {
       return;
     }
 
     if (selectedStudentIds.length === 0) {
-      toast.error("Select at least one accepted candidate to revert.");
+      toast.error("Select at least one candidate to revert.");
       return;
     }
 
@@ -440,8 +473,8 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
       toast.success("Selected candidates were reverted successfully.");
       await refreshResults();
     } catch (revertError: any) {
-      console.error("Error reverting accepted candidates:", revertError);
-      toast.error(revertError?.message || "Failed to revert accepted candidates");
+      console.error("Error reverting candidates:", revertError);
+      toast.error(revertError?.message || "Failed to revert candidates");
     } finally {
       setIsReverting(false);
     }
@@ -451,8 +484,8 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">Access Denied</h3>
+          <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-red-500" />
+          <h3 className="mb-2 text-lg font-semibold text-gray-800">Access Denied</h3>
           <p className="text-gray-600">You don't have permission to access this page.</p>
         </div>
       </div>
@@ -464,11 +497,11 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
       <div
         className={`rounded-lg p-6 text-white bg-gradient-to-r from-[#2E3094] to-[#4C51BF] ${gradientClass}`}
       >
-        <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
-          <FileText className="h-8 w-8" />
+        <h1 className="flex items-center gap-3 mb-2 text-2xl font-bold sm:text-3xl">
+          <FileText className="w-8 h-8" />
           Accepted Students
         </h1>
-        <p className="text-white/90 text-sm sm:text-base leading-relaxed">
+        <p className="text-sm leading-relaxed text-white/90 sm:text-base">
           Semester-wise admission result sheet with DIU export formatting for selected,
           waiting, rejected, and absent candidates.
         </p>
@@ -476,7 +509,7 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
 
       {isFallback && department && (
         <Alert className="border-amber-200 bg-amber-50">
-          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <AlertTriangle className="w-4 h-4 text-amber-600" />
           <AlertDescription className="text-amber-800">
             This user has no department assigned. Using the CSE fallback board for now.
           </AlertDescription>
@@ -485,7 +518,7 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
 
       {departmentError && !department && (
         <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
+          <AlertTriangle className="w-4 h-4" />
           <AlertDescription>{departmentError}</AlertDescription>
         </Alert>
       )}
@@ -493,7 +526,7 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-blue-600" />
+            <Users className="w-5 h-5 text-blue-600" />
             Result Controls
           </CardTitle>
         </CardHeader>
@@ -501,7 +534,7 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
           <div className="grid grid-cols-1 xl:grid-cols-[1fr_1fr_auto_auto] gap-4 items-end">
             <div className="space-y-2">
               <Label>Department</Label>
-              <div className="h-10 rounded-md border bg-gray-50 px-3 flex items-center justify-between">
+              <div className="flex items-center justify-between h-10 px-3 border rounded-md bg-gray-50">
                 <span className="text-sm font-medium text-gray-800">
                   {isDepartmentLoading ? "Resolving department..." : department?.department_name || "Unavailable"}
                 </span>
@@ -525,9 +558,9 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
               disabled={isLoading || !department || !selectedSemester}
             >
               {isLoading ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : (
-                <RefreshCw className="h-4 w-4 mr-2" />
+                <RefreshCw className="w-4 h-4 mr-2" />
               )}
               Refresh
             </Button>
@@ -538,14 +571,14 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
               className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#23257a] hover:to-[#4046a8]"
             >
               {isExporting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : (
-                <Download className="h-4 w-4 mr-2" />
+                <Download className="w-4 h-4 mr-2" />
               )}
               Export PDF
             </Button>
           </div>
-          {canRevertSelected ? (
+          {canRevertCurrentTab ? (
             <div className="flex flex-wrap items-center justify-end gap-3">
               <Button
                 variant="outline"
@@ -553,21 +586,21 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
                 disabled={selectedStudentIds.length === 0 || isReverting}
               >
                 {isReverting ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
-                  <RotateCcw className="h-4 w-4 mr-2" />
+                  <RotateCcw className="w-4 h-4 mr-2" />
                 )}
-                Revert Accepted
+                Revert Status
               </Button>
               <span className="text-sm text-muted-foreground">
-                Revert sends candidates back to their stored fallback status.
+                Revert sends candidates back to their stored status.
               </span>
             </div>
           ) : null}
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <Card>
           <CardContent className="p-4">
             <p className="text-sm font-medium text-gray-600">Selected</p>
@@ -596,8 +629,32 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <span>Semester Result Sheet</span>
+          <CardTitle className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-3">
+              <span>Semester Result Sheet</span>
+              {canRevertCurrentTab ? (
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="top-candidate-count" className="text-sm font-normal">
+                    Top N
+                  </Label>
+                  <Input
+                    id="top-candidate-count"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={topCandidateCount}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      if (/^\d*$/.test(value)) {
+                        setTopCandidateCount(value);
+                      }
+                    }}
+                    placeholder="e.g. 20"
+                    className="w-24 h-8"
+                  />
+                </div>
+              ) : null}
+            </div>
             <div className="flex flex-wrap items-center gap-2 text-sm">
               {department && (
                 <Badge variant="outline">
@@ -614,7 +671,7 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as keyof typeof TAB_TO_STATUS)}>
-            <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full">
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
               <TabsTrigger value="selected">Selected ({summary.SELECTED})</TabsTrigger>
               <TabsTrigger value="rejected">Rejected ({summary.REJECTED})</TabsTrigger>
               <TabsTrigger value="waiting">Waiting ({summary.WAITING})</TabsTrigger>
@@ -626,24 +683,24 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
                 {isDepartmentLoading || isLoading ? (
                   <div className="flex items-center justify-center py-12">
                     <div className="text-center">
-                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+                      <Loader2 className="w-8 h-8 mx-auto mb-4 text-blue-600 animate-spin" />
                       <p className="text-gray-600">Loading student results...</p>
                     </div>
                   </div>
                 ) : !selectedSemester ? (
-                  <div className="text-center py-12 text-gray-500">
+                  <div className="py-12 text-center text-gray-500">
                     Select a semester to load results.
                   </div>
                 ) : visibleRows.length === 0 ? (
-                  <div className="text-center py-12 text-gray-500">
+                  <div className="py-12 text-center text-gray-500">
                     No {tabKey} students found for this semester.
                   </div>
                 ) : (
-                  <div className="rounded-md border overflow-hidden">
+                  <div className="overflow-hidden border rounded-md">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          {canRevertSelected ? (
+                          {canRevertCurrentTab ? (
                             <TableHead className="w-12">
                               <Checkbox
                                 checked={allSelectedVisible}
@@ -651,7 +708,7 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
                                   handleToggleAllSelected(Boolean(checked))
                                 }
                                 disabled={visibleResults.length === 0}
-                                aria-label="Select all accepted candidates"
+                                aria-label="Select all visible candidates"
                               />
                             </TableHead>
                           ) : null}
@@ -674,7 +731,7 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
 
                           return (
                             <TableRow key={row.id}>
-                              {canRevertSelected ? (
+                              {canRevertCurrentTab ? (
                                 <TableCell>
                                   <Checkbox
                                     checked={isChecked}
@@ -709,7 +766,7 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
                                   {row.remarks}
                                 </Badge>
                                 {result.result_status === "SELECTED" && !result.attended_exam ? (
-                                  <div className="mt-1 flex items-center gap-1 text-xs text-slate-500">
+                                  <div className="flex items-center gap-1 mt-1 text-xs text-slate-500">
                                     <CheckCircle2 className="h-3.5 w-3.5" />
                                     Manual override for absent candidate
                                   </div>

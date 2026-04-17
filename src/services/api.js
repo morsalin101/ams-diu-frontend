@@ -98,6 +98,16 @@ export const examAPI = {
     }
   },
 
+  // Permanently delete a blocked question
+  deleteBlockedQuestion: async (questionId) => {
+    try {
+      const response = await api.delete(`/api/blocked-question/${questionId}/delete/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
   // Get all results by teacher
   getAllResultsByTeacher: async (teacherId) => {
     try {
@@ -214,6 +224,63 @@ export const examAPI = {
   getQuestionsStats: async () => {
     try {
       const response = await api.get('/api/questions-stats/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get all question-bank items with optional filters
+  getQuestionBank: async (params = {}) => {
+    try {
+      const perPage = Math.min(params.per_page || 100, 100);
+      const firstResponse = await api.get('/api/all-scrapped-questions/', {
+        params: {
+          ...params,
+          page: 1,
+          per_page: perPage,
+        },
+      });
+      const firstData = firstResponse.data || {};
+      const allQuestions = [...(firstData.questions || [])];
+      const totalPages = firstData.pagination?.total_pages || 1;
+
+      for (let page = 2; page <= totalPages; page += 1) {
+        const nextResponse = await api.get('/api/all-scrapped-questions/', {
+          params: {
+            ...params,
+            page,
+            per_page: perPage,
+          },
+        });
+        allQuestions.push(...(nextResponse.data?.questions || []));
+      }
+
+      return {
+        ...firstData,
+        questions: allQuestions,
+      };
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Permanently delete one question-bank item
+  deleteQuestionBankItem: async (questionId) => {
+    try {
+      const response = await api.delete(`/api/question-bank/${questionId}/delete/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Permanently delete many question-bank items
+  bulkDeleteQuestionBankItems: async (questionIds) => {
+    try {
+      const response = await api.delete('/api/question-bank/delete-bulk/', {
+        data: { question_ids: questionIds }
+      });
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;

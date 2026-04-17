@@ -22,6 +22,7 @@ import {
   FileCheck,
   Slash,
   FilePlus,
+  Trash2,
 } from 'lucide-react';
 
 // Icon mapping for dynamic menu items
@@ -46,6 +47,7 @@ const iconMap: { [key: string]: any } = {
   'FileCheck': FileCheck,
   'Slash': Slash,
   'FilePlus': FilePlus,
+  'Trash2': Trash2,
 };
 
 interface MenuItem {
@@ -164,6 +166,14 @@ export const MenuProvider: React.FC<{ children: React.ReactNode }> = ({ children
           link: "/accepted-students",
           component: "AcceptedStudents",
           permissions: { edit: true, read: true, write: true, delete: true }
+        },
+        {
+          id: 8,
+          label: "Delete Questions",
+          icon: "Trash2",
+          link: "/deletequestions",
+          component: "DeleteQuestions",
+          permissions: { edit: false, read: true, write: false, delete: true }
         }
       ];
       setMenuItems(defaultMenus);
