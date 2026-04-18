@@ -74,7 +74,6 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
   const [sortBy, setSortBy] = useState<"name" | "score">("score");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
-  const [searchRevealIds, setSearchRevealIds] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSavingConfig, setIsSavingConfig] = useState(false);
   const [isAccepting, setIsAccepting] = useState(false);
@@ -101,7 +100,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
   }, [topCandidateCount]);
 
   useEffect(() => {
-    if (!hasReadAccess) {
+    if (!hasReadAccess || !department?.id) {
       return;
     }
 
@@ -109,7 +108,9 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
 
     const loadSemesterOptions = async () => {
       try {
-        const response = await admissionResultsAPI.getSemesterOptions();
+        const response = await admissionResultsAPI.getSemesterOptions({
+          department_id: department.id,
+        });
         const semesters = response?.semesters || [];
 
         if (!isMounted) {
@@ -119,6 +120,8 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
         setSemesterOptions(semesters);
         if (!selectedSemester && semesters.length > 0) {
           setSelectedSemester(semesters[0]);
+        } else if (selectedSemester && !semesters.includes(selectedSemester)) {
+          setSelectedSemester(semesters[0] || "");
         }
       } catch (semesterError: any) {
         if (isMounted) {
@@ -132,14 +135,13 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
     return () => {
       isMounted = false;
     };
-  }, [hasReadAccess, selectedSemester]);
+  }, [hasReadAccess, department?.id, selectedSemester]);
 
   useEffect(() => {
     if (!hasReadAccess || !department?.id || !selectedSemester) {
       setResults([]);
       setConfiguration(null);
       setSelectedStudentIds([]);
-      setSearchRevealIds([]);
       return;
     }
 
@@ -187,7 +189,6 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
         });
         setResults(boardResults);
         setSelectedStudentIds([]);
-        setSearchRevealIds([]);
       } catch (boardError: any) {
         if (!isMounted) {
           return;
@@ -219,47 +220,20 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
       .filter((result) => matchesAdmissionSearch(result, normalizedSearch))
       .sort((left, right) => compareAdmissionResults(left, right, sortBy, sortOrder));
 
-    const nextFilteredResults = searchedResults.filter((result) => {
-      if (result.result_status === "SELECTED") {
-        return false;
-      }
-
-      const visibleByDefault = isThresholdEligible(result, parsedThresholdValue);
-      const visibleForManualDecision = result.result_status === "REJECTED";
-
-      if (visibleByDefault || visibleForManualDecision) {
-        return true;
-      }
-
-      return Boolean(normalizedSearch);
-    });
-
-    const nextSearchRevealIds = normalizedSearch
-      ? nextFilteredResults
-          .filter(
-            (result) =>
-              !isThresholdEligible(result, parsedThresholdValue) &&
-              result.result_status !== "REJECTED",
-          )
-          .map((result) => result.id)
-      : [];
+    const nextFilteredResults = searchedResults.filter(
+      (result) =>
+        result.result_status !== "SELECTED" &&
+        isThresholdEligible(result, parsedThresholdValue),
+    );
 
     startTransition(() => {
       setFilteredResults(nextFilteredResults);
-      setSearchRevealIds(nextSearchRevealIds);
     });
   }, [results, deferredSearchTerm, sortBy, sortOrder, parsedThresholdValue]);
 
-  const searchRevealIdSet = new Set(searchRevealIds);
   const visibleRows = buildResultSheetRows(filteredResults);
   const selectableResults = filteredResults.filter(
-    (result) =>
-      (
-        isThresholdEligible(result, parsedThresholdValue) ||
-        searchRevealIdSet.has(result.id) ||
-        result.result_status === "REJECTED"
-      ) &&
-      result.result_status !== "SELECTED",
+    (result) => result.result_status !== "SELECTED",
   );
 
   const allVisibleWaitingSelected =
@@ -324,7 +298,6 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
         ...DEFAULT_SUMMARY,
         ...(resultResponse?.summary || {}),
       });
-      setSearchRevealIds([]);
     } catch (refreshError: any) {
       console.error("Error refreshing examinee board:", refreshError);
       toast.error(refreshError?.message || "Failed to refresh examinee board");
@@ -497,9 +470,8 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
         </h1>
         <p className="text-sm leading-relaxed text-white/90 sm:text-base">
           Review candidates for the selected semester with optional threshold filtering.
-          If threshold is empty, all non-selected candidates are shown (including absent).
-          If threshold has any value (including 0), only totals at or above it are shown by
-          default, while manual search can still reveal candidates.
+          If threshold is empty, all non-selected candidates are shown.
+          If threshold has any value, only totals at or above it are shown and nothing below it is included.
         </p>
       </div>
 
@@ -690,20 +662,11 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
 
       <Alert className="border-slate-200 bg-slate-50">
         <AlertDescription className="text-slate-700">
-          Threshold behavior: empty threshold shows all non-selected candidates, including
-          absent. Any numeric threshold (even 0) applies a marks filter and hides non-matching
-          rows by default, while rejected candidates remain visible for manual decisions.
-          Manual search bypasses threshold visibility for other non-matching rows.
+          Threshold behavior: empty threshold shows all non-selected candidates.
+          Any numeric threshold applies a strict marks filter, so only candidates with totals
+          greater than or equal to that threshold are shown.
         </AlertDescription>
       </Alert>
-
-      {searchRevealIds.length > 0 ? (
-        <Alert className="border-amber-200 bg-amber-50">
-          <AlertDescription className="text-amber-800">
-            {searchRevealIds.length} search match{searchRevealIds.length > 1 ? "es are" : " is"} outside the current threshold filter and shown by search override. These rows can be selected from this board, but backend acceptance rules still apply.
-          </AlertDescription>
-        </Alert>
-      ) : null}
 
       <Card>
         <CardHeader>
@@ -821,14 +784,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
                 <TableBody>
                   {filteredResults.map((result, index) => {
                     const row = visibleRows[index];
-                    const isSearchReveal = searchRevealIdSet.has(result.id);
-                    const isSelectable =
-                      (
-                        isThresholdEligible(result, parsedThresholdValue) ||
-                        isSearchReveal ||
-                        result.result_status === "REJECTED"
-                      ) &&
-                      result.result_status !== "SELECTED";
+                    const isSelectable = result.result_status !== "SELECTED";
                     const isChecked = selectedStudentIds.includes(result.student);
                     const isAbsentCandidate = result.result_status === "ABSENT";
                     const isRejectedCandidate = result.result_status === "REJECTED";
@@ -836,13 +792,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
                     return (
                       <TableRow
                         key={result.id}
-                        className={
-                          isSearchReveal
-                            ? "bg-slate-50/90 opacity-80"
-                            : isAbsentCandidate
-                              ? "bg-slate-50/70"
-                              : ""
-                        }
+                        className={isAbsentCandidate ? "bg-slate-50/70" : ""}
                       >
                         <TableCell>
                           <Checkbox
@@ -886,9 +836,6 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
                               <p className="text-xs text-slate-500">
                                 Manual acceptance or rejection allowed
                               </p>
-                            ) : null}
-                            {isSearchReveal ? (
-                              <p className="text-xs text-slate-500">Shown by search override</p>
                             ) : null}
                           </div>
                         </TableCell>

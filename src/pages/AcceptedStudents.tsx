@@ -634,9 +634,6 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
               <span>Semester Result Sheet</span>
               {canRevertCurrentTab ? (
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="top-candidate-count" className="text-sm font-normal">
-                    Top N
-                  </Label>
                   <Input
                     id="top-candidate-count"
                     type="text"

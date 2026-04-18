@@ -1100,9 +1100,9 @@ export const thresholdAPI = {
 // Admission Results API endpoints
 export const admissionResultsAPI = {
   // Get semester options for admission pages
-  getSemesterOptions: async () => {
+  getSemesterOptions: async (params = {}) => {
     try {
-      const response = await api.get('/api/admission/semester-options/');
+      const response = await api.get('/api/admission/semester-options/', { params });
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
