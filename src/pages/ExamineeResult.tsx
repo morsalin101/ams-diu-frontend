@@ -8,6 +8,8 @@ import {
 import {
   AlertTriangle,
   CheckCircle2,
+  Download,
+  Eye,
   FileCheck,
   Loader2,
   RefreshCw,
@@ -19,6 +21,7 @@ import {
 import toast from "react-hot-toast";
 
 import { SemesterCombobox } from "../components/SemesterCombobox";
+import { StudentAdmissionReportDialog } from "../components/StudentAdmissionReportDialog";
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -42,11 +45,21 @@ import {
   getResultStatusBadgeClass,
   isThresholdEligible,
 } from "../lib/result-sheet";
+import { downloadBlobFile } from "../lib/pdf-download";
 import { admissionResultsAPI } from "../services/api";
 
 interface ExamineeResultProps {
   gradientClass?: string;
 }
+
+interface ReportDownloadJob {
+  id: number;
+  examId: number;
+  studentId: number;
+  studentName: string;
+}
+
+type ReportDownloadState = "queued" | "downloading" | "failed";
 
 const DEFAULT_SUMMARY = {
   SELECTED: 0,
@@ -54,6 +67,8 @@ const DEFAULT_SUMMARY = {
   REJECTED: 0,
   ABSENT: 0,
 };
+
+const DOWNLOAD_QUEUE_GAP_MS = 450;
 
 export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
   const { canRead, canWrite } = usePermissions();
@@ -78,6 +93,13 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
   const [isSavingConfig, setIsSavingConfig] = useState(false);
   const [isAccepting, setIsAccepting] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const [selectedReportExamId, setSelectedReportExamId] = useState<number | null>(null);
+  const [selectedReportStudentId, setSelectedReportStudentId] = useState<number | null>(null);
+  const [selectedReportStudentName, setSelectedReportStudentName] = useState("");
+  const [downloadQueue, setDownloadQueue] = useState<ReportDownloadJob[]>([]);
+  const [activeDownloadJobId, setActiveDownloadJobId] = useState<number | null>(null);
+  const [downloadStates, setDownloadStates] = useState<Record<number, ReportDownloadState>>({});
   const [topCandidateCount, setTopCandidateCount] = useState("");
 
   const deferredSearchTerm = useDeferredValue(searchTerm);
@@ -239,6 +261,12 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
   const allVisibleWaitingSelected =
     selectableResults.length > 0 &&
     selectableResults.every((result) => selectedStudentIds.includes(result.student));
+  const queuedDownloadCount = Object.values(downloadStates).filter(
+    (state) => state === "queued",
+  ).length;
+  const failedDownloadCount = Object.values(downloadStates).filter(
+    (state) => state === "failed",
+  ).length;
 
   useEffect(() => {
     if (parsedTopCandidateCount === null) {
@@ -446,6 +474,90 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
       setIsRejecting(false);
     }
   };
+
+  const handleOpenReport = (result: AdmissionResult) => {
+    setSelectedReportExamId(result.exam);
+    setSelectedReportStudentId(result.student);
+    setSelectedReportStudentName(result.student_full_name || result.student_username || "Student");
+    setIsReportDialogOpen(true);
+  };
+
+  const handleDownloadReport = (result: AdmissionResult) => {
+    const existingState = downloadStates[result.id];
+
+    if (existingState === "queued" || existingState === "downloading") {
+      toast("This report is already queued for download.");
+      return;
+    }
+
+    const job: ReportDownloadJob = {
+      id: result.id,
+      examId: result.exam,
+      studentId: result.student,
+      studentName: result.student_full_name || result.student_username || "Student",
+    };
+
+    setDownloadQueue((currentJobs) => [...currentJobs, job]);
+    setDownloadStates((currentStates) => ({
+      ...currentStates,
+      [result.id]: "queued",
+    }));
+    toast.success(`Queued report for ${job.studentName}`);
+  };
+
+  useEffect(() => {
+    if (activeDownloadJobId !== null || downloadQueue.length === 0) {
+      return;
+    }
+
+    const currentJob = downloadQueue[0];
+
+    const processDownload = async () => {
+      setActiveDownloadJobId(currentJob.id);
+      setDownloadStates((currentStates) => ({
+        ...currentStates,
+        [currentJob.id]: "downloading",
+      }));
+
+      try {
+        await new Promise((resolve) => window.setTimeout(resolve, 50));
+        const response = await admissionResultsAPI.downloadStudentDetailReportPdf(
+          currentJob.examId,
+          currentJob.studentId,
+        );
+
+        if (!response?.blob) {
+          throw new Error("Student report PDF is not available yet.");
+        }
+
+        downloadBlobFile(response.blob, response.filename);
+        toast.success(`Downloaded report for ${currentJob.studentName}`);
+      } catch (reportError: any) {
+        console.error("Error downloading student report:", reportError);
+        toast.error(reportError?.message || "Failed to download student report");
+        setDownloadStates((currentStates) => ({
+          ...currentStates,
+          [currentJob.id]: "failed",
+        }));
+      } finally {
+        // Give the browser enough time to register each download before the next one starts.
+        await new Promise((resolve) => window.setTimeout(resolve, DOWNLOAD_QUEUE_GAP_MS));
+        setDownloadStates((currentStates) => {
+          if (currentStates[currentJob.id] === "failed") {
+            return currentStates;
+          }
+
+          const nextStates = { ...currentStates };
+          delete nextStates[currentJob.id];
+          return nextStates;
+        });
+        setDownloadQueue((currentJobs) => currentJobs.slice(1));
+        setActiveDownloadJobId(null);
+      }
+    };
+
+    void processDownload();
+  }, [downloadQueue, activeDownloadJobId]);
 
   if (!hasReadAccess) {
     return (
@@ -668,6 +780,32 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
         </AlertDescription>
       </Alert>
 
+      {(activeDownloadJobId !== null || queuedDownloadCount > 0 || failedDownloadCount > 0) && (
+        <Alert className="border-blue-200 bg-blue-50">
+          <AlertDescription className="flex flex-wrap items-center gap-2 text-blue-900">
+            {activeDownloadJobId !== null ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Generating 1 report now</span>
+              </>
+            ) : null}
+            {queuedDownloadCount > 0 ? (
+              <span>
+                {queuedDownloadCount} report{queuedDownloadCount > 1 ? "s" : ""} waiting in queue
+              </span>
+            ) : null}
+            {failedDownloadCount > 0 ? (
+              <span>
+                {failedDownloadCount} report{failedDownloadCount > 1 ? "s" : ""} failed. Click the row download button to retry.
+              </span>
+            ) : null}
+            <span className="text-xs text-blue-800/80">
+              Your browser may ask permission before allowing multiple automatic downloads.
+            </span>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -779,6 +917,8 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
                     <TableHead>Written + Viva</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>Remarks</TableHead>
+                    <TableHead className="w-20 text-center">View</TableHead>
+                    <TableHead className="w-24 text-center">Download</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -788,6 +928,10 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
                     const isChecked = selectedStudentIds.includes(result.student);
                     const isAbsentCandidate = result.result_status === "ABSENT";
                     const isRejectedCandidate = result.result_status === "REJECTED";
+                    const downloadState = downloadStates[result.id];
+                    const isQueuedForDownload = downloadState === "queued";
+                    const isDownloadingThisReport = downloadState === "downloading";
+                    const hasFailedDownload = downloadState === "failed";
 
                     return (
                       <TableRow
@@ -839,6 +983,48 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
                             ) : null}
                           </div>
                         </TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleOpenReport(result)}
+                            aria-label={`View report for ${result.student_full_name}`}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleDownloadReport(result)}
+                            disabled={isDownloadingThisReport || isQueuedForDownload}
+                            aria-label={`Download report for ${result.student_full_name}`}
+                            title={
+                              hasFailedDownload
+                                ? "Last download failed. Click to retry."
+                                : isQueuedForDownload
+                                  ? "Queued for download"
+                                  : isDownloadingThisReport
+                                    ? "Downloading"
+                                    : "Download report"
+                            }
+                          >
+                            {isDownloadingThisReport ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : isQueuedForDownload ? (
+                              <span className="text-[10px] font-semibold">Q</span>
+                            ) : hasFailedDownload ? (
+                              <XCircle className="h-4 w-4 text-rose-600" />
+                            ) : (
+                              <Download className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     );
                   })}
@@ -848,6 +1034,21 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
           )}
         </CardContent>
       </Card>
+
+      <StudentAdmissionReportDialog
+        open={isReportDialogOpen}
+        onOpenChange={(open) => {
+          setIsReportDialogOpen(open);
+          if (!open) {
+            setSelectedReportExamId(null);
+            setSelectedReportStudentId(null);
+            setSelectedReportStudentName("");
+          }
+        }}
+        examId={selectedReportExamId}
+        studentId={selectedReportStudentId}
+        studentName={selectedReportStudentName}
+      />
     </div>
   );
 }

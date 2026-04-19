@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 
-import diuLogo from "../assets/diu-logo.png";
 import { SemesterCombobox } from "../components/SemesterCombobox";
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { Badge } from "../components/ui/badge";
@@ -33,11 +32,15 @@ import {
 } from "../lib/admission";
 import {
   buildResultSheetRows,
-  formatReportDate,
   getResultStatusBadgeClass,
   resolveFacultyName,
   type ExamLookupRecord,
 } from "../lib/result-sheet";
+import {
+  drawDiuPdfChrome,
+  formatReportDate,
+  loadDiuLogoDataUrl,
+} from "../lib/diu-report-pdf";
 import { admissionResultsAPI, examAPI } from "../services/api";
 
 interface AcceptedStudentsProps {
@@ -57,28 +60,6 @@ const DEFAULT_SUMMARY = {
   REJECTED: 0,
   ABSENT: 0,
 };
-
-let logoDataUrlPromise: Promise<string> | null = null;
-
-function loadLogoDataUrl() {
-  if (logoDataUrlPromise) {
-    return logoDataUrlPromise;
-  }
-
-  logoDataUrlPromise = fetch(diuLogo)
-    .then((response) => response.blob())
-    .then(
-      (blob) =>
-        new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(String(reader.result || ""));
-          reader.onerror = () => reject(new Error("Failed to load logo"));
-          reader.readAsDataURL(blob);
-        }),
-    );
-
-  return logoDataUrlPromise;
-}
 
 export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) {
   const { canRead, canWrite } = usePermissions();
@@ -239,7 +220,7 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
 
     setIsExporting(true);
     try {
-      const logoDataUrl = await loadLogoDataUrl();
+      const logoDataUrl = await loadDiuLogoDataUrl();
       const doc = new jsPDF({
         orientation: "portrait",
         unit: "pt",
@@ -254,29 +235,14 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
       const activeStatusLabel = PRETTY_STATUS_LABELS[TAB_TO_STATUS[activeTab]];
 
       const drawHeader = () => {
-        const centerX = pageWidth / 2;
-        const logoWidth = 62;
-        const logoX = centerX - logoWidth / 2;
-
-        doc.addImage(logoDataUrl, "PNG", logoX, 22, logoWidth, 62);
-        doc.setTextColor(15, 23, 42);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(17);
-        doc.text("Daffodil International University", centerX, 102, { align: "center" });
-
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(12);
-        doc.text(`Admission Test Result, ${titleSemester}`, centerX, 122, {
-          align: "center",
+        drawDiuPdfChrome(doc, {
+          logoDataUrl,
+          semester: selectedSemester,
+          facultyName,
+          departmentName: department.department_name,
+          dateLabel: reportDate,
+          rightLabel: activeStatusLabel,
         });
-
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(11);
-        doc.text(`Faculty of ${facultyName}`, centerX, 140, { align: "center" });
-        doc.text(`Department of ${department.department_name}`, centerX, 156, {
-          align: "center",
-        });
-        doc.text(`Date: ${reportDate}`, centerX, 172, { align: "center" });
       };
 
       autoTable(doc, {
@@ -348,17 +314,6 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
         },
         didDrawPage: () => {
           drawHeader();
-          const pageHeight = doc.internal.pageSize.getHeight();
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(9);
-          doc.setTextColor(71, 85, 105);
-          doc.text(activeStatusLabel, pageWidth - marginX, 18, { align: "right" });
-          doc.text(
-            `Page ${doc.getNumberOfPages()}`,
-            pageWidth - marginX,
-            pageHeight - 12,
-            { align: "right" },
-          );
         },
       });
 

@@ -12,6 +12,36 @@ const api = axios.create({
   timeout: 30000, // 30 seconds timeout
 });
 
+const parseBlobJsonError = async (error, fallbackMessage) => {
+  const response = error?.response;
+  const data = response?.data;
+  const contentType = response?.headers?.['content-type'] || '';
+
+  if (!(data instanceof Blob) || !contentType.includes('application/json')) {
+    return null;
+  }
+
+  try {
+    const text = await data.text();
+    const parsed = JSON.parse(text);
+    const message =
+      parsed?.message ||
+      parsed?.detail ||
+      fallbackMessage ||
+      error?.message ||
+      'Request failed';
+
+    return {
+      ...parsed,
+      message,
+    };
+  } catch {
+    return {
+      message: fallbackMessage || error?.message || 'Request failed',
+    };
+  }
+};
+
 // Add a request interceptor to include the auth token
 api.interceptors.request.use(
   (config) => {
@@ -1177,6 +1207,61 @@ export const admissionResultsAPI = {
         results: allResults,
       };
     } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get detailed student admission report
+  getStudentDetailReport: async (examId, studentId) => {
+    try {
+      const response = await api.get(`/api/admission/reports/student/${examId}/${studentId}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Download detailed student admission report PDF
+  downloadStudentDetailReportPdf: async (examId, studentId) => {
+    try {
+      const response = await api.get(
+        `/api/admission/reports/student/${examId}/${studentId}/pdf/`,
+        {
+          responseType: 'blob',
+          headers: {
+            Accept: 'application/pdf',
+          },
+        },
+      );
+
+      const disposition = response.headers?.['content-disposition'] || '';
+      const utf8FilenameMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+      const plainFilenameMatch = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const encodedFilename = utf8FilenameMatch?.[1] || plainFilenameMatch?.[1] || '';
+
+      let filename = `student-admission-report-${examId}-${studentId}.pdf`;
+      if (encodedFilename) {
+        try {
+          filename = decodeURIComponent(encodedFilename.trim());
+        } catch {
+          filename = encodedFilename.trim();
+        }
+      }
+
+      return {
+        blob: response.data,
+        filename,
+      };
+    } catch (error) {
+      const parsedBlobError = await parseBlobJsonError(
+        error,
+        'Failed to download student report',
+      );
+
+      if (parsedBlobError) {
+        throw parsedBlobError;
+      }
+
       throw error.response?.data || error.message;
     }
   },

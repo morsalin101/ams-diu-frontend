@@ -132,7 +132,10 @@ export function VivaModal({ open, onOpenChange, studentResult, onVivaMarksAdded 
         marks_data: vivaMarks
       });
       
-      const response = await vivaMarksAPI.addVivaMarks(studentResult.student_id, vivaMarks);
+      const response = await vivaMarksAPI.addVivaMarks(studentResult.student_id, {
+        ...vivaMarks,
+        exam_id: studentResult.exam_id,
+      });
       
       if (response && response.success) {
         toast.success('Viva marks saved successfully');
