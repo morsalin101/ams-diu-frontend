@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
+  Eye,
   Filter,
   Loader2,
   RefreshCw,
@@ -15,6 +16,7 @@ import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Checkbox } from "../components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
@@ -25,35 +27,167 @@ import { examAPI } from "../services/api";
 interface QuestionBankItem {
   id: number;
   subject: string;
-  questions: string | Record<string, string | null>;
+  questions: unknown;
   type: "option" | "text";
   text?: string | null;
-  options?: Record<string, string> | null;
-  answer?: string[] | string | null;
+  options?: unknown;
+  answer?: unknown;
   marks: number;
   semester: string;
   department_shortname: string;
+}
+
+interface NormalizedOption {
+  key: string;
+  value: string;
+  isCorrect: boolean;
 }
 
 interface DeleteQuestionsProps {
   gradientClass?: string;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function pickDisplayValue(value: unknown): unknown {
+  if (!isRecord(value)) {
+    return value;
+  }
+
+  return (
+    value.english ??
+    value.both ??
+    value.bangla ??
+    Object.values(value).find((item) => {
+      if (Array.isArray(item)) {
+        return item.length > 0;
+      }
+
+      if (isRecord(item)) {
+        return Object.keys(item).length > 0;
+      }
+
+      return item !== null && item !== undefined && String(item).trim() !== "";
+    }) ??
+    ""
+  );
+}
+
+function stringifyDisplayValue(value: unknown): string {
+  const displayValue = pickDisplayValue(value);
+
+  if (displayValue === null || displayValue === undefined) {
+    return "";
+  }
+
+  if (typeof displayValue === "string") {
+    return displayValue;
+  }
+
+  if (typeof displayValue === "number" || typeof displayValue === "boolean") {
+    return String(displayValue);
+  }
+
+  if (Array.isArray(displayValue)) {
+    return displayValue
+      .map((item) => stringifyDisplayValue(item))
+      .filter(Boolean)
+      .join(", ");
+  }
+
+  if (isRecord(displayValue)) {
+    return Object.values(displayValue)
+      .map((item) => stringifyDisplayValue(item))
+      .filter(Boolean)
+      .join(", ");
+  }
+
+  return String(displayValue);
+}
+
 function getQuestionText(question: QuestionBankItem) {
-  if (typeof question.questions === "string") {
-    return question.questions;
+  return stringifyDisplayValue(question.questions);
+}
+
+function normalizeToken(value: unknown) {
+  return stringifyDisplayValue(value)
+    .replace(/[()[\]]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+function getAnswerValues(answer: unknown): string[] {
+  const displayAnswer = pickDisplayValue(answer);
+
+  if (Array.isArray(displayAnswer)) {
+    return displayAnswer
+      .map((item) => stringifyDisplayValue(item))
+      .filter(Boolean);
   }
 
-  if (question.questions && typeof question.questions === "object") {
-    return (
-      question.questions.english ||
-      question.questions.both ||
-      Object.values(question.questions).find(Boolean) ||
-      ""
-    );
+  if (isRecord(displayAnswer)) {
+    return Object.values(displayAnswer)
+      .map((item) => stringifyDisplayValue(item))
+      .filter(Boolean);
   }
 
-  return "";
+  const answerText = stringifyDisplayValue(displayAnswer);
+  return answerText ? [answerText] : [];
+}
+
+function parseOptions(options: unknown): unknown {
+  if (typeof options !== "string") {
+    return options;
+  }
+
+  try {
+    return JSON.parse(options);
+  } catch {
+    return options;
+  }
+}
+
+function getQuestionOptions(question: QuestionBankItem): NormalizedOption[] {
+  const parsedOptions = parseOptions(question.options);
+  const displayOptions = pickDisplayValue(parsedOptions);
+  const answerTokens = new Set(getAnswerValues(question.answer).map(normalizeToken));
+
+  if (Array.isArray(displayOptions)) {
+    return displayOptions
+      .map((option, index) => ({
+        key: String.fromCharCode(65 + index),
+        value: stringifyDisplayValue(option),
+      }))
+      .filter((option) => option.value)
+      .map((option) => ({
+        ...option,
+        isCorrect:
+          answerTokens.has(normalizeToken(option.key)) ||
+          answerTokens.has(normalizeToken(option.value)),
+      }));
+  }
+
+  if (isRecord(displayOptions)) {
+    return Object.entries(displayOptions)
+      .map(([key, value]) => ({
+        key,
+        value: stringifyDisplayValue(value),
+      }))
+      .filter((option) => option.value)
+      .map((option) => ({
+        ...option,
+        isCorrect:
+          answerTokens.has(normalizeToken(option.key)) ||
+          answerTokens.has(normalizeToken(option.value)),
+      }));
+  }
+
+  const optionsText = stringifyDisplayValue(displayOptions);
+  return optionsText
+    ? [{ key: "Option", value: optionsText, isCorrect: answerTokens.has(normalizeToken(optionsText)) }]
+    : [];
 }
 
 function compareQuestions(
@@ -96,6 +230,7 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
   const [marksFilter, setMarksFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"id" | "subject" | "marks" | "semester">("id");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [previewQuestion, setPreviewQuestion] = useState<QuestionBankItem | null>(null);
 
   const loadQuestions = async () => {
     setIsLoading(true);
@@ -263,6 +398,9 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
       setSelectedQuestionIds((currentIds) =>
         currentIds.filter((id) => id !== question.id),
       );
+      if (previewQuestion?.id === question.id) {
+        setPreviewQuestion(null);
+      }
     } catch (error: any) {
       console.error("Error deleting question-bank item:", error);
       toast.error(error?.message || "Failed to delete question");
@@ -298,6 +436,9 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
         currentQuestions.filter((question) => !deletedIds.includes(question.id)),
       );
       setSelectedQuestionIds([]);
+      if (previewQuestion && deletedIds.includes(previewQuestion.id)) {
+        setPreviewQuestion(null);
+      }
 
       toast.success(
         response?.message || `Deleted ${deletedIds.length} question(s) successfully.`,
@@ -309,6 +450,11 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
       setIsDeleting(false);
     }
   };
+
+  const previewOptions = previewQuestion ? getQuestionOptions(previewQuestion) : [];
+  const previewAnswers = previewQuestion ? getAnswerValues(previewQuestion.answer) : [];
+  const previewAnswerText =
+    previewAnswers.length > 0 ? previewAnswers.join(", ") : stringifyDisplayValue(previewQuestion?.text);
 
   if (!hasReadAccess) {
     return (
@@ -579,6 +725,7 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
                       <TableHead>Department</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Marks</TableHead>
+                      <TableHead className="text-center">Details</TableHead>
                       <TableHead className="text-right">Action</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -614,6 +761,18 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
                             </Badge>
                           </TableCell>
                           <TableCell>{question.marks}</TableCell>
+                          <TableCell className="text-center">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
+                              onClick={() => setPreviewQuestion(question)}
+                              title={`View question #${question.id} details`}
+                              aria-label={`View question ${question.id} details`}
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                          </TableCell>
                           <TableCell className="text-right">
                             <Button
                               variant="outline"
@@ -677,7 +836,16 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
                           </div>
                         </div>
 
-                        <div className="flex justify-end">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
+                            onClick={() => setPreviewQuestion(question)}
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            View
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
@@ -698,6 +866,95 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
           </div>
         </>
       )}
+
+      <Dialog
+        open={Boolean(previewQuestion)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPreviewQuestion(null);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[85vh] max-w-[95vw] overflow-y-auto sm:max-w-3xl">
+          {previewQuestion ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Question Details</DialogTitle>
+                <DialogDescription>
+                  Review the full question before deleting it from the question bank.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-5">
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline">#{previewQuestion.id}</Badge>
+                  <Badge variant="outline">{previewQuestion.subject}</Badge>
+                  <Badge variant="outline">{previewQuestion.semester}</Badge>
+                  <Badge variant="outline">{previewQuestion.department_shortname}</Badge>
+                  <Badge variant="secondary">
+                    {previewQuestion.type === "option" ? "MCQ" : "Text"}
+                  </Badge>
+                  <Badge variant="secondary">{previewQuestion.marks} marks</Badge>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="font-semibold text-gray-800">Question</Label>
+                  <div className="rounded-md border bg-gray-50 p-3">
+                    <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-800">
+                      {getQuestionText(previewQuestion) || "No question text available."}
+                    </p>
+                  </div>
+                </div>
+
+                {previewQuestion.type === "option" ? (
+                  <div className="space-y-2">
+                    <Label className="font-semibold text-gray-800">Options</Label>
+                    {previewOptions.length > 0 ? (
+                      <div className="space-y-2">
+                        {previewOptions.map((option) => (
+                          <div
+                            key={`${option.key}-${option.value}`}
+                            className={`rounded-md border p-3 text-sm ${
+                              option.isCorrect
+                                ? "border-green-300 bg-green-50 text-green-800"
+                                : "border-gray-200 bg-white text-gray-700"
+                            }`}
+                          >
+                            <div className="flex flex-wrap items-start gap-2">
+                              <span className="font-semibold">{option.key}.</span>
+                              <span className="min-w-0 flex-1 break-words">{option.value}</span>
+                              {option.isCorrect ? (
+                                <Badge variant="outline" className="border-green-300 bg-green-100 text-green-700">
+                                  Correct
+                                </Badge>
+                              ) : null}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="rounded-md border bg-gray-50 p-3 text-sm text-gray-600">
+                        No options available.
+                      </p>
+                    )}
+                  </div>
+                ) : null}
+
+                <div className="space-y-2">
+                  <Label className="font-semibold text-gray-800">
+                    {previewQuestion.type === "option" ? "Answer" : "Text Answer"}
+                  </Label>
+                  <div className="rounded-md border bg-white p-3">
+                    <p className="whitespace-pre-wrap break-words text-sm text-gray-700">
+                      {previewAnswerText || "No answer available."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
