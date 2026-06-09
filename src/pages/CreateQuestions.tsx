@@ -36,6 +36,11 @@ interface Question {
   marks: number;
 }
 
+interface MissingQuestionSlot {
+  subject: string;
+  marks: number;
+}
+
 interface ExamData {
   department_id: number;
   semester: string;
@@ -57,11 +62,13 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
   const [selectedSubjects, setSelectedSubjects] = useState<Array<{ subject: string; marks: number }>>([]);
   const [generatedQuestions, setGeneratedQuestions] = useState<Question[]>([]);
   const [excludedQuestions, setExcludedQuestions] = useState<number[]>([]);
+  const [missingQuestionSlots, setMissingQuestionSlots] = useState<MissingQuestionSlot[]>([]);
   const [showQuestions, setShowQuestions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingSubjects, setIsLoadingSubjects] = useState(false);
   const [examSaved, setExamSaved] = useState(false);
   const [regeneratingQuestionId, setRegeneratingQuestionId] = useState<number | null>(null);
+  const [isRefillingMissingQuestions, setIsRefillingMissingQuestions] = useState(false);
 
   // Exam configuration
   const [examConfig, setExamConfig] = useState({
@@ -196,6 +203,7 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
       if (response && response.success) {
         const questions = response.data?.questions || [];
         setGeneratedQuestions(questions);
+        setMissingQuestionSlots([]);
         setShowQuestions(true);
         setExamSaved(false);
         toast.success(`Generated ${questions.length} questions`);
@@ -274,6 +282,7 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
         const questions = response.data?.questions || [];
         setGeneratedQuestions(questions);
         setExcludedQuestions([]);
+        setMissingQuestionSlots([]);
         toast.success(`Regenerated ${questions.length} questions`);
       } else {
         toast.error(response.message || 'Failed to regenerate questions');
@@ -305,6 +314,69 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
     }
 
     return String(value || '');
+  };
+
+  const handleRefillMissingQuestions = async () => {
+    if (!user?.department_details?.id) {
+      toast.error('User department not found');
+      return;
+    }
+
+    if (missingQuestionSlots.length === 0) {
+      toast('No missing questions to regenerate');
+      return;
+    }
+
+    const slotsToFill = [...missingQuestionSlots];
+    let nextQuestions = [...generatedQuestions];
+    const unfilledSlots: MissingQuestionSlot[] = [];
+    let restoredCount = 0;
+
+    try {
+      setIsRefillingMissingQuestions(true);
+
+      for (const slot of slotsToFill) {
+        try {
+          const response = await examAPI.regenerateQuestion({
+            department_id: user.department_details.id,
+            subject: slot.subject,
+            marks: slot.marks,
+            language: examConfig.language,
+            exclude_question_ids: Array.from(new Set([
+              ...nextQuestions.map((item) => item.id),
+              ...excludedQuestions,
+            ])),
+            exclude_question_texts: nextQuestions.map(getQuestionDisplayText),
+          });
+
+          const replacement = response?.data?.question;
+          if (!replacement) {
+            throw new Error(response?.message || 'No replacement question returned');
+          }
+
+          nextQuestions = [...nextQuestions, replacement];
+          restoredCount += 1;
+        } catch (error) {
+          console.error('Error refilling missing question:', error);
+          unfilledSlots.push(slot);
+        }
+      }
+
+      if (restoredCount > 0) {
+        setGeneratedQuestions(nextQuestions);
+      }
+      setMissingQuestionSlots(unfilledSlots);
+
+      if (restoredCount === slotsToFill.length) {
+        toast.success(`Regenerated ${restoredCount} missing question${restoredCount === 1 ? '' : 's'}`);
+      } else if (restoredCount > 0) {
+        toast.error(`Regenerated ${restoredCount} question${restoredCount === 1 ? '' : 's'}, but ${unfilledSlots.length} missing slot${unfilledSlots.length === 1 ? '' : 's'} could not be filled`);
+      } else {
+        toast.error('No replacement questions available for the missing slots');
+      }
+    } finally {
+      setIsRefillingMissingQuestions(false);
+    }
   };
 
   const handleRegenerateQuestion = async (question: Question) => {
@@ -362,8 +434,12 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
       });
 
       if (response && (response.success !== false)) {
-        setExcludedQuestions([...excludedQuestions, blockingQuestion.id]);
-        setGeneratedQuestions(generatedQuestions.filter(q => q.id !== blockingQuestion.id));
+        setExcludedQuestions(prev => [...prev, blockingQuestion.id]);
+        setMissingQuestionSlots(prev => [
+          ...prev,
+          { subject: blockingQuestion.subject, marks: blockingQuestion.marks }
+        ]);
+        setGeneratedQuestions(currentQuestions => currentQuestions.filter(q => q.id !== blockingQuestion.id));
         setShowBlockDialog(false);
         setBlockingQuestion(null);
         setBlockRemarks('');
@@ -382,6 +458,7 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
     setSelectedSubjects([]);
     setGeneratedQuestions([]);
     setExcludedQuestions([]);
+    setMissingQuestionSlots([]);
     setShowQuestions(false);
     setExamSaved(false);
     setExamConfig({
@@ -588,7 +665,7 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
             <div className="flex flex-col gap-3 pt-4 sm:flex-row ">
               <Button 
                 onClick={handleCreateExam}
-                disabled={selectedSubjects.length === 0 || !examConfig.semester || isLoading}
+                disabled={selectedSubjects.length === 0 || !examConfig.semester || isLoading || isRefillingMissingQuestions}
                 className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#1E2078] hover:to-[#3A3F9A] text-white"
               >
                 {isLoading ? (
@@ -608,7 +685,7 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
                 <>
                   <Button 
                     onClick={handleRegenerateExam}
-                    disabled={isLoading}
+                    disabled={isLoading || isRefillingMissingQuestions}
                     variant="outline"
                   >
                     <RefreshCw className="w-4 h-4 mr-2" />
@@ -617,7 +694,7 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
 
                   <Button 
                     onClick={handleSaveExam}
-                    disabled={isLoading || examSaved}
+                    disabled={isLoading || isRefillingMissingQuestions || examSaved}
                     variant="outline"
                   >
                     <Save className="w-4 h-4 mr-2" />
@@ -663,8 +740,17 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
                   <Badge variant="outline">{generatedQuestions.length} questions</Badge>
                 </div>
                 {canWrite() && (
-                  <Button onClick={handleRegenerateExam} variant="outline" size="sm">
-                    <RefreshCw className="w-4 h-4 mr-2" />
+                  <Button
+                    onClick={handleRefillMissingQuestions}
+                    variant="outline"
+                    size="sm"
+                    disabled={isLoading || isRefillingMissingQuestions}
+                  >
+                    {isRefillingMissingQuestions ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                    )}
                     Regenerate
                   </Button>
                 )}
@@ -725,6 +811,7 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
                                   size="sm"
                                   disabled={
                                     isLoading ||
+                                    isRefillingMissingQuestions ||
                                     examSaved ||
                                     regeneratingQuestionId !== null
                                   }
