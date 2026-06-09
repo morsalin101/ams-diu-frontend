@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useMemo, useState } from "react";
+import { startTransition, useDeferredValue, useEffect, useMemo, useState } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
@@ -10,6 +10,7 @@ import {
   Loader2,
   RefreshCw,
   RotateCcw,
+  Search,
   Users,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -29,6 +30,7 @@ import { usePermissions } from "../hooks/usePermissions";
 import { useEffectiveDepartment } from "../hooks/useEffectiveDepartment";
 import {
   formatSemesterLabel,
+  matchesAdmissionSearch,
   PRETTY_STATUS_LABELS,
   type AdmissionResult,
 } from "../lib/admission";
@@ -81,6 +83,7 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
   const [examRecords, setExamRecords] = useState<ExamLookupRecord[]>([]);
   const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
   const [topCandidateCount, setTopCandidateCount] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isReverting, setIsReverting] = useState(false);
@@ -89,6 +92,7 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
   const [selectedReportStudentId, setSelectedReportStudentId] = useState<number | null>(null);
   const [selectedReportStudentName, setSelectedReportStudentName] = useState("");
   const [downloadingReportId, setDownloadingReportId] = useState<number | null>(null);
+  const deferredSearchTerm = useDeferredValue(searchTerm);
 
   useEffect(() => {
     if (!hasReadAccess) {
@@ -223,10 +227,17 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
     };
   }, [hasReadAccess, department?.id, selectedSemester]);
 
-  const visibleResults = results.filter(
-    (result) => result.result_status === TAB_TO_STATUS[activeTab],
+  const visibleResults = useMemo(
+    () =>
+      results.filter(
+        (result) =>
+          result.result_status === TAB_TO_STATUS[activeTab] &&
+          matchesAdmissionSearch(result, deferredSearchTerm),
+      ),
+    [results, activeTab, deferredSearchTerm],
   );
   const visibleRows = buildResultSheetRows(visibleResults);
+  const isSearchActive = deferredSearchTerm.trim().length > 0;
   const selectedTabResults = visibleResults.filter((result) =>
     selectedStudentIds.includes(result.student),
   );
@@ -457,6 +468,15 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
     });
   }, [parsedTopCandidateCount, visibleResults, canRevertCurrentTab]);
 
+  useEffect(() => {
+    setSelectedStudentIds((currentIds) => {
+      const visibleStudentIds = new Set(visibleResults.map((result) => result.student));
+      const nextIds = currentIds.filter((id) => visibleStudentIds.has(id));
+
+      return nextIds.length === currentIds.length ? currentIds : nextIds;
+    });
+  }, [visibleResults]);
+
   const handleToggleStudent = (studentId: number, checked: boolean) => {
     setSelectedStudentIds((currentIds) => {
       if (checked) {
@@ -566,7 +586,7 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 xl:grid-cols-[1fr_1fr_auto_auto] gap-4 items-end">
+          <div className="grid grid-cols-1 xl:grid-cols-[1fr_1fr_1fr_auto_auto] gap-4 items-end">
             <div className="space-y-2">
               <Label>Department</Label>
               <div className="flex items-center justify-between h-10 px-3 border rounded-md bg-gray-50">
@@ -585,6 +605,20 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
                 onChange={setSelectedSemester}
                 disabled={isDepartmentLoading || semesterOptions.length === 0}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="result-search">Search</Label>
+              <div className="relative">
+                <Search className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
+                <Input
+                  id="result-search"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Search by name or FORM"
+                  className="pl-10"
+                />
+              </div>
             </div>
 
             <Button
@@ -737,7 +771,9 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
                       </div>
                     ) : visibleRows.length === 0 ? (
                       <div className="py-12 text-center text-gray-500">
-                        No {tabKey} students found for this semester.
+                        {isSearchActive
+                          ? "No matching students found for this search."
+                          : `No ${tabKey} students found for this semester.`}
                       </div>
                     ) : (
                       <div className="overflow-hidden border rounded-md">
