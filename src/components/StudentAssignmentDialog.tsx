@@ -157,40 +157,38 @@ export function StudentAssignmentDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
-        className="max-w-[98vw] w-[98vw] max-h-[95vh] overflow-y-auto flex flex-col"
+        className="!w-[96vw] !max-w-[1280px] h-[92dvh] max-h-[92dvh] overflow-hidden flex flex-col p-4 sm:p-6"
         style={{ 
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-          minHeight: '90vh',
-          minWidth: '98vw'
         }}
       >
-        <DialogHeader className="flex-shrink-0 pb-4 border-b">
-          <DialogTitle className="text-2xl font-bold">Assign Students to Teacher and Exam</DialogTitle>
-          <DialogDescription className="text-base">
+        <DialogHeader className="flex-shrink-0 pb-3 sm:pb-4 border-b pr-8">
+          <DialogTitle className="text-xl sm:text-2xl font-bold">Assign Students to Teacher and Exam</DialogTitle>
+          <DialogDescription className="text-sm sm:text-base">
             Select students and assign them to a teacher and exam schedule. Use the search to find specific students quickly.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="flex-1 overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-full pt-6">
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(620px,1.35fr)_minmax(360px,0.65fr)] gap-4 xl:gap-6 h-full min-h-0 pt-4 sm:pt-6 overflow-y-auto xl:overflow-hidden">
             {/* Student Selection Panel */}
-            <div className="space-y-6 flex flex-col h-full">
+            <div className="space-y-4 sm:space-y-5 flex flex-col h-full min-h-[420px] xl:min-h-0">
               <div className="flex-shrink-0">
-                <Label className="text-xl font-semibold text-gray-800 mb-4 block">Select Students</Label>
+                <Label className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 block">Select Students</Label>
                 
                 {/* Student Search */}
-                <div className="flex gap-3 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-[minmax(260px,1fr)_220px_auto] gap-3 mb-4">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                     <Input
                       placeholder="Search students by name, username, or ID..."
                       value={studentSearchTerm}
                       onChange={(e) => setStudentSearchTerm(e.target.value)}
-                      className="pl-11 h-12 text-base"
+                      className="pl-11 h-11 sm:h-12 text-sm sm:text-base"
                     />
                   </div>
                   <Select value={semesterFilter} onValueChange={setSemesterFilter}>
-                    <SelectTrigger className="w-[220px] h-12">
+                    <SelectTrigger className="w-full md:w-[220px] h-11 sm:h-12">
                       <SelectValue placeholder="Filter by semester" />
                     </SelectTrigger>
                     <SelectContent>
@@ -210,7 +208,7 @@ export function StudentAssignmentDialog({
                         setStudentSearchTerm('');
                         setSemesterFilter('all');
                       }}
-                      className="px-4"
+                      className="px-4 h-11 sm:h-12"
                     >
                       Clear
                     </Button>
@@ -218,8 +216,8 @@ export function StudentAssignmentDialog({
                 </div>
                 
                 {/* Results count and Select All */}
-                <div className="flex items-center justify-between mb-4">
-                  <div className="text-base text-gray-600">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                  <div className="text-sm sm:text-base text-gray-600">
                     Showing {filteredAvailableStudents.length} of {availableStudents.length} available students
                     {(studentSearchTerm || semesterFilter !== 'all') && (
                       <span className="ml-2 text-blue-600 font-medium">
@@ -244,8 +242,8 @@ export function StudentAssignmentDialog({
               </div>
               
               {/* Student List - Table Format */}
-              <div className="flex-1 border-2 border-gray-200 rounded-lg overflow-hidden">
-                <div className="h-full overflow-y-auto">
+              <div className="flex-1 min-h-0 border-2 border-gray-200 rounded-lg overflow-hidden">
+                <div className="h-full min-h-0 overflow-auto">
                   {filteredAvailableStudents.length === 0 ? (
                     <div className="text-center py-12 p-4">
                       <div className="text-gray-400 mb-4">
@@ -260,7 +258,7 @@ export function StudentAssignmentDialog({
                     </div>
                   ) : (
                     <Table className="text-sm">
-                      <TableHeader className="sticky top-0 bg-white z-10">
+                      <TableHeader className="sticky top-0 bg-white z-20 shadow-sm">
                         <TableRow>
                           <TableHead className="w-12 text-center">
                             <Checkbox
@@ -290,11 +288,11 @@ export function StudentAssignmentDialog({
                                 onClick={(e) => e.stopPropagation()}
                               />
                             </TableCell>
-                            <TableCell className="font-medium">{student.full_name}</TableCell>
-                            <TableCell className="font-mono text-sm">{student.f_id}</TableCell>
-                            <TableCell className="text-gray-600">@{student.username}</TableCell>
-                            <TableCell className="text-gray-600">{student.department_shortname || 'N/A'}</TableCell>
-                            <TableCell className="text-gray-600">{student.registration_semester || 'N/A'}</TableCell>
+                            <TableCell className="font-medium whitespace-nowrap">{student.full_name}</TableCell>
+                            <TableCell className="font-mono text-sm whitespace-nowrap">{student.f_id}</TableCell>
+                            <TableCell className="text-gray-600 whitespace-nowrap">@{student.username}</TableCell>
+                            <TableCell className="text-gray-600 whitespace-nowrap">{student.department_shortname || 'N/A'}</TableCell>
+                            <TableCell className="text-gray-600 whitespace-nowrap">{student.registration_semester || 'N/A'}</TableCell>
                             <TableCell className="text-center text-xs text-gray-500">
                               {new Date(student.created_at).toLocaleDateString()}
                             </TableCell>
@@ -307,26 +305,26 @@ export function StudentAssignmentDialog({
               </div>
               
               {/* Selected count */}
-              <div className="flex-shrink-0 text-center py-3 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-lg font-semibold text-blue-800">
+              <div className="flex-shrink-0 text-center py-2 sm:py-3 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-base sm:text-lg font-semibold text-blue-800">
                   Selected: {selectedStudents.length} student{selectedStudents.length !== 1 ? 's' : ''}
                 </p>
               </div>
             </div>
 
             {/* Assignment Details Panel */}
-            <div className="space-y-6 flex flex-col h-full">
-              <Label className="text-xl font-semibold text-gray-800 mb-4 block">Assignment Details</Label>
+            <div className="space-y-4 sm:space-y-5 flex flex-col h-full min-h-[320px] xl:min-h-0 xl:overflow-y-auto pr-1">
+              <Label className="text-lg sm:text-xl font-semibold text-gray-800 mb-2 block">Assignment Details</Label>
               
-              <div className="flex-1 space-y-6">
+              <div className="flex-1 space-y-5">
                 {/* Teacher Selection */}
-                <div className="space-y-3">
-                  <Label htmlFor="teacher" className="text-lg font-medium">Teacher *</Label>
+                <div className="space-y-2 sm:space-y-3">
+                  <Label htmlFor="teacher" className="text-base sm:text-lg font-medium">Teacher *</Label>
                   <Select
                     value={assignmentForm.teacher_id}
                     onValueChange={(value) => onAssignmentFormChange({ ...assignmentForm, teacher_id: value })}
                   >
-                    <SelectTrigger className="h-12 text-base">
+                    <SelectTrigger className="h-11 sm:h-12 text-sm sm:text-base">
                       <SelectValue placeholder="Select a teacher" />
                     </SelectTrigger>
                     <SelectContent>
@@ -347,13 +345,13 @@ export function StudentAssignmentDialog({
 
 
                 {/* Schedule Selection */}
-                <div className="space-y-3">
-                  <Label htmlFor="schedule" className="text-lg font-medium">Schedule *</Label>
+                <div className="space-y-2 sm:space-y-3">
+                  <Label htmlFor="schedule" className="text-base sm:text-lg font-medium">Schedule *</Label>
                   <Select
                     value={assignmentForm.schedule_id}
                     onValueChange={(value) => onAssignmentFormChange({ ...assignmentForm, schedule_id: value })}
                   >
-                    <SelectTrigger className="h-12 text-base">
+                    <SelectTrigger className="h-11 sm:h-12 text-sm sm:text-base">
                       <SelectValue placeholder="Select a schedule" />
                     </SelectTrigger>
                     <SelectContent>
@@ -397,7 +395,7 @@ export function StudentAssignmentDialog({
               </div>
 
               {/* Action Buttons */}
-              <div className="flex-shrink-0 flex justify-end gap-4 pt-6 border-t">
+              <div className="flex-shrink-0 flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-4 sm:pt-6 border-t">
                 <Button 
                   variant="outline" 
                   onClick={handleClose}
