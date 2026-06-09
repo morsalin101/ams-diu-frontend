@@ -6,9 +6,10 @@ import { Label } from '../components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Sliders, Plus, Trash2, RefreshCw, AlertCircle, Building, Edit, Loader2 } from 'lucide-react';
+import { Sliders, Plus, Trash2, RefreshCw, AlertTriangle, Building, Edit, Loader2 } from 'lucide-react';
 import { thresholdAPI, departmentAPI, admissionResultsAPI } from '../services/api';
 import { buildAcademicSemesterOptions, formatSemesterLabel } from '../lib/semester';
+import { usePermissions } from '../hooks/usePermissions';
 import toast from 'react-hot-toast';
 
 interface Department {
@@ -37,6 +38,7 @@ interface ThresholdFormData {
 }
 
 const ThresholdManagement: React.FC = () => {
+  const { canRead, canWrite, canEdit, canDelete } = usePermissions();
   const [thresholds, setThresholds] = useState<ThresholdMapping[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [semesterOptions, setSemesterOptions] = useState<string[]>([]);
@@ -50,14 +52,18 @@ const ThresholdManagement: React.FC = () => {
   const [isSavingThresholds, setIsSavingThresholds] = useState(false);
 
   useEffect(() => {
-    loadInitialData();
+    if (canRead()) {
+      loadInitialData();
+    }
   }, []);
 
   useEffect(() => {
-    if (filterSemester && filterSemester !== 'all') {
-      loadThresholds(filterSemester);
-    } else {
-      loadThresholds();
+    if (canRead()) {
+      if (filterSemester && filterSemester !== 'all') {
+        loadThresholds(filterSemester);
+      } else {
+        loadThresholds();
+      }
     }
   }, [filterSemester]);
 
@@ -129,6 +135,11 @@ const ThresholdManagement: React.FC = () => {
   };
 
   const handleOpenDialog = () => {
+    if (!canWrite()) {
+      toast.error('You do not have permission to set student acceptance criteria');
+      return;
+    }
+
     setSelectedSemester(null);
     setMappings([{ department_id: 0, threshold: 0, seat_limit: 5 }]);
     setEditingThresholdId(null);
@@ -137,6 +148,11 @@ const ThresholdManagement: React.FC = () => {
   };
 
   const handleEditThreshold = (threshold: ThresholdMapping) => {
+    if (!canEdit()) {
+      toast.error('You do not have permission to edit student acceptance criteria');
+      return;
+    }
+
     const departmentId = threshold.department_id ?? threshold.department;
     setEditingThreshold(threshold);
     setEditingThresholdId(threshold.id);
@@ -165,6 +181,11 @@ const ThresholdManagement: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    if (!canWrite()) {
+      toast.error('You do not have permission to save student acceptance criteria');
+      return;
+    }
+
     if (!selectedSemester) {
       toast.error('Please select a semester');
       return;
@@ -212,6 +233,11 @@ const ThresholdManagement: React.FC = () => {
   };
 
   const handleDeleteThreshold = async (thresholdId: number, departmentName: string) => {
+    if (!canDelete()) {
+      toast.error('You do not have permission to delete student acceptance criteria');
+      return;
+    }
+
     if (!confirm(`Are you sure you want to delete the threshold for "${departmentName}"?`)) {
       return;
     }
@@ -237,6 +263,18 @@ const ThresholdManagement: React.FC = () => {
     return acc;
   }, {} as Record<string, ThresholdMapping[]>);
 
+  if (!canRead()) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-red-500" />
+          <h3 className="mb-2 text-lg font-semibold text-gray-800">Access Denied</h3>
+          <p className="text-gray-600">You don't have permission to access this page.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -253,10 +291,12 @@ const ThresholdManagement: React.FC = () => {
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button onClick={handleOpenDialog} className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF]">
-            <Plus className="w-4 h-4 mr-2" />
-            Set Thresholds
-          </Button>
+          {canWrite() && (
+            <Button onClick={handleOpenDialog} className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF]">
+              <Plus className="w-4 h-4 mr-2" />
+              Set Thresholds
+            </Button>
+          )}
         </div>
       </div>
 
@@ -351,24 +391,28 @@ const ThresholdManagement: React.FC = () => {
                           
                           {/* Actions */}
                           <div className="flex gap-2 lg:justify-end">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleEditThreshold(threshold)}
-                              className="flex-1 lg:flex-none"
-                            >
-                              <Edit className="w-4 h-4 mr-2" />
-                              Edit
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleDeleteThreshold(threshold.id, threshold.department_name)}
-                              className="flex-1 text-red-600 lg:flex-none hover:text-red-700"
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Delete
-                            </Button>
+                            {canEdit() && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleEditThreshold(threshold)}
+                                className="flex-1 lg:flex-none"
+                              >
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit
+                              </Button>
+                            )}
+                            {canDelete() && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDeleteThreshold(threshold.id, threshold.department_name)}
+                                className="flex-1 text-red-600 lg:flex-none hover:text-red-700"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </Card>
@@ -382,10 +426,12 @@ const ThresholdManagement: React.FC = () => {
               <Sliders className="w-12 h-12 mx-auto mb-4 text-gray-300" />
               <p className="text-lg font-medium">No thresholds found</p>
               <p className="text-sm">Set department thresholds to get started</p>
-              <Button onClick={handleOpenDialog} className="mt-4 bg-gradient-to-r from-[#2E3094] to-[#4C51BF]">
-                <Plus className="w-4 h-4 mr-2" />
-                Set Thresholds
-              </Button>
+              {canWrite() && (
+                <Button onClick={handleOpenDialog} className="mt-4 bg-gradient-to-r from-[#2E3094] to-[#4C51BF]">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Set Thresholds
+                </Button>
+              )}
             </div>
           )}
         </CardContent>
@@ -538,7 +584,7 @@ const ThresholdManagement: React.FC = () => {
               <Button
                 onClick={handleSubmit}
                 className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF]"
-                disabled={!selectedSemester || isSavingThresholds}
+                disabled={!selectedSemester || isSavingThresholds || !canWrite()}
               >
                 {isSavingThresholds ? (
                   <>

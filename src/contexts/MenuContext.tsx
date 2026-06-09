@@ -22,6 +22,7 @@ import {
   FileCheck,
   Slash,
   FilePlus,
+  Sliders,
   Trash2,
 } from 'lucide-react';
 
@@ -47,6 +48,7 @@ const iconMap: { [key: string]: any } = {
   'FileCheck': FileCheck,
   'Slash': Slash,
   'FilePlus': FilePlus,
+  'Sliders': Sliders,
   'Trash2': Trash2,
 };
 
@@ -165,14 +167,6 @@ export const MenuProvider: React.FC<{ children: React.ReactNode }> = ({ children
           icon: "FileText",
           link: "/results",
           component: "AcceptedStudents",
-          permissions: { edit: true, read: true, write: true, delete: true }
-        },
-        {
-          id: 8,
-          label: "Student Acceptance Criteria",
-          icon: "Sliders",
-          link: "/student-acceptance-criteria",
-          component: "ThresholdManagement",
           permissions: { edit: true, read: true, write: true, delete: true }
         },
         {
