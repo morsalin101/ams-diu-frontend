@@ -640,9 +640,9 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
           <AlertTriangle className="w-4 h-4 text-amber-600" />
           <AlertDescription className="flex flex-wrap items-center gap-3 text-amber-900">
             <span>Threshold or seat limit is not set for this semester. Please enter these values to proceed.</span>
-            <Button asChild size="sm" variant="outline" className="border-amber-200 text-amber-900">
+            {/* <Button asChild size="sm" variant="outline" className="border-amber-200 text-amber-900">
               <Link to="/student-acceptance-criteria">Set admission criteria</Link>
-            </Button>
+            </Button> */}
           </AlertDescription>
         </Alert>
       ) : (
