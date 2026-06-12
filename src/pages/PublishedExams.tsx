@@ -9,9 +9,7 @@ import {
   FileCheck, 
   Search, 
   RefreshCw, 
-  Eye, 
   BarChart3,
-  User, 
   BookOpen,
   Calendar,
   Building2,
@@ -20,15 +18,15 @@ import {
   TrendingUp,
   Award,
   CheckCircle2,
-  XCircle
+  XCircle,
+  X
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { formatSemesterLabel, sortSemesterValues } from '../lib/semester';
 import toast from 'react-hot-toast';
 import { admissionResultsAPI, examAPI } from '../services/api';
+import PaginationControls, { DEFAULT_PAGINATION, paginationFromDrf } from '../components/PaginationControls';
 
 interface PublishedExamsProps {
   gradientClass: string;
@@ -95,24 +93,26 @@ interface ApiResponse {
 }
 
 export function PublishedExams({ gradientClass }: PublishedExamsProps) {
-  const { user } = useAuth();
   const { canRead, canWrite } = usePermissions();
   
   // State management
   const [publishedExams, setPublishedExams] = useState<PublishedExam[]>([]);
   const [filteredExams, setFilteredExams] = useState<PublishedExam[]>([]);
-  const [examResults, setExamResults] = useState<ExamResult[]>([]);
-  const [filteredResults, setFilteredResults] = useState<ExamResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isToggling, setIsToggling] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
   const [semesterFilter, setSemesterFilter] = useState('all');
+  const [appliedSemesterFilter, setAppliedSemesterFilter] = useState('all');
   const [departmentFilter, setDepartmentFilter] = useState('all');
-  
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
+  const [appliedDepartmentFilter, setAppliedDepartmentFilter] = useState('all');
+  const [publishedPage, setPublishedPage] = useState(1);
+  const [publishedPagination, setPublishedPagination] = useState(DEFAULT_PAGINATION);
+  const [publishedFilterOptions, setPublishedFilterOptions] = useState<{
+    departments?: string[];
+    semesters?: string[];
+  }>({});
+  const [reloadKey, setReloadKey] = useState(0);
   const [preparingExamId, setPreparingExamId] = useState<number | null>(null);
   
   // Dialog states
@@ -124,99 +124,27 @@ export function PublishedExams({ gradientClass }: PublishedExamsProps) {
     if (canRead()) {
       loadPublishedExams();
     }
-  }, []);
-
-  // Load exam results (keep for results functionality)
-  useEffect(() => {
-    if (canRead() && user?.id) {
-      loadExamResults();
-    }
-  }, [user?.id, currentPage]);
-
-  // Filter results based on search and filters
-  useEffect(() => {
-    let filtered = examResults;
-
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(result =>
-        result.student_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        result.exam_details.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        result.exam_details.semester.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Semester filter
-    if (semesterFilter !== 'all') {
-      filtered = filtered.filter(result => result.exam_details.semester === semesterFilter);
-    }
-
-    // Department filter
-    if (departmentFilter !== 'all') {
-      filtered = filtered.filter(result => result.exam_details.department === departmentFilter);
-    }
-
-    setFilteredResults(filtered);
-  }, [examResults, searchTerm, semesterFilter, departmentFilter]);
+  }, [publishedPage, appliedSearch, appliedSemesterFilter, appliedDepartmentFilter, reloadKey]);
 
   // Filter published exams
   useEffect(() => {
-    let filtered = publishedExams;
-
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(exam =>
-        exam.exam_details.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        exam.exam_details.semester.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Semester filter
-    if (semesterFilter !== 'all') {
-      filtered = filtered.filter(exam => exam.exam_details.semester === semesterFilter);
-    }
-
-    // Department filter
-    if (departmentFilter !== 'all') {
-      filtered = filtered.filter(exam => exam.exam_details.department === departmentFilter);
-    }
-
-    setFilteredExams(filtered);
-  }, [publishedExams, searchTerm, semesterFilter, departmentFilter]);
-
-  const loadExamResults = async () => {
-    if (!user?.id) return;
-
-    try {
-      setIsLoading(true);
-      const data = await examAPI.getAllResultsByTeacher(user.id);
-      
-      if (data.success) {
-        setExamResults(data.data.results);
-        setTotalPages(data.data.pagination.total_pages);
-        setTotalCount(data.data.pagination.count);
-        setCurrentPage(data.data.pagination.current_page);
-        toast.success(data.message || `Loaded ${data.data.results.length} exam results`);
-      } else {
-        throw new Error(data.message || 'Failed to load exam results');
-      }
-    } catch (error: any) {
-      console.error('Error loading exam results:', error);
-      toast.error(error.message || 'Failed to load exam results');
-      setExamResults([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    setFilteredExams(publishedExams);
+  }, [publishedExams]);
 
   const loadPublishedExams = async () => {
     try {
       setIsLoading(true);
-      const data = await examAPI.getPublishedExams();
+      const data = await examAPI.getPublishedExams({
+        page: publishedPage,
+        search: appliedSearch || undefined,
+        semester: appliedSemesterFilter !== 'all' ? appliedSemesterFilter : undefined,
+        department: appliedDepartmentFilter !== 'all' ? appliedDepartmentFilter : undefined,
+      });
       
       if (data.success) {
         setPublishedExams(data.data);
-        toast.success(data.message || `Loaded ${data.data.length} published exams`);
+        setPublishedPagination(paginationFromDrf(data, publishedPage));
+        setPublishedFilterOptions(data.filter_options || {});
       } else {
         throw new Error(data.message || 'Failed to load published exams');
       }
@@ -224,6 +152,7 @@ export function PublishedExams({ gradientClass }: PublishedExamsProps) {
       console.error('Error loading published exams:', error);
       toast.error(error.message || 'Failed to load published exams');
       setPublishedExams([]);
+      setPublishedPagination(DEFAULT_PAGINATION);
     } finally {
       setIsLoading(false);
     }
@@ -248,6 +177,7 @@ export function PublishedExams({ gradientClass }: PublishedExamsProps) {
               : exam
           )
         );
+        setReloadKey((current) => current + 1);
         toast.success(data.message || 'Publication status updated successfully');
       } else {
         throw new Error(data.message || 'Failed to update publication status');
@@ -276,6 +206,25 @@ export function PublishedExams({ gradientClass }: PublishedExamsProps) {
     } finally {
       setPreparingExamId(null);
     }
+  };
+
+  const handleSearch = () => {
+    setPublishedPage(1);
+    setAppliedSearch(searchTerm.trim());
+    setAppliedSemesterFilter(semesterFilter);
+    setAppliedDepartmentFilter(departmentFilter);
+    setReloadKey((current) => current + 1);
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    setAppliedSearch('');
+    setSemesterFilter('all');
+    setAppliedSemesterFilter('all');
+    setDepartmentFilter('all');
+    setAppliedDepartmentFilter('all');
+    setPublishedPage(1);
+    setReloadKey((current) => current + 1);
   };
 
   const formatDate = (dateString: string | null) => {
@@ -308,15 +257,12 @@ export function PublishedExams({ gradientClass }: PublishedExamsProps) {
   };
 
   // Get unique values for filters
-  const uniqueSemesters = sortSemesterValues(publishedExams.map((exam) => exam.exam_details.semester));
-  const uniqueDepartments = Array.from(new Set(publishedExams.map(e => e.exam_details.department)));
-
-  // Calculate statistics
-  const averageScore = examResults.length > 0 
-    ? examResults.reduce((sum, result) => sum + result.results.score_percentage, 0) / examResults.length 
-    : 0;
-  const highScoreCount = examResults.filter(r => r.results.score_percentage >= 80).length;
-  const totalStudents = examResults.length;
+  const uniqueSemesters = sortSemesterValues(publishedFilterOptions.semesters || []);
+  const uniqueDepartments = Array.from(new Set(publishedFilterOptions.departments || [])).sort();
+  const hasAppliedFilters =
+    appliedSearch ||
+    appliedSemesterFilter !== 'all' ||
+    appliedDepartmentFilter !== 'all';
 
   // Permission check
   if (!canRead()) {
@@ -333,90 +279,19 @@ export function PublishedExams({ gradientClass }: PublishedExamsProps) {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Header */}
-      <div className={`rounded-lg p-4 sm:p-6 text-white bg-gradient-to-r from-[#2E3094] to-[#4C51BF]`}>
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2 sm:mb-3 flex items-center gap-3">
-          <FileCheck className="h-8 w-8" />
-          Published Exams
-        </h1>
-        <p className="text-white/90 text-sm sm:text-base leading-relaxed">
-          Manage exam publication status and view published exam details.
-        </p>
-        <div className="mt-3 flex items-center gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <BookOpen className="h-4 w-4" />
-            <span>{publishedExams.length} total exams</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4" />
-            <span>{publishedExams.filter(exam => exam.is_published).length} published</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <XCircle className="h-4 w-4" />
-            <span>{publishedExams.filter(exam => !exam.is_published).length} unpublished</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-2 border-blue-200 bg-blue-50/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <User className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Total Students</p>
-                <p className="text-2xl font-bold text-blue-600">{totalStudents}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-2 border-green-200 bg-green-50/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <TrendingUp className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Average Score</p>
-                <p className="text-2xl font-bold text-green-600">{formatPercentage(averageScore)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-2 border-yellow-200 bg-yellow-50/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-yellow-100 rounded-lg">
-                <Award className="h-5 w-5 text-yellow-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">High Performers</p>
-                <p className="text-2xl font-bold text-yellow-600">{highScoreCount}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-2 border-purple-200 bg-purple-50/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <FileCheck className="h-5 w-5 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Pass Rate</p>
-                <p className="text-2xl font-bold text-purple-600">
-                  {formatPercentage(totalStudents > 0 ? (examResults.filter(r => r.results.score_percentage >= 40).length / totalStudents) * 100 : 0)}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex flex-wrap items-center gap-3 text-sm text-slate-700">
+        <Badge variant="outline" className="gap-2">
+          <BookOpen className="h-4 w-4" />
+          {publishedPagination.count} total exams
+        </Badge>
+        <Badge variant="outline" className="gap-2">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+          {publishedExams.filter(exam => exam.is_published).length} published on page
+        </Badge>
+        <Badge variant="outline" className="gap-2">
+          <XCircle className="h-4 w-4 text-rose-600" />
+          {publishedExams.filter(exam => !exam.is_published).length} unpublished on page
+        </Badge>
       </div>
 
       {/* Filters */}
@@ -436,6 +311,11 @@ export function PublishedExams({ gradientClass }: PublishedExamsProps) {
                 placeholder="Search by department or semester..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    handleSearch();
+                  }
+                }}
               />
             </div>
 
@@ -471,19 +351,45 @@ export function PublishedExams({ gradientClass }: PublishedExamsProps) {
 
             <div className="space-y-2">
               <Label>&nbsp;</Label>
-              <Button 
-                onClick={loadExamResults} 
-                variant="outline" 
-                className="w-full"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                )}
-                Refresh
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handleSearch}
+                  className="flex-1"
+                  disabled={isLoading}
+                >
+                  <Search className="h-4 w-4 mr-2" />
+                  Search
+                </Button>
+                <Button
+                  onClick={handleClearSearch}
+                  variant="outline"
+                  className="flex-1"
+                  disabled={
+                    isLoading ||
+                    (!searchTerm &&
+                      !appliedSearch &&
+                      semesterFilter === 'all' &&
+                      appliedSemesterFilter === 'all' &&
+                      departmentFilter === 'all' &&
+                      appliedDepartmentFilter === 'all')
+                  }
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Clear
+                </Button>
+                <Button
+                  onClick={() => setReloadKey((current) => current + 1)}
+                  variant="outline"
+                  disabled={isLoading}
+                  aria-label="Refresh published exams"
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -502,9 +408,9 @@ export function PublishedExams({ gradientClass }: PublishedExamsProps) {
               <FileCheck className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-600 mb-2">No Published Exams</h3>
               <p className="text-gray-500">
-                {publishedExams.length === 0 
-                  ? "No published exams available yet."
-                  : "No exams match your current filters."
+                {hasAppliedFilters
+                  ? "No exams match your current search."
+                  : "No published exams available yet."
                 }
               </p>
             </CardContent>
@@ -608,6 +514,14 @@ export function PublishedExams({ gradientClass }: PublishedExamsProps) {
               </CardContent>
             </Card>
           ))
+        )}
+        {!isLoading && filteredExams.length > 0 && (
+          <PaginationControls
+            pagination={publishedPagination}
+            onPageChange={setPublishedPage}
+            isLoading={isLoading}
+            itemLabel="exams"
+          />
         )}
       </div>
 

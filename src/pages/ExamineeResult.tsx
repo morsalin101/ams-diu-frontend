@@ -1,10 +1,4 @@
-import {
-  startTransition,
-  useDeferredValue,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -15,6 +9,7 @@ import {
   RefreshCw,
   Search,
   Users,
+  X,
   XCircle,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -33,19 +28,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { usePermissions } from "../hooks/usePermissions";
 import { useEffectiveDepartment } from "../hooks/useEffectiveDepartment";
 import {
-  compareAdmissionResults,
   formatSemesterLabel,
-  matchesAdmissionSearch,
   type AdmissionConfiguration,
   type AdmissionResult,
 } from "../lib/admission";
 import {
   buildResultSheetRows,
   getResultStatusBadgeClass,
-  isMinimumScoreEligible,
 } from "../lib/result-sheet";
 import { downloadBlobFile } from "../lib/pdf-download";
 import { admissionResultsAPI } from "../services/api";
+import PaginationControls, { DEFAULT_PAGINATION, paginationFromDrf } from "../components/PaginationControls";
 
 interface ExamineeResultProps {
   gradientClass?: string;
@@ -68,13 +61,19 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
   const [semesterOptions, setSemesterOptions] = useState<string[]>([]);
   const [selectedSemester, setSelectedSemester] = useState("");
   const [results, setResults] = useState<AdmissionResult[]>([]);
-  const [filteredResults, setFilteredResults] = useState<AdmissionResult[]>([]);
   const [summary, setSummary] = useState(DEFAULT_SUMMARY);
   const [configuration, setConfiguration] = useState<AdmissionConfiguration | null>(null);
-  const [minimumScoreFilter, setMinimumScoreFilter] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState<"name" | "score">("score");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [draftMinimumScoreFilter, setDraftMinimumScoreFilter] = useState("");
+  const [appliedMinimumScoreFilter, setAppliedMinimumScoreFilter] = useState("");
+  const [draftSearch, setDraftSearch] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
+  const [draftSortBy, setDraftSortBy] = useState<"name" | "score">("score");
+  const [appliedSortBy, setAppliedSortBy] = useState<"name" | "score">("score");
+  const [draftSortOrder, setDraftSortOrder] = useState<"asc" | "desc">("desc");
+  const [appliedSortOrder, setAppliedSortOrder] = useState<"asc" | "desc">("desc");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(DEFAULT_PAGINATION);
+  const [reloadKey, setReloadKey] = useState(0);
   const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isAccepting, setIsAccepting] = useState(false);
@@ -86,12 +85,6 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
   const [activeSingleDownloadResultId, setActiveSingleDownloadResultId] = useState<number | null>(null);
   const [isBulkDownloading, setIsBulkDownloading] = useState(false);
   const [topCandidateCount, setTopCandidateCount] = useState("");
-
-  const deferredSearchTerm = useDeferredValue(searchTerm);
-  const parsedMinimumScoreFilter = useMemo(() => {
-    const scoreValue = minimumScoreFilter.trim() === "" ? null : Number(minimumScoreFilter);
-    return scoreValue !== null && !Number.isNaN(scoreValue) ? scoreValue : null;
-  }, [minimumScoreFilter]);
 
   const parsedTopCandidateCount = useMemo(() => {
     if (topCandidateCount.trim() === "") {
@@ -148,6 +141,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
     if (!hasReadAccess || !department?.id || !selectedSemester) {
       setResults([]);
       setConfiguration(null);
+      setPagination(DEFAULT_PAGINATION);
       setSelectedStudentIds([]);
       return;
     }
@@ -165,6 +159,12 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
           admissionResultsAPI.getResults({
             department_id: department.id,
             semester: selectedSemester,
+            exclude_result_status: "SELECTED",
+            minimum_score: appliedMinimumScoreFilter || undefined,
+            search: appliedSearch || undefined,
+            sort_by: appliedSortBy,
+            order: appliedSortOrder,
+            page,
           }),
         ]);
 
@@ -185,6 +185,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
           ...(resultResponse?.summary || {}),
         });
         setResults(boardResults);
+        setPagination(paginationFromDrf(resultResponse, page));
         setSelectedStudentIds([]);
       } catch (boardError: any) {
         if (!isMounted) {
@@ -196,6 +197,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
         setResults([]);
         setConfiguration(null);
         setSummary(DEFAULT_SUMMARY);
+        setPagination(DEFAULT_PAGINATION);
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -208,30 +210,29 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
     return () => {
       isMounted = false;
     };
-  }, [hasReadAccess, department?.id, selectedSemester]);
+  }, [
+    hasReadAccess,
+    department?.id,
+    selectedSemester,
+    appliedMinimumScoreFilter,
+    appliedSearch,
+    appliedSortBy,
+    appliedSortOrder,
+    page,
+    reloadKey,
+  ]);
 
   useEffect(() => {
-    const normalizedSearch = deferredSearchTerm.trim();
+    setPage(1);
+    setSelectedStudentIds([]);
+  }, [department?.id, selectedSemester]);
 
-    const searchedResults = [...results]
-      .filter((result) => matchesAdmissionSearch(result, normalizedSearch))
-      .sort((left, right) => compareAdmissionResults(left, right, sortBy, sortOrder));
+  useEffect(() => {
+    setSelectedStudentIds([]);
+  }, [page, appliedMinimumScoreFilter, appliedSearch, appliedSortBy, appliedSortOrder]);
 
-    const nextFilteredResults = searchedResults.filter(
-      (result) =>
-        result.result_status !== "SELECTED" &&
-        isMinimumScoreEligible(result, parsedMinimumScoreFilter),
-    );
-
-    startTransition(() => {
-      setFilteredResults(nextFilteredResults);
-    });
-  }, [results, deferredSearchTerm, sortBy, sortOrder, parsedMinimumScoreFilter]);
-
-  const visibleRows = buildResultSheetRows(filteredResults);
-  const selectableResults = filteredResults.filter(
-    (result) => result.result_status !== "SELECTED",
-  );
+  const visibleRows = buildResultSheetRows(results);
+  const selectableResults = results.filter((result) => result.result_status !== "SELECTED");
 
   const allVisibleWaitingSelected =
     selectableResults.length > 0 &&
@@ -271,11 +272,18 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
         admissionResultsAPI.getResults({
           department_id: department.id,
           semester: selectedSemester,
+          exclude_result_status: "SELECTED",
+          minimum_score: appliedMinimumScoreFilter || undefined,
+          search: appliedSearch || undefined,
+          sort_by: appliedSortBy,
+          order: appliedSortOrder,
+          page,
         }),
       ]);
 
       setConfiguration(configResponse?.configurations?.[0] || null);
       setResults(resultResponse?.results || []);
+      setPagination(paginationFromDrf(resultResponse, page));
       setSummary({
         ...DEFAULT_SUMMARY,
         ...(resultResponse?.summary || {}),
@@ -286,6 +294,28 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSearch = () => {
+    setPage(1);
+    setAppliedSearch(draftSearch.trim());
+    setAppliedMinimumScoreFilter(draftMinimumScoreFilter.trim());
+    setAppliedSortBy(draftSortBy);
+    setAppliedSortOrder(draftSortOrder);
+    setReloadKey((current) => current + 1);
+  };
+
+  const handleClearSearch = () => {
+    setDraftSearch("");
+    setAppliedSearch("");
+    setDraftMinimumScoreFilter("");
+    setAppliedMinimumScoreFilter("");
+    setDraftSortBy("score");
+    setAppliedSortBy("score");
+    setDraftSortOrder("desc");
+    setAppliedSortOrder("desc");
+    setPage(1);
+    setReloadKey((current) => current + 1);
   };
 
   const handleToggleStudent = (studentId: number, checked: boolean) => {
@@ -405,7 +435,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
   };
 
   const handleDownloadSelectedReports = async () => {
-    const selectedResults = filteredResults.filter((result) =>
+    const selectedResults = results.filter((result) =>
       selectedStudentIds.includes(result.student),
     );
 
@@ -455,19 +485,6 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
 
   return (
     <div className="space-y-6">
-      <div
-        className={`rounded-lg p-6 text-white bg-gradient-to-r from-[#2E3094] to-[#4C51BF] ${gradientClass}`}
-      >
-        <h1 className="flex items-center gap-3 mb-2 text-2xl font-bold sm:text-3xl">
-          <FileCheck className="w-8 h-8" />
-          Override Selection
-        </h1>
-        <p className="text-sm leading-relaxed text-white/90 sm:text-base">
-          Review candidates for the selected semester with optional total mark filtering.
-          This page does not edit semester threshold or seat-limit setup.
-        </p>
-      </div>
-
       {isFallback && department && (
         <Alert className="border-amber-200 bg-amber-50">
           <AlertTriangle className="w-4 h-4 text-amber-600" />
@@ -521,8 +538,13 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
                 <Search className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
                 <Input
                   id="search-candidates"
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
+                  value={draftSearch}
+                  onChange={(event) => setDraftSearch(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      handleSearch();
+                    }
+                  }}
                   placeholder="Search by name, username, or form ID"
                   className="pl-10"
                 />
@@ -532,7 +554,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
             <div className="space-y-2">
               <Label>Sort By</Label>
               <div className="grid grid-cols-2 gap-2">
-                <Select value={sortBy} onValueChange={(value: "name" | "score") => setSortBy(value)}>
+                <Select value={draftSortBy} onValueChange={(value: "name" | "score") => setDraftSortBy(value)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -541,7 +563,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
                     <SelectItem value="score">Score</SelectItem>
                   </SelectContent>
                 </Select>
-                <Select value={sortOrder} onValueChange={(value: "asc" | "desc") => setSortOrder(value)}>
+                <Select value={draftSortOrder} onValueChange={(value: "asc" | "desc") => setDraftSortOrder(value)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -554,6 +576,34 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
             </div>
 
             <div className="flex items-end gap-2">
+              <Button
+                onClick={handleSearch}
+                disabled={isLoading || !department || !selectedSemester}
+                className="flex-1"
+              >
+                <Search className="w-4 h-4 mr-2" />
+                Search
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClearSearch}
+                disabled={
+                  isLoading ||
+                  (!draftSearch &&
+                    !appliedSearch &&
+                    !draftMinimumScoreFilter &&
+                    !appliedMinimumScoreFilter &&
+                    draftSortBy === "score" &&
+                    appliedSortBy === "score" &&
+                    draftSortOrder === "desc" &&
+                    appliedSortOrder === "desc")
+                }
+                className="flex-1"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Clear
+              </Button>
               <Button
                 variant="outline"
                 onClick={refreshBoard}
@@ -579,8 +629,13 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
                 min="0"
                 max="100"
                 step="0.01"
-                value={minimumScoreFilter}
-                onChange={(event) => setMinimumScoreFilter(event.target.value)}
+                value={draftMinimumScoreFilter}
+                onChange={(event) => setDraftMinimumScoreFilter(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    handleSearch();
+                  }
+                }}
                 placeholder="Minimum total mark"
               />
             </div>
@@ -592,7 +647,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
         <Card>
           <CardContent className="p-4">
             <p className="text-sm font-medium text-gray-600">Total Candidates</p>
-            <p className="text-2xl font-bold text-blue-600">{results.length}</p>
+            <p className="text-2xl font-bold text-blue-600">{pagination.count}</p>
           </CardContent>
         </Card>
         <Card>
@@ -673,7 +728,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
                       setTopCandidateCount(value);
                     }
                   }}
-                  placeholder="e.g. 20"
+                  placeholder="Top on page"
                   className="w-24 h-8"
                 />
               </div>
@@ -746,11 +801,11 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
             <div className="py-12 text-center text-gray-500">
               Select a semester to load examinee results.
             </div>
-          ) : filteredResults.length === 0 ? (
+          ) : results.length === 0 ? (
             <div className="py-12 text-center text-gray-500">
-              {results.length === 0
-                ? "No examinee results are available for this semester yet."
-                : "No candidates match the current filter and search."}
+              {appliedSearch || appliedMinimumScoreFilter
+                ? "No candidates match the current filter and search."
+                : "No examinee results are available for this semester yet."}
             </div>
           ) : (
             <div className="overflow-hidden border rounded-md">
@@ -762,7 +817,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
                           checked={allVisibleWaitingSelected}
                           onCheckedChange={(checked) => handleToggleAllWaiting(Boolean(checked))}
                           disabled={selectableResults.length === 0}
-                          aria-label="Select all eligible candidates"
+                          aria-label="Select page eligible candidates"
                         />
                       </TableHead>
                     <TableHead>SL</TableHead>
@@ -780,7 +835,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredResults.map((result, index) => {
+                  {results.map((result, index) => {
                     const row = visibleRows[index];
                     const isSelectable = result.result_status !== "SELECTED";
                     const isChecked = selectedStudentIds.includes(result.student);
@@ -803,7 +858,9 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
                             aria-label={`Select ${result.student_full_name}`}
                           />
                         </TableCell>
-                        <TableCell>{row.serial}</TableCell>
+                        <TableCell>
+                          {(pagination.current_page - 1) * pagination.page_size + index + 1}
+                        </TableCell>
                         <TableCell className="font-medium">{row.applicationSerial}</TableCell>
                         <TableCell>
                           <div>
@@ -875,6 +932,12 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
                   })}
                 </TableBody>
               </Table>
+              <PaginationControls
+                pagination={pagination}
+                onPageChange={setPage}
+                isLoading={isLoading}
+                itemLabel="candidates"
+              />
             </div>
           )}
         </CardContent>

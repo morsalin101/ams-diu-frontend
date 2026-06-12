@@ -6,8 +6,9 @@ import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
-import { Calendar, Clock, Building, Users, Plus, Loader2, Trash2, CheckCircle, AlertCircle, FileText, RefreshCw, ArrowRight, Search } from 'lucide-react';
+import { Calendar, Clock, Building, Users, Plus, Loader2, Trash2, CheckCircle, FileText, RefreshCw, ArrowRight, Search, X } from 'lucide-react';
 import { examAPI, scheduleAPI } from '../services/api';
+import PaginationControls, { DEFAULT_PAGINATION, paginationFromDrf } from '../components/PaginationControls';
 import toast from 'react-hot-toast';
 
 interface Exam {
@@ -40,15 +41,20 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
   const [todaysExams, setTodaysExams] = useState<Exam[]>([]);
   const [filteredLeftExams, setFilteredLeftExams] = useState<Exam[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
-  const [filteredSchedules, setFilteredSchedules] = useState<Schedule[]>([]);
+  const [scheduledExamIds, setScheduledExamIds] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isCreatingSchedule, setIsCreatingSchedule] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   
   // Filter states
   const [leftFilter, setLeftFilter] = useState<'today' | 'all' | 'unscheduled'>('today');
-  const [rightFilter, setRightFilter] = useState<'today' | 'all'>('all');
-  const [semesterSearch, setSemesterSearch] = useState('');
+  const [draftRightFilter, setDraftRightFilter] = useState<'today' | 'all'>('all');
+  const [appliedRightFilter, setAppliedRightFilter] = useState<'today' | 'all'>('all');
+  const [draftSearch, setDraftSearch] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [pagination, setPagination] = useState(DEFAULT_PAGINATION);
   
   // Dialog state for scheduling
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
@@ -57,21 +63,21 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
 
   useEffect(() => {
     loadExams();
-    loadSchedules();
+    loadScheduleLookup();
   }, []);
+
+  useEffect(() => {
+    loadSchedules();
+  }, [page, appliedSearch, appliedRightFilter, reloadKey]);
 
   useEffect(() => {
     filterLeftPanelExams();
   }, [exams, todaysExams, leftFilter]);
 
-  useEffect(() => {
-    filterRightPanelSchedules();
-  }, [schedules, exams, rightFilter, semesterSearch]);
-
   const loadExams = async () => {
     setIsLoading(true);
     try {
-      const response = await examAPI.getAllExams();
+      const response = await examAPI.getAllExamsForLookup();
       const examData = response.results || response;
       setExams(examData);
       
@@ -93,12 +99,33 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
 
   const loadSchedules = async () => {
     try {
-      const response = await scheduleAPI.getAllSchedules();
-      const scheduleData = response.results || response;
+      const response = await scheduleAPI.getAllSchedules({
+        page,
+        search: appliedSearch || undefined,
+        date_filter: appliedRightFilter === 'today' ? 'today' : undefined,
+      });
+      const scheduleData = response.results || response.data || response;
       setSchedules(scheduleData);
+      setPagination(paginationFromDrf(response, page));
     } catch (error) {
       console.error('Error loading schedules:', error);
       toast.error('Failed to load schedules');
+      setSchedules([]);
+      setPagination(DEFAULT_PAGINATION);
+    }
+  };
+
+  const loadScheduleLookup = async () => {
+    try {
+      const response = await scheduleAPI.getAllSchedulesForLookup();
+      const scheduleData = response.results || response.data || response;
+      setScheduledExamIds(
+        Array.isArray(scheduleData)
+          ? scheduleData.filter((schedule: Schedule) => schedule.is_active).map((schedule: Schedule) => schedule.exam)
+          : [],
+      );
+    } catch (error) {
+      console.error('Error loading schedule lookup:', error);
     }
   };
 
@@ -122,30 +149,20 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
     setFilteredLeftExams(filtered);
   };
 
-  const filterRightPanelSchedules = () => {
-    let filtered = schedules;
-    
-    // Filter by date
-    if (rightFilter === 'today') {
-      const today = new Date().toISOString().split('T')[0];
-      filtered = filtered.filter(schedule => {
-        const scheduleDate = new Date(schedule.start_time).toISOString().split('T')[0];
-        return scheduleDate === today;
-      });
-    }
-    
-    // Filter by semester search
-    if (semesterSearch.trim()) {
-      filtered = filtered.filter(schedule => {
-        const exam = getExamDetails(schedule.exam);
-        return exam && (
-          exam.semester.toLowerCase().includes(semesterSearch.toLowerCase()) ||
-          exam.department.toLowerCase().includes(semesterSearch.toLowerCase())
-        );
-      });
-    }
-    
-    setFilteredSchedules(filtered);
+  const handleSearchSchedules = () => {
+    setPage(1);
+    setAppliedSearch(draftSearch.trim());
+    setAppliedRightFilter(draftRightFilter);
+    setReloadKey((current) => current + 1);
+  };
+
+  const handleClearSchedules = () => {
+    setDraftSearch('');
+    setAppliedSearch('');
+    setDraftRightFilter('all');
+    setAppliedRightFilter('all');
+    setPage(1);
+    setReloadKey((current) => current + 1);
   };
 
   const handleQuestionClick = (exam: Exam) => {
@@ -176,6 +193,7 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
       setSelectedExamForSchedule(null);
       setScheduleTime('');
       await loadSchedules();
+      await loadScheduleLookup();
       
     } catch (error) {
       console.error('Error adding to schedule:', error);
@@ -189,8 +207,9 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
     setDeletingId(scheduleId);
     try {
       await scheduleAPI.deleteSchedule(scheduleId);
-      setSchedules(prev => prev.filter(schedule => schedule.id !== scheduleId));
       toast.success('Schedule deleted successfully');
+      setReloadKey((current) => current + 1);
+      await loadScheduleLookup();
     } catch (error) {
       console.error('Error deleting schedule:', error);
       toast.error('Failed to delete schedule');
@@ -215,7 +234,7 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
   };
 
   const isExamScheduled = (examId: number) => {
-    return schedules.some(schedule => schedule.exam === examId && schedule.is_active);
+    return scheduledExamIds.includes(examId);
   };
 
   // Get current date and time for min attribute
@@ -227,14 +246,6 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Header */}
-      <div className={`bg-gradient-to-r from-[#4C51BF] to-[#667EEA] ${gradientClass} rounded-lg p-4 sm:p-6 text-white`}>
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2 sm:mb-3">Exam Schedule</h1>
-        <p className="text-white/90 text-sm sm:text-base leading-relaxed">
-          Select today's questions to schedule exams with specific start times.
-        </p>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Panel - Today's Questions */}
         <Card className="border-2 border-gray-200">
@@ -362,7 +373,7 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
                 {/* Right Panel Filters */}
                 <div className="mt-4 space-y-3">
                   <div className="grid grid-cols-2 gap-2">
-                    <Select value={rightFilter} onValueChange={(value: 'today' | 'all') => setRightFilter(value)}>
+                    <Select value={draftRightFilter} onValueChange={(value: 'today' | 'all') => setDraftRightFilter(value)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Filter by date" />
                       </SelectTrigger>
@@ -372,24 +383,47 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
                       </SelectContent>
                     </Select>
                     <Button
-                      onClick={loadSchedules}
+                      onClick={handleSearchSchedules}
                       variant="outline"
                       size="sm"
                       disabled={isLoading}
                     >
-                      {isLoading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <RefreshCw className="h-4 w-4" />
-                      )}
+                      <Search className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      onClick={handleClearSchedules}
+                      variant="outline"
+                      size="sm"
+                      disabled={
+                        isLoading ||
+                        (!draftSearch &&
+                          !appliedSearch &&
+                          draftRightFilter === 'all' &&
+                          appliedRightFilter === 'all')
+                      }
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      onClick={() => setReloadKey((current) => current + 1)}
+                      variant="outline"
+                      size="sm"
+                      disabled={isLoading}
+                    >
+                      <RefreshCw className="h-4 w-4" />
                     </Button>
                   </div>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                     <Input
                       placeholder="Search by semester or department..."
-                      value={semesterSearch}
-                      onChange={(e) => setSemesterSearch(e.target.value)}
+                      value={draftSearch}
+                      onChange={(e) => setDraftSearch(e.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          handleSearchSchedules();
+                        }
+                      }}
                       className="w-full pl-10"
                     />
                   </div>
@@ -398,22 +432,22 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
             </div>
           </CardHeader>
           <CardContent className="p-6">
-            {filteredSchedules.length === 0 ? (
+            {schedules.length === 0 ? (
               <div className="text-center py-8">
                 <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-400" />
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                  {rightFilter === 'today' ? 'No Schedules Today' : 
-                   semesterSearch ? 'No Matching Schedules' : 'No Schedules Found'}
+                  {appliedRightFilter === 'today' ? 'No Schedules Today' : 
+                   appliedSearch ? 'No Matching Schedules' : 'No Schedules Found'}
                 </h3>
                 <p className="text-gray-600">
-                  {rightFilter === 'today' ? 'No exams are scheduled for today.' :
-                   semesterSearch ? 'Try adjusting your search criteria.' :
+                  {appliedRightFilter === 'today' ? 'No exams are scheduled for today.' :
+                   appliedSearch ? 'No schedules match this search.' :
                    'Schedule exams from questions on the left.'}
                 </p>
               </div>
             ) : (
               <div className="space-y-4 max-h-96 overflow-y-auto">
-                {filteredSchedules.map((schedule) => {
+                {schedules.map((schedule) => {
                   const exam = getExamDetails(schedule.exam);
                   return (
                     <Card key={schedule.id} className="border border-gray-200 hover:shadow-md transition-shadow">
@@ -486,6 +520,12 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
                     </Card>
                   );
                 })}
+                <PaginationControls
+                  pagination={pagination}
+                  onPageChange={setPage}
+                  isLoading={isLoading}
+                  itemLabel="schedules"
+                />
               </div>
             )}
           </CardContent>

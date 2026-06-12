@@ -243,25 +243,15 @@ export function BlockedQuestions({ gradientClass }: { gradientClass: string }) {
 
   return (
     <div className="p-4 space-y-6 sm:p-6">
-      {/* Header */}
-      <div className={`rounded-lg p-4 sm:p-6 text-white bg-gradient-to-tr from-[#2E3094] to-[#4C51BF]`}>
-        <h1 className="flex items-center gap-3 mb-2 text-xl font-bold sm:text-2xl md:text-3xl sm:mb-3">
-          <AlertTriangle className="w-8 h-8" />
-          Blocked Questions
-        </h1>
-        <p className="text-sm leading-relaxed text-white/90 sm:text-base">
-          View and review questions that have been blocked from exam generation.
-        </p>
-        <div className="flex items-center gap-4 mt-3 text-sm">
-          <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4" />
-            <span>{filteredQuestions.length} questions</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <CheckCircle className="w-4 h-4" />
-            <span>{filteredQuestions.filter(q => q.issue_solved).length} resolved</span>
-          </div>
-        </div>
+      <div className="flex flex-wrap items-center gap-3 text-sm text-slate-700">
+        <Badge variant="outline" className="gap-2">
+          <FileText className="w-4 h-4" />
+          {filteredQuestions.length} questions
+        </Badge>
+        <Badge variant="outline" className="gap-2">
+          <CheckCircle className="w-4 h-4 text-emerald-600" />
+          {filteredQuestions.filter(q => q.issue_solved).length} resolved
+        </Badge>
       </div>
 
       {/* Filters */}

@@ -4,9 +4,10 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { FileText, Search, RefreshCw, User, Building, CheckCircle, XCircle } from 'lucide-react';
+import { FileText, Search, RefreshCw, User, Building, CheckCircle, XCircle, X } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { admissionResultsAPI, examAPI, departmentAPI } from '../services/api';
+import PaginationControls, { DEFAULT_PAGINATION, paginationFromDrf } from '../components/PaginationControls';
 import toast from 'react-hot-toast';
 
 interface AdmissionResult {
@@ -46,11 +47,19 @@ const AllResults: React.FC = () => {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [exams, setExams] = useState<Exam[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterExamId, setFilterExamId] = useState<string>('all');
-  const [filterDepartmentId, setFilterDepartmentId] = useState<string>('all');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterSelection, setFilterSelection] = useState<string>('all');
+  const [draftSearch, setDraftSearch] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const [draftFilterExamId, setDraftFilterExamId] = useState<string>('all');
+  const [appliedFilterExamId, setAppliedFilterExamId] = useState<string>('all');
+  const [draftFilterDepartmentId, setDraftFilterDepartmentId] = useState<string>('all');
+  const [appliedFilterDepartmentId, setAppliedFilterDepartmentId] = useState<string>('all');
+  const [draftFilterStatus, setDraftFilterStatus] = useState<string>('all');
+  const [appliedFilterStatus, setAppliedFilterStatus] = useState<string>('all');
+  const [draftFilterSelection, setDraftFilterSelection] = useState<string>('all');
+  const [appliedFilterSelection, setAppliedFilterSelection] = useState<string>('all');
+  const [page, setPage] = useState(1);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [pagination, setPagination] = useState(DEFAULT_PAGINATION);
 
   useEffect(() => {
     loadInitialData();
@@ -58,20 +67,24 @@ const AllResults: React.FC = () => {
 
   useEffect(() => {
     loadResults();
-  }, [filterExamId, filterDepartmentId, filterStatus, filterSelection]);
+  }, [
+    page,
+    appliedSearch,
+    appliedFilterExamId,
+    appliedFilterDepartmentId,
+    appliedFilterStatus,
+    appliedFilterSelection,
+    reloadKey,
+  ]);
 
   const loadInitialData = async () => {
-    setIsLoading(true);
     try {
       await Promise.all([
         loadDepartments(),
         loadExams(),
-        loadResults()
       ]);
     } catch (error) {
       console.error('Error loading initial data:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -88,7 +101,7 @@ const AllResults: React.FC = () => {
 
   const loadExams = async () => {
     try {
-      const response = await examAPI.getAllExams();
+      const response = await examAPI.getAllExamsForLookup();
       const examData = response.results || response;
       setExams(examData);
     } catch (error: any) {
@@ -97,49 +110,66 @@ const AllResults: React.FC = () => {
   };
 
   const loadResults = async () => {
+    setIsLoading(true);
     try {
-      const params: any = {};
-      if (filterExamId && filterExamId !== 'all') params.exam_id = filterExamId;
-      if (filterDepartmentId && filterDepartmentId !== 'all') params.department_id = filterDepartmentId;
-      if (filterStatus && filterStatus !== 'all') params.status = filterStatus;
-      if (filterSelection && filterSelection !== 'all') params.is_selected = filterSelection === 'true';
+      const params: any = { page };
+      if (appliedSearch) params.search = appliedSearch;
+      if (appliedFilterExamId && appliedFilterExamId !== 'all') params.exam_id = appliedFilterExamId;
+      if (appliedFilterDepartmentId && appliedFilterDepartmentId !== 'all') params.department_id = appliedFilterDepartmentId;
+      if (appliedFilterStatus && appliedFilterStatus !== 'all') params.status = appliedFilterStatus;
+      if (appliedFilterSelection && appliedFilterSelection !== 'all') params.is_selected = appliedFilterSelection === 'true';
 
       const response = await admissionResultsAPI.getResults(params);
       if (response.success) {
         setResults(response.results || []);
+        setPagination(paginationFromDrf(response, page));
       }
     } catch (error: any) {
       console.error('Error loading results:', error);
       toast.error('Failed to load results');
+      setResults([]);
+      setPagination(DEFAULT_PAGINATION);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const getFilteredResults = () => {
-    if (!searchTerm.trim()) return results;
-
-    const search = searchTerm.toLowerCase();
-    return results.filter(
-      (result) =>
-        result.student_name.toLowerCase().includes(search) ||
-        result.student_username.toLowerCase().includes(search) ||
-        result.student_email.toLowerCase().includes(search)
-    );
+  const handleSearch = () => {
+    setPage(1);
+    setAppliedSearch(draftSearch.trim());
+    setAppliedFilterExamId(draftFilterExamId);
+    setAppliedFilterDepartmentId(draftFilterDepartmentId);
+    setAppliedFilterStatus(draftFilterStatus);
+    setAppliedFilterSelection(draftFilterSelection);
+    setReloadKey((current) => current + 1);
   };
 
-  const filteredResults = getFilteredResults();
+  const handleClearFilters = () => {
+    setDraftSearch('');
+    setAppliedSearch('');
+    setDraftFilterExamId('all');
+    setAppliedFilterExamId('all');
+    setDraftFilterDepartmentId('all');
+    setAppliedFilterDepartmentId('all');
+    setDraftFilterStatus('all');
+    setAppliedFilterStatus('all');
+    setDraftFilterSelection('all');
+    setAppliedFilterSelection('all');
+    setPage(1);
+    setReloadKey((current) => current + 1);
+  };
+
+  const hasAppliedFilters =
+    appliedSearch ||
+    appliedFilterExamId !== 'all' ||
+    appliedFilterDepartmentId !== 'all' ||
+    appliedFilterStatus !== 'all' ||
+    appliedFilterSelection !== 'all';
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <FileText className="h-8 w-8 text-blue-600" />
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">All Results</h1>
-            <p className="text-gray-600">View admission test results</p>
-          </div>
-        </div>
-        <Button variant="outline" onClick={() => loadResults()} disabled={isLoading}>
+      <div className="flex justify-end">
+        <Button variant="outline" onClick={() => setReloadKey((current) => current + 1)} disabled={isLoading}>
           <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
@@ -156,14 +186,19 @@ const AllResults: React.FC = () => {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Search by name, username..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by name, username, or form ID..."
+                value={draftSearch}
+                onChange={(e) => setDraftSearch(e.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    handleSearch();
+                  }
+                }}
                 className="pl-10"
               />
             </div>
 
-            <Select value={filterExamId} onValueChange={setFilterExamId}>
+            <Select value={draftFilterExamId} onValueChange={setDraftFilterExamId}>
               <SelectTrigger>
                 <SelectValue placeholder="All Exams" />
               </SelectTrigger>
@@ -177,7 +212,7 @@ const AllResults: React.FC = () => {
               </SelectContent>
             </Select>
 
-            <Select value={filterDepartmentId} onValueChange={setFilterDepartmentId}>
+            <Select value={draftFilterDepartmentId} onValueChange={setDraftFilterDepartmentId}>
               <SelectTrigger>
                 <SelectValue placeholder="All Departments" />
               </SelectTrigger>
@@ -191,7 +226,7 @@ const AllResults: React.FC = () => {
               </SelectContent>
             </Select>
 
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <Select value={draftFilterStatus} onValueChange={setDraftFilterStatus}>
               <SelectTrigger>
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
@@ -203,7 +238,7 @@ const AllResults: React.FC = () => {
               </SelectContent>
             </Select>
 
-            <Select value={filterSelection} onValueChange={setFilterSelection}>
+            <Select value={draftFilterSelection} onValueChange={setDraftFilterSelection}>
               <SelectTrigger>
                 <SelectValue placeholder="All Students" />
               </SelectTrigger>
@@ -213,6 +248,33 @@ const AllResults: React.FC = () => {
                 <SelectItem value="false">Not Selected</SelectItem>
               </SelectContent>
             </Select>
+
+            <div className="flex gap-2 md:col-span-2 lg:col-span-3">
+              <Button onClick={handleSearch} disabled={isLoading}>
+                <Search className="h-4 w-4 mr-2" />
+                Search
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleClearFilters}
+                disabled={
+                  isLoading ||
+                  (!draftSearch &&
+                    !appliedSearch &&
+                    draftFilterExamId === 'all' &&
+                    appliedFilterExamId === 'all' &&
+                    draftFilterDepartmentId === 'all' &&
+                    appliedFilterDepartmentId === 'all' &&
+                    draftFilterStatus === 'all' &&
+                    appliedFilterStatus === 'all' &&
+                    draftFilterSelection === 'all' &&
+                    appliedFilterSelection === 'all')
+                }
+              >
+                <X className="h-4 w-4 mr-2" />
+                Clear
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -222,7 +284,7 @@ const AllResults: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Admission Results</span>
-            <Badge variant="outline">{filteredResults.length} results</Badge>
+            <Badge variant="outline">{pagination.count} results</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -231,7 +293,7 @@ const AllResults: React.FC = () => {
               <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
               <span className="ml-2">Loading results...</span>
             </div>
-          ) : filteredResults.length > 0 ? (
+          ) : results.length > 0 ? (
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
@@ -248,7 +310,7 @@ const AllResults: React.FC = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredResults.map((result) => (
+                  {results.map((result) => (
                     <TableRow key={result.id}>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -313,10 +375,20 @@ const AllResults: React.FC = () => {
             <div className="text-center py-8 text-gray-500">
               <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
               <p className="text-lg font-medium">No results found</p>
-              <p className="text-sm">Try adjusting your filters</p>
+              <p className="text-sm">
+                {hasAppliedFilters ? 'Try adjusting your filters' : 'No admission results are available yet'}
+              </p>
             </div>
           )}
         </CardContent>
+        {!isLoading && results.length > 0 && (
+          <PaginationControls
+            pagination={pagination}
+            onPageChange={setPage}
+            isLoading={isLoading}
+            itemLabel="results"
+          />
+        )}
       </Card>
     </div>
   );

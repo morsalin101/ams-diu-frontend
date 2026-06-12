@@ -248,17 +248,6 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
-      {/* Header */}
-      <div className={`rounded-lg p-6 text-white bg-gradient-to-r from-[#2E3094] to-[#4C51BF]`}>
-        <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
-          <BarChart3 className="h-8 w-8" />
-          Marks Distribution Management
-        </h1>
-        <p className="text-white/90 text-sm sm:text-base leading-relaxed">
-          Manage marks distribution for SSC, HSC, Diploma and Main marks across departments.
-        </p>
-      </div>
-
       {/* Controls */}
       <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
         <div className="relative flex-1">

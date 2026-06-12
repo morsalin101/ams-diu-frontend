@@ -14,6 +14,48 @@ const api = axios.create({
   timeout: 30000, // 30 seconds timeout
 });
 
+export const DEFAULT_PAGE_SIZE = 25;
+
+const withDefaultPageSize = (params = {}) => ({
+  page_size: DEFAULT_PAGE_SIZE,
+  ...params,
+});
+
+const pickArray = (data, keys = ['results', 'data']) => {
+  if (Array.isArray(data)) return data;
+  for (const key of keys) {
+    if (Array.isArray(data?.[key])) return data[key];
+  }
+  return [];
+};
+
+const getTotalPages = (data, pageSize) => {
+  if (data?.pagination?.total_pages) {
+    return Number(data.pagination.total_pages) || 1;
+  }
+  if (data?.count) {
+    return Math.max(1, Math.ceil(Number(data.count) / pageSize));
+  }
+  return 1;
+};
+
+const fetchAllPaginated = async (requestPage, keys = ['results', 'data'], pageSize = 100) => {
+  const firstData = await requestPage({ page: 1, page_size: pageSize });
+  const allItems = [...pickArray(firstData, keys)];
+  const totalPages = getTotalPages(firstData, pageSize);
+
+  for (let page = 2; page <= totalPages; page += 1) {
+    const pageData = await requestPage({ page, page_size: pageSize });
+    allItems.push(...pickArray(pageData, keys));
+  }
+
+  return {
+    ...firstData,
+    results: allItems,
+    data: allItems,
+  };
+};
+
 const parseBlobJsonError = async (error, fallbackMessage) => {
   const response = error?.response;
   const data = response?.data;
@@ -154,7 +196,7 @@ export const examAPI = {
   getAllResultsByTeacher: async (teacherId, params = {}) => {
     try {
       const response = await api.get(`/api/get-all-results-by-teacher/${teacherId}/`, {
-        params,
+        params: withDefaultPageSize(params),
       });
       return response.data;
     } catch (error) {
@@ -163,9 +205,11 @@ export const examAPI = {
   },
 
   // Get all published exams
-  getPublishedExams: async () => {
+  getPublishedExams: async (params = {}) => {
     try {
-      const response = await api.get('/api/published-exams/');
+      const response = await api.get('/api/published-exams/', {
+        params: withDefaultPageSize(params),
+      });
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -245,10 +289,24 @@ export const examAPI = {
   },
 
   // Get all exams
-  getAllExams: async () => {
+  getAllExams: async (params = {}) => {
     try {
-      const response = await api.get('/api/all-exams/');
+      const response = await api.get('/api/all-exams/', {
+        params: withDefaultPageSize(params),
+      });
       return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Explicit lookup helper for controls that need the complete exam option list
+  getAllExamsForLookup: async (params = {}) => {
+    try {
+      return await fetchAllPaginated(
+        (pageParams) => examAPI.getAllExams({ ...params, ...pageParams }),
+        ['results', 'data'],
+      );
     } catch (error) {
       throw error.response?.data || error.message;
     }
@@ -335,10 +393,24 @@ export const examAPI = {
 // Students API endpoints
 export const studentsAPI = {
   // Get all students
-  getAllStudents: async () => {
+  getAllStudents: async (params = {}) => {
     try {
-      const response = await api.get('/api/students/');
+      const response = await api.get('/api/students/', {
+        params: withDefaultPageSize(params),
+      });
       return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Explicit lookup helper for controls that need the complete student option list
+  getAllStudentsForLookup: async (params = {}) => {
+    try {
+      return await fetchAllPaginated(
+        (pageParams) => studentsAPI.getAllStudents({ ...params, ...pageParams }),
+        ['students', 'results', 'data'],
+      );
     } catch (error) {
       throw error.response?.data || error.message;
     }
@@ -398,10 +470,24 @@ export const scheduleAPI = {
   },
 
   // Get all exam schedules
-  getAllSchedules: async () => {
+  getAllSchedules: async (params = {}) => {
     try {
-      const response = await api.get('/api/schedules/');
+      const response = await api.get('/api/schedules/', {
+        params: withDefaultPageSize(params),
+      });
       return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Explicit lookup helper for controls that need the complete schedule option list
+  getAllSchedulesForLookup: async (params = {}) => {
+    try {
+      return await fetchAllPaginated(
+        (pageParams) => scheduleAPI.getAllSchedules({ ...params, ...pageParams }),
+        ['results', 'data'],
+      );
     } catch (error) {
       throw error.response?.data || error.message;
     }
@@ -847,9 +933,11 @@ export const subjectDepartmentAPI = {
 // Student Assignment API endpoints
 export const studentAssignmentAPI = {
   // Get all student assignments
-  getAllAssignments: async () => {
+  getAllAssignments: async (params = {}) => {
     try {
-      const response = await api.get('/api/student-assignments/');
+      const response = await api.get('/api/student-assignments/', {
+        params: withDefaultPageSize(params),
+      });
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -889,9 +977,11 @@ export const studentAssignmentAPI = {
   },
 
   // Get assignments for a specific teacher
-  getAssignmentsByTeacher: async (teacherId) => {
+  getAssignmentsByTeacher: async (teacherId, params = {}) => {
     try {
-      const response = await api.get(`/api/student-assignments/${teacherId}/`);
+      const response = await api.get(`/api/student-assignments/${teacherId}/`, {
+        params: withDefaultPageSize(params),
+      });
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -1035,9 +1125,11 @@ export const marksDistributionAPI = {
 // Viva Assignment API endpoints
 export const vivaAssignmentAPI = {
   // Get all viva assignments
-  getAllAssignments: async () => {
+  getAllAssignments: async (params = {}) => {
     try {
-      const response = await api.get('/api/viva-assignments/');
+      const response = await api.get('/api/viva-assignments/', {
+        params: withDefaultPageSize(params),
+      });
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -1196,19 +1288,28 @@ export const admissionResultsAPI = {
   // Get admission results with optional filtering
   getResults: async (params = {}) => {
     try {
-      const mergedParams = {
-        page_size: 100,
-        ...params,
-      };
-      const response = await api.get('/api/admission/results/', { params: mergedParams });
-      const responseData = response.data;
+      const response = await api.get('/api/admission/results/', {
+        params: withDefaultPageSize(params),
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
 
-      if (!responseData?.next) {
-        return responseData;
-      }
-
-      let nextUrl = responseData.next;
-      const allResults = [...(responseData.results || [])];
+  // Explicit helper for rare workflows that truly need every matching result
+  getAllResults: async (params = {}) => {
+    try {
+      const firstResponse = await api.get('/api/admission/results/', {
+        params: {
+          page_size: 100,
+          page: 1,
+          ...params,
+        },
+      });
+      const firstData = firstResponse.data;
+      const allResults = [...(firstData?.results || [])];
+      let nextUrl = firstData?.next;
 
       while (nextUrl) {
         const nextResponse = await api.get(nextUrl);
@@ -1217,7 +1318,7 @@ export const admissionResultsAPI = {
       }
 
       return {
-        ...responseData,
+        ...firstData,
         results: allResults,
       };
     } catch (error) {

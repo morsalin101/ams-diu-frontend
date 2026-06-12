@@ -446,15 +446,7 @@ const MySchedule: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <FileSearch className="h-8 w-8 text-blue-600" />
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">My Schedule</h1>
-            <p className="text-gray-600">View your assigned exam schedules</p>
-          </div>
-        </div>
+      <div className="flex justify-end">
         <Button variant="outline" onClick={loadSchedule} disabled={isLoading}>
           <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
           Refresh

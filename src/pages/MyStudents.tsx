@@ -4,10 +4,11 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Users, User, BookOpen, Calendar, Building, Search, RefreshCw, FileText } from 'lucide-react';
+import { Users, User, Calendar, Building, Search, RefreshCw, FileText, X } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { studentAssignmentAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import PaginationControls, { DEFAULT_PAGINATION, paginationFromDrf } from '../components/PaginationControls';
 import toast from 'react-hot-toast';
 
 interface StudentAssignment {
@@ -30,21 +31,26 @@ interface StudentAssignment {
 const MyStudents: React.FC = () => {
   const { user } = useAuth();
   const [assignments, setAssignments] = useState<StudentAssignment[]>([]);
-  const [filteredAssignments, setFilteredAssignments] = useState<StudentAssignment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterDepartment, setFilterDepartment] = useState<string>('all');
-  const [filterSemester, setFilterSemester] = useState<string>('all');
+  const [draftSearch, setDraftSearch] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const [draftFilterDepartment, setDraftFilterDepartment] = useState<string>('all');
+  const [appliedFilterDepartment, setAppliedFilterDepartment] = useState<string>('all');
+  const [draftFilterSemester, setDraftFilterSemester] = useState<string>('all');
+  const [appliedFilterSemester, setAppliedFilterSemester] = useState<string>('all');
+  const [page, setPage] = useState(1);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [pagination, setPagination] = useState(DEFAULT_PAGINATION);
+  const [filterOptions, setFilterOptions] = useState<{
+    departments?: string[];
+    semesters?: string[];
+  }>({});
 
   useEffect(() => {
     if (user?.id) {
       loadMyStudents();
     }
-  }, [user]);
-
-  useEffect(() => {
-    filterStudents();
-  }, [assignments, searchTerm, filterDepartment, filterSemester]);
+  }, [user?.id, page, appliedSearch, appliedFilterDepartment, appliedFilterSemester, reloadKey]);
 
   const loadMyStudents = async () => {
     if (!user?.id) {
@@ -54,53 +60,51 @@ const MyStudents: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const response = await studentAssignmentAPI.getAssignmentsByTeacher(user.id);
+      const response = await studentAssignmentAPI.getAssignmentsByTeacher(user.id, {
+        page,
+        search: appliedSearch || undefined,
+        department: appliedFilterDepartment !== 'all' ? appliedFilterDepartment : undefined,
+        semester: appliedFilterSemester !== 'all' ? appliedFilterSemester : undefined,
+      });
       const data = Array.isArray(response) ? response : response.data || [];
       setAssignments(data);
+      setPagination(paginationFromDrf(response, page));
+      setFilterOptions(response.filter_options || {});
     } catch (error: any) {
       console.error('Error loading students:', error);
       toast.error(error.message || 'Failed to load students');
       setAssignments([]);
+      setPagination(DEFAULT_PAGINATION);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const filterStudents = () => {
-    let filtered = [...assignments];
+  const handleSearch = () => {
+    setPage(1);
+    setAppliedSearch(draftSearch.trim());
+    setAppliedFilterDepartment(draftFilterDepartment);
+    setAppliedFilterSemester(draftFilterSemester);
+    setReloadKey((current) => current + 1);
+  };
 
-    // Search filter
-    if (searchTerm.trim()) {
-      const search = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (assignment) =>
-          assignment.student_full_name.toLowerCase().includes(search) ||
-          assignment.student_username.toLowerCase().includes(search) ||
-          assignment.student_f_id.toLowerCase().includes(search)
-      );
-    }
-
-    // Department filter
-    if (filterDepartment && filterDepartment !== 'all') {
-      filtered = filtered.filter((assignment) => assignment.exam_department === filterDepartment);
-    }
-
-    // Semester filter
-    if (filterSemester && filterSemester !== 'all') {
-      filtered = filtered.filter((assignment) => assignment.exam_semester === filterSemester);
-    }
-
-    setFilteredAssignments(filtered);
+  const handleClearSearch = () => {
+    setDraftSearch('');
+    setAppliedSearch('');
+    setDraftFilterDepartment('all');
+    setAppliedFilterDepartment('all');
+    setDraftFilterSemester('all');
+    setAppliedFilterSemester('all');
+    setPage(1);
+    setReloadKey((current) => current + 1);
   };
 
   const getDepartments = (): string[] => {
-    const departments = new Set(assignments.map((a) => a.exam_department));
-    return Array.from(departments).sort();
+    return [...new Set((filterOptions.departments || []).filter(Boolean))].sort();
   };
 
   const getSemesters = (): string[] => {
-    const semesters = new Set(assignments.map((a) => a.exam_semester));
-    return Array.from(semesters).sort();
+    return [...new Set((filterOptions.semesters || []).filter(Boolean))].sort();
   };
 
   const formatDate = (dateString: string): string => {
@@ -126,15 +130,7 @@ const MyStudents: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Users className="h-8 w-8 text-blue-600" />
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">My Students</h1>
-            <p className="text-gray-600">Students assigned to you for exams</p>
-          </div>
-        </div>
+      <div className="flex justify-end">
         <Button variant="outline" onClick={loadMyStudents} disabled={isLoading}>
           <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
           Refresh
@@ -198,13 +194,18 @@ const MyStudents: React.FC = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Search by name, username, or F-ID..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={draftSearch}
+                onChange={(e) => setDraftSearch(e.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    handleSearch();
+                  }
+                }}
                 className="pl-10"
               />
             </div>
 
-            <Select value={filterDepartment} onValueChange={setFilterDepartment}>
+            <Select value={draftFilterDepartment} onValueChange={setDraftFilterDepartment}>
               <SelectTrigger>
                 <SelectValue placeholder="All Departments" />
               </SelectTrigger>
@@ -218,7 +219,7 @@ const MyStudents: React.FC = () => {
               </SelectContent>
             </Select>
 
-            <Select value={filterSemester} onValueChange={setFilterSemester}>
+            <Select value={draftFilterSemester} onValueChange={setDraftFilterSemester}>
               <SelectTrigger>
                 <SelectValue placeholder="All Semesters" />
               </SelectTrigger>
@@ -231,6 +232,28 @@ const MyStudents: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
+            <div className="flex gap-2 md:col-span-3">
+              <Button onClick={handleSearch} disabled={isLoading || !user?.id}>
+                <Search className="h-4 w-4 mr-2" />
+                Search
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleClearSearch}
+                disabled={
+                  isLoading ||
+                  (!draftSearch &&
+                    !appliedSearch &&
+                    draftFilterDepartment === 'all' &&
+                    appliedFilterDepartment === 'all' &&
+                    draftFilterSemester === 'all' &&
+                    appliedFilterSemester === 'all')
+                }
+              >
+                <X className="h-4 w-4 mr-2" />
+                Clear
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -240,7 +263,7 @@ const MyStudents: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Assigned Students</span>
-            <Badge variant="outline">{filteredAssignments.length} students</Badge>
+            <Badge variant="outline">{pagination.count} students</Badge>
           </CardTitle>
           <CardDescription>
             List of all students assigned to you
@@ -252,7 +275,7 @@ const MyStudents: React.FC = () => {
               <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
               <span className="ml-2">Loading students...</span>
             </div>
-          ) : filteredAssignments.length > 0 ? (
+          ) : assignments.length > 0 ? (
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
@@ -266,7 +289,7 @@ const MyStudents: React.FC = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredAssignments.map((assignment) => (
+                  {assignments.map((assignment) => (
                     <TableRow key={assignment.id}>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -304,14 +327,20 @@ const MyStudents: React.FC = () => {
                   ))}
                 </TableBody>
               </Table>
+              <PaginationControls
+                pagination={pagination}
+                onPageChange={setPage}
+                isLoading={isLoading}
+                itemLabel="students"
+              />
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500">
               <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
               <p className="text-lg font-medium">No students found</p>
               <p className="text-sm">
-                {searchTerm || filterDepartment !== 'all' || filterSemester !== 'all'
-                  ? 'Try adjusting your filters'
+                {appliedSearch || appliedFilterDepartment !== 'all' || appliedFilterSemester !== 'all'
+                  ? 'No assigned students match this search'
                   : 'No students have been assigned to you yet'}
               </p>
             </div>

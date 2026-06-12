@@ -258,17 +258,6 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
-      {/* Header */}
-      <div className={`rounded-lg p-6 text-white bg-gradient-to-r from-[#2E3094] to-[#4C51BF]`}>
-        <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-3">
-          <Award className="h-8 w-8" />
-          Viva Rubrics Management
-        </h1>
-        <p className="text-white/90 text-sm sm:text-base leading-relaxed">
-          Manage viva rubrics and scoring criteria for different departments.
-        </p>
-      </div>
-
       {/* Controls */}
       <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
         <div className="relative flex-1">

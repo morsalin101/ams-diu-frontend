@@ -277,27 +277,17 @@ const ThresholdManagement: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Sliders className="w-8 h-8 text-blue-600" />
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">Student Acceptance Criteria</h1>
-            <p className="text-gray-600">Manage semester-wide admission thresholds and seat limits</p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => loadThresholds()} disabled={isLoading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button variant="outline" onClick={() => loadThresholds()} disabled={isLoading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+        {canWrite() && (
+          <Button onClick={handleOpenDialog} className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF]">
+            <Plus className="w-4 h-4 mr-2" />
+            Set Thresholds
           </Button>
-          {canWrite() && (
-            <Button onClick={handleOpenDialog} className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF]">
-              <Plus className="w-4 h-4 mr-2" />
-              Set Thresholds
-            </Button>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Filter Card */}

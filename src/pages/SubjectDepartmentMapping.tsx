@@ -182,27 +182,17 @@ const SubjectDepartmentMapping: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Layers className="h-8 w-8 text-blue-600" />
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">Subject Department Mapping</h1>
-            <p className="text-gray-600">Map subjects to departments</p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={loadMappings} disabled={isLoading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button variant="outline" onClick={loadMappings} disabled={isLoading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+        {canWrite() && (
+          <Button onClick={() => setIsDialogOpen(true)} className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF]">
+            <Plus className="h-4 w-4 mr-2" />
+            Create Mapping
           </Button>
-          {canWrite() && (
-            <Button onClick={() => setIsDialogOpen(true)} className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF]">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Mapping
-            </Button>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Mappings List */}

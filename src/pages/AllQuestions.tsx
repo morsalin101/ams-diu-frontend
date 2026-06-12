@@ -9,8 +9,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { FileText, Eye, Edit, Search, Filter, Calendar, Building, Users, Clock, Loader2, RefreshCw, Trash2, X } from 'lucide-react';
 import { QuestionManager, Question } from '../components/QuestionManager';
 import { QuestionPaperView } from '../components/QuestionPaperView';
-import { examAPI } from '../services/api';
+import { admissionResultsAPI, departmentAPI, examAPI } from '../services/api';
 import { usePermissions } from '../hooks/usePermissions';
+import PaginationControls, { DEFAULT_PAGINATION, paginationFromDrf } from '../components/PaginationControls';
 import toast from 'react-hot-toast';
 
 interface Exam {
@@ -32,12 +33,20 @@ interface AllQuestionsProps {
 export function AllQuestions({ gradientClass }: AllQuestionsProps) {
   const { canRead, canWrite, canEdit, canDelete } = usePermissions();
   const [exams, setExams] = useState<Exam[]>([]);
-  const [filteredExams, setFilteredExams] = useState<Exam[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [departmentFilter, setDepartmentFilter] = useState('all');
-  const [semesterFilter, setSemesterFilter] = useState('all');
-  const [dateFilter, setDateFilter] = useState('all');
+  const [draftSearch, setDraftSearch] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const [draftDepartmentFilter, setDraftDepartmentFilter] = useState('all');
+  const [appliedDepartmentFilter, setAppliedDepartmentFilter] = useState('all');
+  const [draftSemesterFilter, setDraftSemesterFilter] = useState('all');
+  const [appliedSemesterFilter, setAppliedSemesterFilter] = useState('all');
+  const [draftDateFilter, setDraftDateFilter] = useState('all');
+  const [appliedDateFilter, setAppliedDateFilter] = useState('all');
+  const [departments, setDepartments] = useState<string[]>([]);
+  const [semesters, setSemesters] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [pagination, setPagination] = useState(DEFAULT_PAGINATION);
   const [totalCount, setTotalCount] = useState(0);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   
@@ -51,66 +60,95 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
   const [showPaperView, setShowPaperView] = useState(false);
   const [isReadOnlyMode, setIsReadOnlyMode] = useState(true);
 
-  // Load all exams on component mount
   useEffect(() => {
-    loadAllExams();
+    loadFilterOptions();
   }, []);
 
-  // Filter exams when search term or filters change
   useEffect(() => {
-    filterExams();
-  }, [exams, searchTerm, departmentFilter, semesterFilter, dateFilter]);
+    loadAllExams();
+  }, [
+    page,
+    appliedSearch,
+    appliedDepartmentFilter,
+    appliedSemesterFilter,
+    appliedDateFilter,
+    reloadKey,
+  ]);
 
   const loadAllExams = async () => {
     setIsLoading(true);
     try {
-      const response = await examAPI.getAllExams();
+      const response = await examAPI.getAllExams({
+        page,
+        search: appliedSearch || undefined,
+        department: appliedDepartmentFilter !== 'all' ? appliedDepartmentFilter : undefined,
+        semester: appliedSemesterFilter !== 'all' ? appliedSemesterFilter : undefined,
+        date_filter: appliedDateFilter === 'today' ? 'today' : undefined,
+      });
       const examData = response.results || response;
-      const count = response.count || examData.length;
+      const nextPagination = paginationFromDrf(response, page);
+      const count = nextPagination.count || examData.length;
       
       setExams(examData);
+      setPagination(nextPagination);
       setTotalCount(count);
-      toast.success(`Loaded ${count} exams`);
     } catch (error) {
       console.error('Error loading exams:', error);
       toast.error('Failed to load exams: ' + ((error as any)?.message || 'Unknown error'));
+      setExams([]);
+      setPagination(DEFAULT_PAGINATION);
+      setTotalCount(0);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const filterExams = () => {
-    let filtered = exams;
+  const loadFilterOptions = async () => {
+    try {
+      const [departmentResponse, semesterResponse] = await Promise.all([
+        departmentAPI.getAllDepartments(),
+        admissionResultsAPI.getSemesterOptions(),
+      ]);
 
-    // Filter by search term
-    if (searchTerm) {
-      filtered = filtered.filter(exam => 
-        exam.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        exam.semester.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        exam.id.toString().includes(searchTerm)
+      const departmentRows = departmentResponse?.data || [];
+      setDepartments(
+        Array.from(
+          new Set(
+            departmentRows
+              .flatMap((department: any) => [
+                department.department_shortname,
+                department.department_name,
+              ])
+              .filter(Boolean),
+          ),
+        ).sort(),
       );
+      setSemesters(Array.isArray(semesterResponse?.semesters) ? semesterResponse.semesters : []);
+    } catch (error) {
+      console.error('Error loading exam filter options:', error);
     }
+  };
 
-    // Filter by department
-    if (departmentFilter !== 'all') {
-      filtered = filtered.filter(exam => exam.department === departmentFilter);
-    }
+  const handleSearch = () => {
+    setPage(1);
+    setAppliedSearch(draftSearch.trim());
+    setAppliedDepartmentFilter(draftDepartmentFilter);
+    setAppliedSemesterFilter(draftSemesterFilter);
+    setAppliedDateFilter(draftDateFilter);
+    setReloadKey((current) => current + 1);
+  };
 
-    // Filter by semester
-    if (semesterFilter !== 'all') {
-      filtered = filtered.filter(exam => exam.semester === semesterFilter);
-    }
-
-    // Filter by date (today's filter)
-    if (dateFilter === 'today') {
-      const today = new Date().toISOString().split('T')[0];
-      filtered = filtered.filter(exam => {
-        const examDate = new Date(exam.created_at).toISOString().split('T')[0];
-        return examDate === today;
-      });
-    }
-
-    setFilteredExams(filtered);
+  const handleClearFilters = () => {
+    setDraftSearch('');
+    setAppliedSearch('');
+    setDraftDepartmentFilter('all');
+    setAppliedDepartmentFilter('all');
+    setDraftSemesterFilter('all');
+    setAppliedSemesterFilter('all');
+    setDraftDateFilter('all');
+    setAppliedDateFilter('all');
+    setPage(1);
+    setReloadKey((current) => current + 1);
   };
 
   const handleViewQuestions = async (examId: number, isViewMode: boolean = true) => {
@@ -179,6 +217,7 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
     try {
       await examAPI.deleteExam(id);
       setExams((prev) => prev.filter((exam) => exam.id !== id));
+      setReloadKey((current) => current + 1);
       toast.success('Exam deleted successfully');
     } catch {
       toast.error('Failed to delete exam');
@@ -197,27 +236,18 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
     });
   };
 
-  // Get unique departments and semesters for filter dropdowns
-  const departments = [...new Set(exams.map(exam => exam.department))];
-  const semesters = [...new Set(exams.map(exam => exam.semester))];
+  const hasAppliedFilters =
+    appliedSearch ||
+    appliedDepartmentFilter !== 'all' ||
+    appliedSemesterFilter !== 'all' ||
+    appliedDateFilter !== 'all';
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Header */}
-      <div className={`bg-gradient-to-r from-[#4C51BF] to-[#667EEA] ${gradientClass} rounded-lg p-4 sm:p-6 text-white`}>
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2 sm:mb-3">All Questions</h1>
-            <p className="text-white/90 text-sm sm:text-base leading-relaxed">
-              Browse and manage all exam questions across different departments and semesters.
-            </p>
-          </div>
-          <div className="ml-4 mt-1">
-            <Link to="/create-questions">
-              <Button className="bg-white text-indigo-700 hover:bg-gray-100">+Create Questions</Button>
-            </Link>
-          </div>
-        </div>
+      <div className="flex justify-end">
+        <Link to="/create-questions">
+          <Button className="bg-[#3a3ea5] hover:bg-[#30348f]">+Create Questions</Button>
+        </Link>
       </div>
 
       {/* Filters and Search */}
@@ -240,8 +270,13 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
                   placeholder="Search by department, semester, or exam ID..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  value={draftSearch}
+                  onChange={(e) => setDraftSearch(e.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      handleSearch();
+                    }
+                  }}
                   className="pl-10"
                 />
               </div>
@@ -250,7 +285,7 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
             {/* Department Filter */}
             <div className="w-full sm:w-48 space-y-2">
               <label className="text-sm font-medium text-gray-700">Department</label>
-              <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+              <Select value={draftDepartmentFilter} onValueChange={setDraftDepartmentFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Departments" />
                 </SelectTrigger>
@@ -266,7 +301,7 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
             {/* Semester Filter */}
             <div className="w-full sm:w-48 space-y-2">
               <label className="text-sm font-medium text-gray-700">Semester</label>
-              <Select value={semesterFilter} onValueChange={setSemesterFilter}>
+              <Select value={draftSemesterFilter} onValueChange={setDraftSemesterFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Semesters" />
                 </SelectTrigger>
@@ -282,7 +317,7 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
             {/* Date Filter */}
             <div className="w-full sm:w-48 space-y-2">
               <label className="text-sm font-medium text-gray-700">Date Filter</label>
-              <Select value={dateFilter} onValueChange={setDateFilter}>
+              <Select value={draftDateFilter} onValueChange={setDraftDateFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Dates" />
                 </SelectTrigger>
@@ -293,9 +328,38 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
               </Select>
             </div>
 
+            <Button
+              onClick={handleSearch}
+              disabled={isLoading}
+              className="w-full sm:w-auto"
+            >
+              <Search className="h-4 w-4 mr-2" />
+              Search
+            </Button>
+
+            <Button
+              onClick={handleClearFilters}
+              disabled={
+                isLoading ||
+                (!draftSearch &&
+                  !appliedSearch &&
+                  draftDepartmentFilter === 'all' &&
+                  appliedDepartmentFilter === 'all' &&
+                  draftSemesterFilter === 'all' &&
+                  appliedSemesterFilter === 'all' &&
+                  draftDateFilter === 'all' &&
+                  appliedDateFilter === 'all')
+              }
+              variant="outline"
+              className="w-full sm:w-auto"
+            >
+              <X className="h-4 w-4 mr-2" />
+              Clear
+            </Button>
+
             {/* Refresh Button */}
             <Button
-              onClick={loadAllExams}
+              onClick={() => setReloadKey((current) => current + 1)}
               disabled={isLoading}
               variant="outline"
               className="w-full sm:w-auto"
@@ -316,7 +380,7 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
         <div className="flex items-center gap-2">
           <FileText className="h-5 w-5 text-blue-600" />
           <span className="font-semibold text-gray-800">
-            Showing {filteredExams.length} of {totalCount} exams
+            Showing {exams.length} of {totalCount} exams
           </span>
         </div>
         <div className="text-sm text-gray-600">
@@ -332,119 +396,126 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
             <p className="text-gray-600">Loading exams...</p>
           </div>
         </div>
-      ) : filteredExams.length === 0 ? (
+      ) : exams.length === 0 ? (
         <Card className="p-8 text-center">
           <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
           <h3 className="text-lg font-semibold text-gray-800 mb-2">No exams found</h3>
           <p className="text-gray-600">
-            {searchTerm || departmentFilter !== 'all' || semesterFilter !== 'all'
+            {hasAppliedFilters
               ? 'Try adjusting your search criteria or filters.'
               : 'No exams have been created yet.'}
           </p>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
-          {filteredExams.map((exam) => (
-            <Card key={exam.id} className="border-2 border-gray-200 hover:shadow-lg transition-shadow duration-200">
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start">
-                  <CardTitle className="text-lg font-bold text-gray-800">
-                    Exam #{exam.id}
-                  </CardTitle>
-                  <Badge 
-                    variant={exam.present_question === exam.total_questions ? "default" : "secondary"}
-                    className={exam.present_question === exam.total_questions 
-                      ? "bg-green-500 hover:bg-green-600" 
-                      : "bg-yellow-500 hover:bg-yellow-600 text-white"
-                    }
-                  >
-                    {exam.present_question}/{exam.total_questions}
-                  </Badge>
-                </div>
-                <CardDescription className="text-sm text-gray-600">
-                  Created {formatDate(exam.created_at)}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Exam Details */}
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Building className="h-4 w-4 text-blue-600" />
-                    <span className="font-medium">{exam.department}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-green-600" />
-                    <span className="font-medium">{exam.semester}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-purple-600" />
-                    <span>{exam.total_marks} marks</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-orange-600" />
-                    <span>{exam.duration_minutes} min</span>
-                  </div>
-                </div>
+        <Card className="overflow-hidden">
+          <CardContent className="p-4 sm:p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
+              {exams.map((exam) => (
+                <Card key={exam.id} className="border-2 border-gray-200 hover:shadow-lg transition-shadow duration-200">
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-start">
+                      <CardTitle className="text-lg font-bold text-gray-800">
+                        Exam #{exam.id}
+                      </CardTitle>
+                      <Badge
+                        variant={exam.present_question === exam.total_questions ? "default" : "secondary"}
+                        className={exam.present_question === exam.total_questions
+                          ? "bg-green-500 hover:bg-green-600"
+                          : "bg-yellow-500 hover:bg-yellow-600 text-white"
+                        }
+                      >
+                        {exam.present_question}/{exam.total_questions}
+                      </Badge>
+                    </div>
+                    <CardDescription className="text-sm text-gray-600">
+                      Created {formatDate(exam.created_at)}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Building className="h-4 w-4 text-blue-600" />
+                        <span className="font-medium">{exam.department}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-green-600" />
+                        <span className="font-medium">{exam.semester}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-purple-600" />
+                        <span>{exam.total_marks} marks</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-orange-600" />
+                        <span>{exam.duration_minutes} min</span>
+                      </div>
+                    </div>
 
-                {/* Progress Bar */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs text-gray-600">
-                    <span>Questions Progress</span>
-                    <span>{Math.round((exam.present_question / exam.total_questions) * 100)}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${(exam.present_question / exam.total_questions) * 100}%` }}
-                    ></div>
-                  </div>
-                </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs text-gray-600">
+                        <span>Questions Progress</span>
+                        <span>{Math.round((exam.present_question / exam.total_questions) * 100)}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${(exam.present_question / exam.total_questions) * 100}%` }}
+                        ></div>
+                      </div>
+                    </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-2 pt-2">
-                  {canRead() && (
-                    <Button
-                      onClick={() => handleViewQuestions(exam.id, true)}
-                      variant="default"
-                      size="sm"
-                      className="flex-1 bg-gradient-to-r from-[#4C51BF] to-[#667EEA] ${gradientClass} hover:from-blue-700 hover:to-purple-700"
-                    >
-                      <Eye className="h-3 w-3 mr-1" />
-                      View
-                    </Button>
-                  )}
-                  {canEdit() && (
-                    <Button
-                      onClick={() => handleViewQuestions(exam.id, false)}
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 border-gray-300 hover:border-blue-400"
-                    >
-                      <Edit className="h-3 w-3 mr-1" />
-                      Edit
-                    </Button>
-                  )}
-                  {canDelete() && (
-                    <Button
-                      onClick={() => handleDeleteExam(exam.id)}
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 border-red-600 text-red-600 hover:bg-red-50"
-                      disabled={deletingId === exam.id}
-                    >
-                      {deletingId === exam.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <Trash2 className="h-4 w-4 mr-2" />
+                    <div className="flex gap-2 pt-2">
+                      {canRead() && (
+                        <Button
+                          onClick={() => handleViewQuestions(exam.id, true)}
+                          variant="default"
+                          size="sm"
+                          className="flex-1 bg-gradient-to-r from-[#4C51BF] to-[#667EEA] ${gradientClass} hover:from-blue-700 hover:to-purple-700"
+                        >
+                          <Eye className="h-3 w-3 mr-1" />
+                          View
+                        </Button>
                       )}
-                      Delete
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                      {canEdit() && (
+                        <Button
+                          onClick={() => handleViewQuestions(exam.id, false)}
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 border-gray-300 hover:border-blue-400"
+                        >
+                          <Edit className="h-3 w-3 mr-1" />
+                          Edit
+                        </Button>
+                      )}
+                      {canDelete() && (
+                        <Button
+                          onClick={() => handleDeleteExam(exam.id)}
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 border-red-600 text-red-600 hover:bg-red-50"
+                          disabled={deletingId === exam.id}
+                        >
+                          {deletingId === exam.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : (
+                            <Trash2 className="h-4 w-4 mr-2" />
+                          )}
+                          Delete
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+          <PaginationControls
+            pagination={pagination}
+            onPageChange={setPage}
+            isLoading={isLoading}
+            itemLabel="exams"
+          />
+        </Card>
       )}
 
       {/* Question Paper View */}

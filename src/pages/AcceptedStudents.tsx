@@ -1,20 +1,22 @@
-import { startTransition, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useState } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
   AlertTriangle,
+  ChevronDown,
   CheckCircle2,
   Download,
   Eye,
+  FileSpreadsheet,
   FileText,
   Loader2,
   RefreshCw,
   RotateCcw,
   Search,
   Users,
+  X,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { Link } from "react-router-dom";
 
 import { SemesterCombobox } from "../components/SemesterCombobox";
 import { Alert, AlertDescription } from "../components/ui/alert";
@@ -22,6 +24,12 @@ import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Checkbox } from "../components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
@@ -30,7 +38,6 @@ import { usePermissions } from "../hooks/usePermissions";
 import { useEffectiveDepartment } from "../hooks/useEffectiveDepartment";
 import {
   formatSemesterLabel,
-  matchesAdmissionSearch,
   PRETTY_STATUS_LABELS,
   type AdmissionResult,
 } from "../lib/admission";
@@ -48,10 +55,7 @@ import {
 import { downloadBlobFile } from "../lib/pdf-download";
 import { admissionResultsAPI, examAPI } from "../services/api";
 import { StudentAdmissionReportDialog } from "../components/StudentAdmissionReportDialog";
-
-interface AcceptedStudentsProps {
-  gradientClass?: string;
-}
+import PaginationControls, { DEFAULT_PAGINATION, paginationFromDrf } from "../components/PaginationControls";
 
 const TAB_TO_STATUS = {
   selected: "SELECTED",
@@ -67,7 +71,9 @@ const DEFAULT_SUMMARY = {
   ABSENT: 0,
 };
 
-export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) {
+type ExportFormat = "pdf" | "excel";
+
+export function AcceptedStudents() {
   const { canRead, canWrite } = usePermissions();
   const { department, isFallback, isLoading: isDepartmentLoading, error: departmentError } =
     useEffectiveDepartment();
@@ -83,16 +89,19 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
   const [examRecords, setExamRecords] = useState<ExamLookupRecord[]>([]);
   const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
   const [topCandidateCount, setTopCandidateCount] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [draftSearch, setDraftSearch] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(DEFAULT_PAGINATION);
+  const [reloadKey, setReloadKey] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
+  const [exportingFormat, setExportingFormat] = useState<ExportFormat | null>(null);
   const [isReverting, setIsReverting] = useState(false);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [selectedReportExamId, setSelectedReportExamId] = useState<number | null>(null);
   const [selectedReportStudentId, setSelectedReportStudentId] = useState<number | null>(null);
   const [selectedReportStudentName, setSelectedReportStudentName] = useState("");
   const [downloadingReportId, setDownloadingReportId] = useState<number | null>(null);
-  const deferredSearchTerm = useDeferredValue(searchTerm);
 
   useEffect(() => {
     if (!hasReadAccess) {
@@ -143,7 +152,7 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
 
     const loadExamRecords = async () => {
       try {
-        const response = await examAPI.getAllExams();
+        const response = await examAPI.getAllExamsForLookup();
         const nextExams = response?.results || response?.data || response || [];
 
         if (isMounted) {
@@ -169,12 +178,14 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
     setSummary(DEFAULT_SUMMARY);
     setConfigurationMissing(false);
     setSelectedStudentIds([]);
+    setPage(1);
   }, [department?.id, selectedSemester]);
 
   useEffect(() => {
     if (!hasReadAccess || !department?.id || !selectedSemester) {
       setResults([]);
       setSummary(DEFAULT_SUMMARY);
+      setPagination(DEFAULT_PAGINATION);
       setConfigurationMissing(false);
       return;
     }
@@ -187,6 +198,9 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
         const response = await admissionResultsAPI.getResults({
           department_id: department.id,
           semester: selectedSemester,
+          result_status: TAB_TO_STATUS[activeTab],
+          search: appliedSearch || undefined,
+          page,
         });
 
         if (!isMounted) {
@@ -197,6 +211,7 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
         startTransition(() => {
           setConfigurationMissing(isConfigMissing);
           setResults(isConfigMissing ? [] : response?.results || []);
+          setPagination(isConfigMissing ? DEFAULT_PAGINATION : paginationFromDrf(response, page));
           setSummary(isConfigMissing ? DEFAULT_SUMMARY : {
             ...DEFAULT_SUMMARY,
             ...(response?.summary || {}),
@@ -212,6 +227,7 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
         toast.error(resultError?.message || "Failed to load accepted students");
         setResults([]);
         setSummary(DEFAULT_SUMMARY);
+        setPagination(DEFAULT_PAGINATION);
         setConfigurationMissing(false);
       } finally {
         if (isMounted) {
@@ -225,24 +241,33 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
     return () => {
       isMounted = false;
     };
-  }, [hasReadAccess, department?.id, selectedSemester]);
+  }, [hasReadAccess, department?.id, selectedSemester, activeTab, appliedSearch, page, reloadKey]);
 
-  const visibleResults = useMemo(
-    () =>
-      results.filter(
-        (result) =>
-          result.result_status === TAB_TO_STATUS[activeTab] &&
-          matchesAdmissionSearch(result, deferredSearchTerm),
-      ),
-    [results, activeTab, deferredSearchTerm],
-  );
-  const visibleRows = buildResultSheetRows(visibleResults);
-  const isSearchActive = deferredSearchTerm.trim().length > 0;
-  const selectedTabResults = visibleResults.filter((result) =>
-    selectedStudentIds.includes(result.student),
+  const visibleResults = results;
+  const visibleRows = useMemo(() => buildResultSheetRows(visibleResults), [visibleResults]);
+  const isSearchActive = appliedSearch.trim().length > 0;
+  const selectedStudentIdSet = useMemo(() => new Set(selectedStudentIds), [selectedStudentIds]);
+  const selectedTabResults = useMemo(
+    () => visibleResults.filter((result) => selectedStudentIdSet.has(result.student)),
+    [visibleResults, selectedStudentIdSet],
   );
   const canRevertCurrentTab =
     !configurationMissing && hasWriteAccess && (activeTab === "selected" || activeTab === "rejected");
+  const hasSelectedRows = selectedStudentIds.length > 0;
+  const exportResults = useMemo(
+    () =>
+      hasSelectedRows
+        ? visibleResults.filter((result) => selectedStudentIdSet.has(result.student))
+        : visibleResults,
+    [hasSelectedRows, selectedStudentIdSet, visibleResults],
+  );
+  const exportRows = useMemo(() => buildResultSheetRows(exportResults), [exportResults]);
+  const isExportDisabled =
+    configurationMissing ||
+    !department ||
+    !selectedSemester ||
+    exportRows.length === 0 ||
+    Boolean(exportingFormat);
   const parsedTopCandidateCount = useMemo(() => {
     if (topCandidateCount.trim() === "") {
       return null;
@@ -256,9 +281,8 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
     return countValue;
   }, [topCandidateCount]);
   const allSelectedVisible =
-    canRevertCurrentTab &&
     visibleResults.length > 0 &&
-    visibleResults.every((result) => selectedStudentIds.includes(result.student));
+    visibleResults.every((result) => selectedStudentIdSet.has(result.student));
   const facultyName = resolveFacultyName({
     exams: examRecords,
     department,
@@ -266,12 +290,21 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
     resultExamIds: results.map((result) => result.exam),
   });
 
+  const getExportBaseName = () => {
+    const titleSemester = formatSemesterLabel(selectedSemester)
+      .toLowerCase()
+      .replace(/\s+/g, "-");
+    const scope = hasSelectedRows ? "selected" : "page";
+
+    return `admission-test-result-${titleSemester}-${activeTab}-${scope}`;
+  };
+
   const exportPdf = async () => {
-    if (configurationMissing || !department || !selectedSemester || visibleRows.length === 0) {
+    if (isExportDisabled || !department) {
       return;
     }
 
-    setIsExporting(true);
+    setExportingFormat("pdf");
     try {
       const logoDataUrl = await loadDiuLogoDataUrl();
       const doc = new jsPDF({
@@ -283,7 +316,6 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
       const marginX = 26;
       const tableTop = 190;
       const reportDate = formatReportDate();
-      const titleSemester = formatSemesterLabel(selectedSemester);
       const activeStatusLabel = PRETTY_STATUS_LABELS[TAB_TO_STATUS[activeTab]];
 
       const drawHeader = () => {
@@ -317,7 +349,7 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
           "Total",
           "Remarks",
         ]],
-        body: visibleRows.map((row) => [
+        body: exportRows.map((row) => [
           row.serial,
           row.applicationSerial,
           row.studentName,
@@ -369,15 +401,60 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
         },
       });
 
-      doc.save(
-        `admission-test-result-${titleSemester.toLowerCase().replace(/\s+/g, "-")}-${activeTab}.pdf`,
-      );
-      toast.success("Result sheet exported successfully");
+      doc.save(`${getExportBaseName()}.pdf`);
+      toast.success("Result sheet PDF exported successfully");
     } catch (exportError: any) {
       console.error("Error exporting result sheet PDF:", exportError);
       toast.error(exportError?.message || "Failed to export result sheet");
     } finally {
-      setIsExporting(false);
+      setExportingFormat(null);
+    }
+  };
+
+  const exportExcel = async () => {
+    if (isExportDisabled) {
+      return;
+    }
+
+    setExportingFormat("excel");
+    try {
+      const XLSX = await import("xlsx");
+      const worksheet = XLSX.utils.json_to_sheet(
+        exportRows.map((row) => ({
+          SL: row.serial,
+          "Application Serial": row.applicationSerial,
+          "Student Name": row.studentName,
+          SSC: row.ssc,
+          "HSC / Diploma": row.academic,
+          Written: row.written,
+          Viva: row.viva,
+          "Written + Viva": row.writtenViva,
+          Total: row.total,
+          Remarks: row.remarks,
+        })),
+      );
+      worksheet["!cols"] = [
+        { wch: 8 },
+        { wch: 20 },
+        { wch: 28 },
+        { wch: 10 },
+        { wch: 16 },
+        { wch: 10 },
+        { wch: 10 },
+        { wch: 16 },
+        { wch: 10 },
+        { wch: 16 },
+      ];
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Results");
+      XLSX.writeFile(workbook, `${getExportBaseName()}.xlsx`);
+      toast.success("Result sheet Excel exported successfully");
+    } catch (exportError: any) {
+      console.error("Error exporting result sheet Excel:", exportError);
+      toast.error(exportError?.message || "Failed to export result sheet");
+    } finally {
+      setExportingFormat(null);
     }
   };
 
@@ -395,11 +472,15 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
       const response = await admissionResultsAPI.getResults({
         department_id: department.id,
         semester: selectedSemester,
+        result_status: TAB_TO_STATUS[activeTab],
+        search: appliedSearch || undefined,
+        page,
       });
 
       const isConfigMissing = Boolean(response?.configuration_missing);
       setConfigurationMissing(isConfigMissing);
       setResults(isConfigMissing ? [] : response?.results || []);
+      setPagination(isConfigMissing ? DEFAULT_PAGINATION : paginationFromDrf(response, page));
       setSummary(isConfigMissing ? DEFAULT_SUMMARY : {
         ...DEFAULT_SUMMARY,
         ...(response?.summary || {}),
@@ -410,6 +491,7 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
       toast.error(refreshError?.message || "Failed to refresh accepted students");
       setResults([]);
       setSummary(DEFAULT_SUMMARY);
+      setPagination(DEFAULT_PAGINATION);
       setConfigurationMissing(false);
       setSelectedStudentIds([]);
     } finally {
@@ -419,7 +501,20 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
 
   useEffect(() => {
     setSelectedStudentIds([]);
-  }, [activeTab, selectedSemester]);
+  }, [activeTab, selectedSemester, appliedSearch, page]);
+
+  const handleSearch = () => {
+    setPage(1);
+    setAppliedSearch(draftSearch.trim());
+    setReloadKey((current) => current + 1);
+  };
+
+  const handleClearSearch = () => {
+    setDraftSearch("");
+    setAppliedSearch("");
+    setPage(1);
+    setReloadKey((current) => current + 1);
+  };
 
   const handleOpenReport = (result: AdmissionResult) => {
     setSelectedReportExamId(result.exam);
@@ -549,19 +644,6 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
 
   return (
     <div className="space-y-6">
-      <div
-        className={`rounded-lg p-6 text-white bg-gradient-to-r from-[#2E3094] to-[#4C51BF] ${gradientClass}`}
-      >
-        <h1 className="flex items-center gap-3 mb-2 text-2xl font-bold sm:text-3xl">
-          <FileText className="w-8 h-8" />
-          Results
-        </h1>
-        <p className="text-sm leading-relaxed text-white/90 sm:text-base">
-          Semester-wise admission result sheet with DIU export formatting for selected,
-          waiting, rejected, and absent candidates.
-        </p>
-      </div>
-
       {isFallback && department && (
         <Alert className="border-amber-200 bg-amber-50">
           <AlertTriangle className="w-4 h-4 text-amber-600" />
@@ -586,7 +668,7 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 xl:grid-cols-[1fr_1fr_1fr_auto_auto] gap-4 items-end">
+          <div className="grid grid-cols-1 xl:grid-cols-[1fr_1fr_1fr_auto_auto_auto_auto] gap-4 items-end">
             <div className="space-y-2">
               <Label>Department</Label>
               <div className="flex items-center justify-between h-10 px-3 border rounded-md bg-gray-50">
@@ -613,13 +695,35 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
                 <Search className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
                 <Input
                   id="result-search"
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
+                  value={draftSearch}
+                  onChange={(event) => setDraftSearch(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      handleSearch();
+                    }
+                  }}
                   placeholder="Search by name or FORM"
                   className="pl-10"
                 />
               </div>
             </div>
+
+            <Button
+              onClick={handleSearch}
+              disabled={isDepartmentLoading || isLoading || !department || !selectedSemester}
+            >
+              <Search className="w-4 h-4 mr-2" />
+              Search
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={handleClearSearch}
+              disabled={isDepartmentLoading || isLoading || (!draftSearch && !appliedSearch)}
+            >
+              <X className="w-4 h-4 mr-2" />
+              Clear
+            </Button>
 
             <Button
               variant="outline"
@@ -634,18 +738,42 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
               Refresh
             </Button>
 
-            <Button
-              onClick={exportPdf}
-              disabled={configurationMissing || !selectedSemester || visibleRows.length === 0 || isExporting}
-              className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#23257a] hover:to-[#4046a8]"
-            >
-              {isExporting ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Download className="w-4 h-4 mr-2" />
-              )}
-              Export PDF
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  disabled={isExportDisabled}
+                  className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#23257a] hover:to-[#4046a8]"
+                >
+                  {exportingFormat ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4 mr-2" />
+                  )}
+                  Export
+                  <ChevronDown className="w-4 h-4 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  disabled={isExportDisabled}
+                  onSelect={() => {
+                    void exportPdf();
+                  }}
+                >
+                  <FileText className="w-4 h-4" />
+                  PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={isExportDisabled}
+                  onSelect={() => {
+                    void exportExcel();
+                  }}
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  Excel (.xlsx)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           {canRevertCurrentTab ? (
             <div className="flex flex-wrap items-center justify-end gap-3">
@@ -727,7 +855,7 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
                             setTopCandidateCount(value);
                           }
                         }}
-                        placeholder="e.g. 20"
+                        placeholder="Top on page"
                         className="w-24 h-8"
                       />
                     </div>
@@ -748,7 +876,13 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as keyof typeof TAB_TO_STATUS)}>
+              <Tabs
+                value={activeTab}
+                onValueChange={(value) => {
+                  setActiveTab(value as keyof typeof TAB_TO_STATUS);
+                  setPage(1);
+                }}
+              >
                 <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
                   <TabsTrigger value="selected">Selected ({summary.SELECTED})</TabsTrigger>
                   <TabsTrigger value="rejected">Rejected ({summary.REJECTED})</TabsTrigger>
@@ -780,18 +914,16 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              {canRevertCurrentTab ? (
-                                <TableHead className="w-12">
-                                  <Checkbox
-                                    checked={allSelectedVisible}
-                                    onCheckedChange={(checked) =>
-                                      handleToggleAllSelected(Boolean(checked))
-                                    }
-                                    disabled={visibleResults.length === 0}
-                                    aria-label="Select all visible candidates"
-                                  />
-                                </TableHead>
-                              ) : null}
+                              <TableHead className="w-12">
+                                <Checkbox
+                                  checked={allSelectedVisible}
+                                  onCheckedChange={(checked) =>
+                                    handleToggleAllSelected(Boolean(checked))
+                                  }
+                                  disabled={visibleResults.length === 0}
+                                  aria-label="Select page candidates"
+                                />
+                              </TableHead>
                               <TableHead>SL</TableHead>
                               <TableHead>Application Serial</TableHead>
                               <TableHead>Student Name</TableHead>
@@ -813,18 +945,18 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
 
                               return (
                                 <TableRow key={row.id}>
-                                  {canRevertCurrentTab ? (
-                                    <TableCell>
-                                      <Checkbox
-                                        checked={isChecked}
-                                        onCheckedChange={(checked) =>
-                                          handleToggleStudent(result.student, Boolean(checked))
-                                        }
-                                        aria-label={`Select ${row.studentName}`}
-                                      />
-                                    </TableCell>
-                                  ) : null}
-                                  <TableCell>{index + 1}</TableCell>
+                                  <TableCell>
+                                    <Checkbox
+                                      checked={isChecked}
+                                      onCheckedChange={(checked) =>
+                                        handleToggleStudent(result.student, Boolean(checked))
+                                      }
+                                      aria-label={`Select ${row.studentName}`}
+                                    />
+                                  </TableCell>
+                                  <TableCell>
+                                    {(pagination.current_page - 1) * pagination.page_size + index + 1}
+                                  </TableCell>
                                   <TableCell className="font-medium">{row.applicationSerial}</TableCell>
                                   <TableCell>
                                     <div>
@@ -886,6 +1018,12 @@ export function AcceptedStudents({ gradientClass = "" }: AcceptedStudentsProps) 
                             })}
                           </TableBody>
                         </Table>
+                        <PaginationControls
+                          pagination={pagination}
+                          onPageChange={setPage}
+                          isLoading={isLoading}
+                          itemLabel="candidates"
+                        />
                       </div>
                     )}
                   </TabsContent>

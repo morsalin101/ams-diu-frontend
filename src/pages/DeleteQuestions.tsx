@@ -470,28 +470,10 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
 
   return (
     <div className="p-4 space-y-6 sm:p-6">
-      <div
-        className={`rounded-lg p-4 text-white sm:p-6 bg-gradient-to-tr from-[#2E3094] to-[#4C51BF] ${gradientClass}`}
-      >
-        <h1 className="flex items-center gap-3 mb-2 text-xl font-bold sm:text-2xl md:text-3xl sm:mb-3">
-          <Trash2 className="w-8 h-8" />
-          Delete Questions
-        </h1>
-        <p className="text-sm leading-relaxed text-white/90 sm:text-base">
-          Permanently remove reusable question-bank items one by one or in bulk with
-          stronger filtering and safer responsive selection controls.
-        </p>
-        <div className="flex flex-wrap items-center gap-4 mt-3 text-sm">
-          <Badge variant="secondary" className="bg-white/15 text-white border-white/20">
-            {questions.length} total
-          </Badge>
-          <Badge variant="secondary" className="bg-white/15 text-white border-white/20">
-            {filteredQuestions.length} visible
-          </Badge>
-          <Badge variant="secondary" className="bg-white/15 text-white border-white/20">
-            {selectedQuestionIds.length} selected
-          </Badge>
-        </div>
+      <div className="flex flex-wrap items-center gap-3 text-sm text-slate-700">
+        <Badge variant="outline">{questions.length} total</Badge>
+        <Badge variant="outline">{filteredQuestions.length} visible</Badge>
+        <Badge variant="outline">{selectedQuestionIds.length} selected</Badge>
       </div>
 
       <Card className="border-2 border-gray-200">

@@ -486,21 +486,14 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Header */}
-      <div className={`bg-gradient-to-r from-[#2E3094] to-[#4C51BF] rounded-lg p-4 sm:p-6 text-white`}>
-        <h1 className="mb-2 text-xl font-bold sm:text-2xl md:text-3xl sm:mb-3">Create Questions</h1>
-        <p className="text-sm leading-relaxed text-white/90 sm:text-base">
-          Generate exam questions based on your department's subjects and requirements.
-        </p>
-        {user?.department_details && (
-          <div className="flex items-center gap-2 mt-3">
-            <Building className="w-4 h-4" />
-            <span className="text-sm font-medium">
-              Department: {user.department_details.department_shortname} - {user.department_details.department_name}
-            </span>
-          </div>
-        )}
-      </div>
+      {user?.department_details && (
+        <div className="flex items-center gap-2 rounded-md border border-[#3a3ea5]/20 bg-[#3a3ea5]/5 px-3 py-2 text-sm font-medium text-slate-700">
+          <Building className="w-4 h-4 text-[#3a3ea5]" />
+          <span>
+            Department: {user.department_details.department_shortname} - {user.department_details.department_name}
+          </span>
+        </div>
+      )}
 
       {/* Exam Configuration */}
       <Card className="border-2 border-gray-200">

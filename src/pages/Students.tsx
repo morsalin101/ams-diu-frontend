@@ -6,9 +6,10 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
-import { Users, Plus, Edit, Trash2, Search, Mail, User, Calendar, Loader2, RefreshCw, UserPlus, Eye } from 'lucide-react';
+import { Users, Plus, Edit, Trash2, Search, Loader2, RefreshCw, UserPlus, Eye, X } from 'lucide-react';
 import { studentsAPI } from '../services/api';
 import { buildAcademicSemesterOptions } from '../lib/semester';
+import PaginationControls, { DEFAULT_PAGINATION, paginationFromDrf } from '../components/PaginationControls';
 import toast from 'react-hot-toast';
 
 interface Student {
@@ -31,10 +32,14 @@ interface StudentsProps {
 
 export function Students({ gradientClass }: StudentsProps) {
   const [students, setStudents] = useState<Student[]>([]);
-  const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [dateFilter, setDateFilter] = useState('all');
+  const [draftSearch, setDraftSearch] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const [draftDateFilter, setDraftDateFilter] = useState('all');
+  const [appliedDateFilter, setAppliedDateFilter] = useState('all');
+  const [page, setPage] = useState(1);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [pagination, setPagination] = useState(DEFAULT_PAGINATION);
   const [totalCount, setTotalCount] = useState(0);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   
@@ -62,21 +67,18 @@ export function Students({ gradientClass }: StudentsProps) {
 
   const semesterOptions = buildAcademicSemesterOptions();
 
-  // Load students on component mount
   useEffect(() => {
     loadStudents();
-  }, []);
-
-  // Filter students when search term or date filter changes
-  useEffect(() => {
-    filterStudents();
-  }, [students, searchTerm, dateFilter]);
+  }, [page, appliedSearch, appliedDateFilter, reloadKey]);
 
   const loadStudents = async () => {
     setIsLoading(true);
     try {
-      const response = await studentsAPI.getAllStudents();
-      console.log('API Response:', response); // Debug log
+      const response = await studentsAPI.getAllStudents({
+        page,
+        search: appliedSearch || undefined,
+        date_filter: appliedDateFilter === 'today' ? 'today' : undefined,
+      });
       
       let studentsData = [];
       if (Array.isArray(response)) {
@@ -93,49 +95,38 @@ export function Students({ gradientClass }: StudentsProps) {
         studentsData = [];
       }
       
-      const count = response?.count || studentsData.length;
+      const nextPagination = paginationFromDrf(response, page);
+      const count = nextPagination.count || studentsData.length;
       
       setStudents(studentsData);
+      setPagination(nextPagination);
       setTotalCount(count);
-      toast.success(`Loaded ${count} students`);
     } catch (error) {
       console.error('Error loading students:', error);
       toast.error('Failed to load students: ' + ((error as any)?.message || 'Unknown error'));
       // Reset to empty array on error
       setStudents([]);
+      setPagination(DEFAULT_PAGINATION);
       setTotalCount(0);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const filterStudents = () => {
-    // Ensure students is always an array
-    const studentsArray = Array.isArray(students) ? students : [];
-    let filtered = studentsArray;
+  const handleSearch = () => {
+    setPage(1);
+    setAppliedSearch(draftSearch.trim());
+    setAppliedDateFilter(draftDateFilter);
+    setReloadKey(prev => prev + 1);
+  };
 
-    if (searchTerm) {
-      filtered = filtered.filter(student => 
-        student.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.f_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (student.department_shortname && student.department_shortname.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        student.registration_semester?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Filter by date (today's filter)
-    if (dateFilter === 'today') {
-      const today = new Date().toISOString().split('T')[0];
-      filtered = filtered.filter(student => {
-        if (!student.created_at) return false;
-        const studentDate = new Date(student.created_at).toISOString().split('T')[0];
-        return studentDate === today;
-      });
-    }
-
-    setFilteredStudents(filtered);
+  const handleClearSearch = () => {
+    setDraftSearch('');
+    setAppliedSearch('');
+    setDraftDateFilter('all');
+    setAppliedDateFilter('all');
+    setPage(1);
+    setReloadKey(prev => prev + 1);
   };
 
   const handleAddStudent = async () => {
@@ -146,10 +137,7 @@ export function Students({ gradientClass }: StudentsProps) {
 
     setIsSubmitting(true);
     try {
-      const response = await studentsAPI.createStudent(formData);
-      const newStudent = response?.data || response;
-      setStudents(prev => Array.isArray(prev) ? [...prev, newStudent] : [newStudent]);
-      setTotalCount(prev => prev + 1);
+      await studentsAPI.createStudent(formData);
       toast.success('Student added successfully!');
       
       // Reset form and close dialog
@@ -166,6 +154,8 @@ export function Students({ gradientClass }: StudentsProps) {
         diploma: ''
       });
       setShowAddDialog(false);
+      setPage(1);
+      setReloadKey(prev => prev + 1);
     } catch (error) {
       console.error('Error adding student:', error);
       toast.error('Failed to add student: ' + ((error as any)?.message || 'Unknown error'));
@@ -210,6 +200,7 @@ export function Students({ gradientClass }: StudentsProps) {
       });
       setEditingStudent(null);
       setShowEditDialog(false);
+      setReloadKey(prev => prev + 1);
     } catch (error) {
       console.error('Error updating student:', error);
       toast.error('Failed to update student: ' + ((error as any)?.message || 'Unknown error'));
@@ -222,9 +213,8 @@ export function Students({ gradientClass }: StudentsProps) {
     setDeletingId(id);
     try {
       await studentsAPI.deleteStudent(id);
-      setStudents(prev => Array.isArray(prev) ? prev.filter(s => s.id !== id) : []);
-      setTotalCount(prev => prev - 1);
       toast.success('Student deleted successfully');
+      setReloadKey(prev => prev + 1);
     } catch (error) {
       console.error('Error deleting student:', error);
       toast.error('Failed to delete student');
@@ -267,14 +257,6 @@ export function Students({ gradientClass }: StudentsProps) {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Header */}
-      <div className={`bg-gradient-to-r from-[#4C51BF] to-[#667EEA] ${gradientClass} rounded-lg p-4 sm:p-6 text-white`}>
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2 sm:mb-3">Students Management</h1>
-        <p className="text-white/90 text-sm sm:text-base leading-relaxed">
-          Manage student accounts, view profiles, and handle registrations.
-        </p>
-      </div>
-
       {/* Search and Actions */}
       <Card className="border-2 border-gray-200">
         <CardHeader className="pb-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
@@ -296,15 +278,20 @@ export function Students({ gradientClass }: StudentsProps) {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
                     placeholder="Search by name, username, ID, email, or semester..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    value={draftSearch}
+                    onChange={(e) => setDraftSearch(e.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        handleSearch();
+                      }
+                    }}
                     className="pl-10"
                   />
                 </div>
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Date Filter</label>
-                <Select value={dateFilter} onValueChange={setDateFilter}>
+                <Select value={draftDateFilter} onValueChange={setDraftDateFilter}>
                   <SelectTrigger>
                     <SelectValue placeholder="Filter by date" />
                   </SelectTrigger>
@@ -318,6 +305,25 @@ export function Students({ gradientClass }: StudentsProps) {
 
             {/* Actions */}
             <div className="flex gap-2 w-full sm:w-auto">
+              <Button
+                type="button"
+                onClick={handleSearch}
+                disabled={isLoading}
+                className="flex-1 sm:flex-none"
+              >
+                <Search className="h-4 w-4 mr-2" />
+                Search
+              </Button>
+              <Button
+                type="button"
+                onClick={handleClearSearch}
+                disabled={isLoading && !appliedSearch && appliedDateFilter === 'all'}
+                variant="outline"
+                className="flex-1 sm:flex-none"
+              >
+                <X className="h-4 w-4 mr-2" />
+                Clear
+              </Button>
               <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
                 <DialogTrigger asChild>
                   <Button className="flex-1 sm:flex-none bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
@@ -503,7 +509,7 @@ export function Students({ gradientClass }: StudentsProps) {
         <div className="flex items-center gap-2">
           <Users className="h-5 w-5 text-blue-600" />
           <span className="font-semibold text-gray-800">
-            Showing {Array.isArray(filteredStudents) ? filteredStudents.length : 0} of {totalCount} students
+            Showing {Array.isArray(students) ? students.length : 0} of {totalCount} students
           </span>
         </div>
         <div className="text-sm text-gray-600">
@@ -519,13 +525,13 @@ export function Students({ gradientClass }: StudentsProps) {
             <p className="text-gray-600">Loading students...</p>
           </div>
         </div>
-      ) : !Array.isArray(filteredStudents) || filteredStudents.length === 0 ? (
+      ) : !Array.isArray(students) || students.length === 0 ? (
         <Card className="p-8 text-center">
           <Users className="h-12 w-12 mx-auto mb-4 text-gray-400" />
           <h3 className="text-lg font-semibold text-gray-800 mb-2">No students found</h3>
           <p className="text-gray-600">
-            {searchTerm
-              ? 'Try adjusting your search criteria.'
+            {appliedSearch || appliedDateFilter !== 'all'
+              ? 'No students match this search.'
               : 'No students have been registered yet.'}
           </p>
         </Card>
@@ -556,7 +562,7 @@ export function Students({ gradientClass }: StudentsProps) {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {(Array.isArray(filteredStudents) ? filteredStudents : []).map((student) => (
+                {(Array.isArray(students) ? students : []).map((student) => (
                   <tr key={student.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -634,6 +640,12 @@ export function Students({ gradientClass }: StudentsProps) {
               </tbody>
             </table>
           </div>
+          <PaginationControls
+            pagination={pagination}
+            onPageChange={setPage}
+            isLoading={isLoading}
+            itemLabel="students"
+          />
         </Card>
       )}
 

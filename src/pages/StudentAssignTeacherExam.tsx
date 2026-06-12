@@ -6,12 +6,12 @@ import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Badge } from '../components/ui/badge';
 import { Checkbox } from '../components/ui/checkbox';
-import { Users, UserPlus, Trash2, Search, Filter, Calendar, BookOpen, User, Building, AlertTriangle, Loader2 } from 'lucide-react';
+import { Users, UserPlus, Trash2, Search, Calendar, BookOpen, User, Building, AlertTriangle, Loader2, X } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { StudentAssignmentDialog } from '../components/StudentAssignmentDialog';
-import { studentAssignmentAPI, studentsAPI, usersAPI, examAPI, scheduleAPI } from '../services/api';
-import { useAuth } from '../contexts/AuthContext';
+import { studentAssignmentAPI, studentsAPI, usersAPI, scheduleAPI } from '../services/api';
 import { usePermissions } from '../hooks/usePermissions';
+import PaginationControls, { DEFAULT_PAGINATION, paginationFromDrf } from '../components/PaginationControls';
 import toast from 'react-hot-toast';
 
 interface StudentAssignmentManagementProps {
@@ -64,14 +64,6 @@ interface Teacher {
   };
 }
 
-interface Exam {
-  id: number;
-  department: string;
-  semester: string;
-  duration_minutes: number;
-  created_at: string;
-}
-
 interface Schedule {
   id: number;
   exam: number;
@@ -96,19 +88,23 @@ interface Schedule {
 }
 
 export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentManagementProps) {
-  const { user } = useAuth();
   const { canWrite, canRead, canDelete } = usePermissions();
 
   // State managementStudentAssignTeacherExamz
   const [assignments, setAssignments] = useState<StudentAssignment[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [exams, setExams] = useState<Exam[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
   const [selectedAssignments, setSelectedAssignments] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(DEFAULT_PAGINATION);
+  const [assignmentFilterOptions, setAssignmentFilterOptions] = useState<{
+    registration_semesters?: string[];
+  }>({});
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Form states
   const [showAssignDialog, setShowAssignDialog] = useState(false);
@@ -119,26 +115,39 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
   });
 
   // Filter states
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterTeacher, setFilterTeacher] = useState('');
-  const [filterExam, setFilterExam] = useState('');
-  const [filterRegistrationSemester, setFilterRegistrationSemester] = useState('all');
-  const [filterDate, setFilterDate] = useState('');
+  const [draftSearch, setDraftSearch] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const [draftFilterTeacher, setDraftFilterTeacher] = useState('all');
+  const [appliedFilterTeacher, setAppliedFilterTeacher] = useState('all');
+  const [draftFilterRegistrationSemester, setDraftFilterRegistrationSemester] = useState('all');
+  const [appliedFilterRegistrationSemester, setAppliedFilterRegistrationSemester] = useState('all');
+  const [draftFilterDate, setDraftFilterDate] = useState('all');
+  const [appliedFilterDate, setAppliedFilterDate] = useState('all');
 
   // Load data on component mount
   useEffect(() => {
     loadAllData();
   }, []);
 
+  useEffect(() => {
+    loadAssignments();
+    setSelectedAssignments([]);
+  }, [
+    page,
+    appliedSearch,
+    appliedFilterTeacher,
+    appliedFilterRegistrationSemester,
+    appliedFilterDate,
+    reloadKey,
+  ]);
+
   // Load all required data
   const loadAllData = async () => {
     setIsLoadingData(true);
     try {
       await Promise.all([
-        loadAssignments(),
         loadStudents(),
         loadTeachers(),
-        loadExams(),
         loadSchedules()
       ]);
     } catch (error) {
@@ -151,23 +160,33 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
   // Load assignments
   const loadAssignments = async () => {
     try {
-      const response = await studentAssignmentAPI.getAllAssignments();
+      const response = await studentAssignmentAPI.getAllAssignments({
+        page,
+        search: appliedSearch || undefined,
+        teacher_id: appliedFilterTeacher !== 'all' ? appliedFilterTeacher : undefined,
+        registration_semester: appliedFilterRegistrationSemester !== 'all'
+          ? appliedFilterRegistrationSemester
+          : undefined,
+        date_filter: appliedFilterDate === 'today' ? 'today' : undefined,
+      });
       if (response && (response.success !== false)) {
         const data = response.data || response;
         setAssignments(Array.isArray(data) ? data : []);
+        setPagination(paginationFromDrf(response, page));
+        setAssignmentFilterOptions(response.filter_options || {});
       }
     } catch (error: any) {
       console.error('Error loading assignments:', error);
       toast.error('Failed to load assignments');
+      setAssignments([]);
+      setPagination(DEFAULT_PAGINATION);
     }
   };
 
   // Load students
   const loadStudents = async () => {
     try {
-      const response = await studentsAPI.getAllStudents();
-      console.log('Students API Response:', response); // Debug log
-      
+      const response = await studentsAPI.getAllStudentsForLookup();
       let studentsData = [];
       if (Array.isArray(response)) {
         studentsData = response;
@@ -184,7 +203,6 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
       }
       
       setStudents(Array.isArray(studentsData) ? studentsData : []);
-      console.log('Loaded students count:', studentsData.length); // Debug log
     } catch (error: any) {
       console.error('Error loading students:', error);
       toast.error('Failed to load students');
@@ -204,29 +222,14 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
     }
   };
 
-  // Load exams
-  const loadExams = async () => {
-    try {
-      const response = await examAPI.getAllExams();
-      if (response && (response.success !== false)) {
-        const data = response.data || response;
-        setExams(Array.isArray(data) ? data : []);
-      }
-    } catch (error: any) {
-      console.error('Error loading exams:', error);
-      toast.error('Failed to load exams');
-    }
-  };
-
   // Load schedules
   const loadSchedules = async () => {
     try {
-      const response = await scheduleAPI.getAllSchedules();
+      const response = await scheduleAPI.getAllSchedulesForLookup();
       if (response && (response.success !== false)) {
         const data = response.data || response;
         // Handle paginated response with results array
         const schedulesData = data.results || data;
-        console.log('Loaded schedules:', schedulesData); // Debug log
         setSchedules(Array.isArray(schedulesData) ? schedulesData : []);
       }
     } catch (error: any) {
@@ -262,7 +265,8 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
         setShowAssignDialog(false);
         setSelectedStudents([]);
         setAssignmentForm({ teacher_id: '', exam_id: '', schedule_id: '' });
-        loadAssignments();
+        setPage(1);
+        setReloadKey((current) => current + 1);
       } else {
         toast.error(response.message || 'Failed to assign students');
       }
@@ -283,7 +287,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
       const response = await studentAssignmentAPI.deleteAssignment(assignmentId);
       if (response && (response.success !== false)) {
         toast.success('Assignment deleted successfully');
-        loadAssignments();
+        setReloadKey((current) => current + 1);
       } else {
         toast.error(response.message || 'Failed to delete assignment');
       }
@@ -310,7 +314,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
       if (response && (response.success !== false)) {
         toast.success(`Successfully deleted ${selectedAssignments.length} assignments`);
         setSelectedAssignments([]);
-        loadAssignments();
+        setReloadKey((current) => current + 1);
       } else {
         toast.error(response.message || 'Failed to delete assignments');
       }
@@ -322,51 +326,35 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
     }
   };
 
-  // Helper function to check if date is today
-  const isToday = (dateString: string) => {
-    const today = new Date();
-    const date = new Date(dateString);
-    return date.toDateString() === today.toDateString();
-  };
-
   // Filter available students (not assigned) - MOVED UP
   const availableStudents = students.filter(student => 
     student && student.id && !assignments.some(assignment => assignment.student === student.id)
   );
-  
-  // Debug log
-  console.log('Total students loaded:', students.length);
-  console.log('Available students (not assigned):', availableStudents.length);
-  console.log('Total assignments:', assignments.length);
+  const handleSearch = () => {
+    setPage(1);
+    setAppliedSearch(draftSearch.trim());
+    setAppliedFilterTeacher(draftFilterTeacher);
+    setAppliedFilterRegistrationSemester(draftFilterRegistrationSemester);
+    setAppliedFilterDate(draftFilterDate);
+    setReloadKey((current) => current + 1);
+  };
 
+  const handleClearFilters = () => {
+    setDraftSearch('');
+    setAppliedSearch('');
+    setDraftFilterTeacher('all');
+    setAppliedFilterTeacher('all');
+    setDraftFilterRegistrationSemester('all');
+    setAppliedFilterRegistrationSemester('all');
+    setDraftFilterDate('all');
+    setAppliedFilterDate('all');
+    setPage(1);
+    setReloadKey((current) => current + 1);
+  };
 
-
-  // Filter assignments
-  const filteredAssignments = assignments.filter(assignment => {
-    const matchesSearch = 
-      assignment.student_full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      assignment.student_username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      assignment.student_f_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      assignment.teacher_username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      assignment.student_registration_semester?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesTeacher = !filterTeacher || filterTeacher === 'all' || assignment.teacher.toString() === filterTeacher;
-    const matchesExam = !filterExam || assignment.exam.toString() === filterExam;
-    const matchesRegistrationSemester =
-      filterRegistrationSemester === 'all' ||
-      assignment.student_registration_semester === filterRegistrationSemester;
-    
-    const matchesDate = !filterDate || 
-      (filterDate === 'today' && isToday(assignment.created_at));
-
-    return matchesSearch && matchesTeacher && matchesExam && matchesRegistrationSemester && matchesDate;
-  });
-
-  const registrationSemesterOptions = [...new Set(
-    assignments
-      .map((assignment) => assignment.student_registration_semester)
-      .filter(Boolean)
-  )].sort((a, b) => a.localeCompare(b));
+  const registrationSemesterOptions = [
+    ...new Set((assignmentFilterOptions.registration_semesters || []).filter(Boolean)),
+  ].sort((a, b) => a.localeCompare(b));
 
 
 
@@ -397,14 +385,6 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Header */}
-      <div className={`bg-gradient-to-r from-[#2E3094] to-[#4C51BF] rounded-lg p-4 sm:p-6 text-white`}>
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2 sm:mb-3">Student Assignment Management</h1>
-        <p className="text-white/90 text-sm sm:text-base leading-relaxed">
-          Assign students to teachers and exams, manage student-teacher-exam relationships.
-        </p>
-      </div>
-
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
@@ -413,7 +393,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
               <Users className="h-8 w-8 text-blue-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Assignments</p>
-                <p className="text-2xl font-bold text-gray-900">{assignments.length}</p>
+                <p className="text-2xl font-bold text-gray-900">{pagination.count}</p>
               </div>
             </div>
           </CardContent>
@@ -468,14 +448,19 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
                     placeholder="Search students, teachers, student ID, or semester..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    value={draftSearch}
+                    onChange={(e) => setDraftSearch(e.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        handleSearch();
+                      }
+                    }}
                     className="pl-10"
                   />
                 </div>
               </div>
               
-              <Select value={filterTeacher} onValueChange={setFilterTeacher}>
+              <Select value={draftFilterTeacher} onValueChange={setDraftFilterTeacher}>
                 <SelectTrigger className="w-full sm:w-48">
                   <SelectValue placeholder="Filter by teacher" />
                 </SelectTrigger>
@@ -489,7 +474,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
                 </SelectContent>
               </Select>
 
-              <Select value={filterRegistrationSemester} onValueChange={setFilterRegistrationSemester}>
+              <Select value={draftFilterRegistrationSemester} onValueChange={setDraftFilterRegistrationSemester}>
                 <SelectTrigger className="w-full sm:w-56">
                   <SelectValue placeholder="Registered semester" />
                 </SelectTrigger>
@@ -503,7 +488,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
                 </SelectContent>
               </Select>
 
-              <Select value={filterDate} onValueChange={setFilterDate}>
+              <Select value={draftFilterDate} onValueChange={setDraftFilterDate}>
                 <SelectTrigger className="w-full sm:w-48">
                   <SelectValue placeholder="Filter by date" />
                 </SelectTrigger>
@@ -513,20 +498,30 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
                 </SelectContent>
               </Select>
 
-              {(searchTerm || filterTeacher !== '' || filterRegistrationSemester !== 'all' || filterDate !== '') && (
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    setSearchTerm('');
-                    setFilterTeacher('');
-                    setFilterRegistrationSemester('all');
-                    setFilterDate('');
-                  }}
-                  className="w-full sm:w-auto"
-                >
-                  Clear Filters
-                </Button>
-              )}
+              <Button onClick={handleSearch} disabled={isLoading} className="w-full sm:w-auto">
+                <Search className="h-4 w-4 mr-2" />
+                Search
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={handleClearFilters}
+                disabled={
+                  isLoading ||
+                  (!draftSearch &&
+                    !appliedSearch &&
+                    draftFilterTeacher === 'all' &&
+                    appliedFilterTeacher === 'all' &&
+                    draftFilterRegistrationSemester === 'all' &&
+                    appliedFilterRegistrationSemester === 'all' &&
+                    draftFilterDate === 'all' &&
+                    appliedFilterDate === 'all')
+                }
+                className="w-full sm:w-auto"
+              >
+                <X className="h-4 w-4 mr-2" />
+                Clear
+              </Button>
             </div>
 
             <div className="flex gap-2">
@@ -552,7 +547,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
                     onAssignmentFormChange={setAssignmentForm}
                     onAssign={handleBulkAssign}
                     isLoading={isLoading}
-                    filterDate={filterDate}
+                    filterDate={draftFilterDate}
                   />
                 </>
               )}
@@ -583,14 +578,15 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
                 <TableRow>
                   <TableHead className="w-12">
                     <Checkbox
-                      checked={selectedAssignments.length === filteredAssignments.length && filteredAssignments.length > 0}
+                      checked={selectedAssignments.length === assignments.length && assignments.length > 0}
                       onCheckedChange={(checked) => {
                         if (checked) {
-                          setSelectedAssignments(filteredAssignments.map(a => a.id));
+                          setSelectedAssignments(assignments.map(a => a.id));
                         } else {
                           setSelectedAssignments([]);
                         }
                       }}
+                      aria-label="Select page assignments"
                     />
                   </TableHead>
                   <TableHead>Student</TableHead>
@@ -603,16 +599,23 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAssignments.length === 0 ? (
+                {assignments.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8">
                       <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                       <p className="text-gray-500 font-medium">No assignments found</p>
-                      <p className="text-gray-400 text-sm">Try adjusting your search or filters</p>
+                      <p className="text-gray-400 text-sm">
+                        {appliedSearch ||
+                        appliedFilterTeacher !== 'all' ||
+                        appliedFilterRegistrationSemester !== 'all' ||
+                        appliedFilterDate !== 'all'
+                          ? 'No assignments match this search'
+                          : 'No assignments have been created yet'}
+                      </p>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredAssignments.map((assignment) => (
+                  assignments.map((assignment) => (
                     <TableRow key={assignment.id}>
                       <TableCell>
                         <Checkbox
@@ -667,6 +670,12 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
                 )}
               </TableBody>
             </Table>
+            <PaginationControls
+              pagination={pagination}
+              onPageChange={setPage}
+              isLoading={isLoading}
+              itemLabel="assignments"
+            />
           </div>
         </CardContent>
       </Card>

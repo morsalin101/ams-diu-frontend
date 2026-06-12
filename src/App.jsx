@@ -119,11 +119,21 @@ function ProtectedRoutes() {
         <Route path="/threshold-management" element={<Navigate to="/student-acceptance-criteria" replace />} />
         <Route path="/viva-rubrics-management" element={<VivaManagement />} />
         <Route path="/viva-management" element={<Navigate to="/viva-rubrics-management" replace />} />
+        <Route path="/marks-distribution" element={<MarksDistribution />} />
+        <Route path="/viva-assign" element={<VivaAssign />} />
+        <Route path="/student-assign-teacher-exam" element={<StudentAssignTeacherExam />} />
+        <Route path="/published-exams" element={<PublishedExams />} />
+        <Route path="/blocked-questions" element={<BlockedQuestions />} />
+        <Route path="/insert-questions" element={<InsertQuestions />} />
+        <Route path="/my-students" element={<MyStudents />} />
+        <Route path="/my-schedule" element={<MySchedule />} />
+        <Route path="/all-results" element={<AllResults />} />
         <Route path="/viva-marks-entry" element={<Results />} />
         <Route path="/viva-marks" element={<Navigate to="/viva-marks-entry" replace />} />
         <Route path="/override-selection" element={<ExamineeResult />} />
         <Route path="/examinee-result" element={<Navigate to="/override-selection" replace />} />
         <Route path="/results" element={<AcceptedStudents />} />
+        <Route path="/result" element={<Navigate to="/results" replace />} />
         <Route path="/accepted-students" element={<Navigate to="/results" replace />} />
         <Route path="/deletequestions" element={<DeleteQuestions />} />
         

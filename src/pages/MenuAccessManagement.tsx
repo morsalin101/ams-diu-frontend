@@ -264,17 +264,6 @@ export function MenuAccessManagement() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-green-100 rounded-lg">
-          <Key className="w-6 h-6 text-green-600" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Menu Access Management</h1>
-          <p className="text-gray-600">Control which menus are accessible to different roles</p>
-        </div>
-      </div>
-
       {/* Role Selection */}
       {!canWrite() && !canDelete() && (
         <Alert>

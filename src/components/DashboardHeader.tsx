@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Bell, Settings, User } from 'lucide-react';
 import { Button } from './ui/button';
 
@@ -5,37 +7,107 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
 import { MobileMenu } from './MobileMenu';
 import { SidebarTrigger } from './ui/sidebar';
+import { useMenu } from '../contexts/MenuContext';
 
 interface DashboardHeaderProps {}
 
+const PAGE_TITLE_FALLBACKS: Record<string, string> = {
+  '/': 'Dashboard',
+  '/dashboard': 'Dashboard',
+  '/result': 'Results',
+  '/results': 'Results',
+  '/accepted-students': 'Results',
+  '/override-selection': 'Override Selection',
+  '/examinee-result': 'Override Selection',
+  '/student-acceptance-criteria': 'Student Acceptance Criteria',
+  '/threshold-management': 'Student Acceptance Criteria',
+  '/viva-marks-entry': 'Viva Marks Entry',
+  '/viva-marks': 'Viva Marks Entry',
+  '/viva-rubrics-management': 'Viva Rubrics Management',
+  '/viva-management': 'Viva Rubrics Management',
+  '/all-questions': 'All Questions',
+  '/create-questions': 'Create Questions',
+  '/students': 'Students Management',
+  '/exam-schedule': 'Exam Schedule',
+  '/users-management': 'Users Management',
+  '/role-management': 'Role Management',
+  '/menu-management': 'Menu Management',
+  '/menu-access-management': 'Menu Access Management',
+  '/department-management': 'Department Management',
+  '/subject-management': 'Subject Management',
+  '/subject-department-mapping': 'Subject Department Mapping',
+  '/published-exams': 'Published Exams',
+  '/deletequestions': 'Delete Questions',
+  '/blocked-questions': 'Blocked Questions',
+  '/my-students': 'My Students',
+  '/my-schedule': 'My Schedule',
+  '/all-results': 'All Results',
+  '/student-assign-teacher-exam': 'Student Assignment Management',
+  '/viva-assign': 'Viva Assignment Management',
+  '/marks-distribution': 'Marks Distribution Management',
+};
+
+const titleFromPath = (pathname: string) => {
+  const segment = pathname.split('/').filter(Boolean).at(-1);
+
+  if (!segment) {
+    return 'Dashboard';
+  }
+
+  return segment
+    .split('-')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 export function DashboardHeader({}: DashboardHeaderProps) {
+  const location = useLocation();
+  const { menuItems } = useMenu();
+
+  const pageTitle = useMemo(() => {
+    const pathname = location.pathname;
+    const menuMatch = menuItems.find((item) => {
+      if (!item.link) {
+        return false;
+      }
+
+      return item.link === pathname || pathname.startsWith(`${item.link}/`);
+    });
+
+    return menuMatch?.label || PAGE_TITLE_FALLBACKS[pathname] || titleFromPath(pathname);
+  }, [location.pathname, menuItems]);
+
   return (
-    <header className="flex h-14 sm:h-16 items-center gap-2 sm:gap-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 sm:px-4 md:px-6">
+    <header className="flex h-14 sm:h-16 items-center gap-2 sm:gap-4 border-b border-white/20 bg-gradient-to-r from-[#2E3094] to-[#4C51BF] px-2 sm:px-4 md:px-6 text-white shadow-sm">
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
-          <SidebarTrigger className="md:hidden" />
+          <SidebarTrigger className="md:hidden text-white hover:bg-white/10 hover:text-white" />
+          <h1 className="truncate text-lg font-semibold text-white sm:text-xl">
+            {pageTitle}
+          </h1>
         </div>
         
         <div className="flex items-center gap-1 sm:gap-2 md:gap-4">
-          <Button variant="ghost" size="sm" className="relative p-1 md:p-2">
+          <Button variant="ghost" size="sm" className="relative p-1 text-white hover:bg-white/10 hover:text-white md:p-2">
             <Bell className="h-4 w-4 md:h-5 md:w-5" />
-            <Badge className="absolute -top-1 -right-1 h-4 w-4 md:h-5 md:w-5 flex items-center justify-center p-0 text-xs">
+            <Badge className="absolute -top-1 -right-1 h-4 w-4 md:h-5 md:w-5 flex items-center justify-center p-0 text-xs bg-white text-[#3a3ea5] hover:bg-white">
               3
             </Badge>
           </Button>
           
-          <Button variant="ghost" size="sm" className="p-1 md:p-2 hidden sm:flex">
+          <Button variant="ghost" size="sm" className="p-1 text-white hover:bg-white/10 hover:text-white md:p-2 hidden sm:flex">
             <Settings className="h-4 w-4 md:h-5 md:w-5" />
           </Button>
           
           <div className="flex items-center gap-1 md:gap-2">
             <Avatar className="h-6 w-6 md:h-8 md:w-8">
               <AvatarImage src="" alt="Admin" />
-              <AvatarFallback>
+              <AvatarFallback className="bg-white/15 text-white">
                 <User className="h-3 w-3 md:h-4 md:w-4" />
               </AvatarFallback>
             </Avatar>
-            <span className="text-xs md:text-sm font-medium hidden sm:block">Admin User</span>
+            <span className="text-xs md:text-sm font-medium hidden sm:block text-white">Admin User</span>
           </div>
 
           {/* Mobile Menu */}

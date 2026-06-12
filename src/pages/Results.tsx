@@ -45,6 +45,7 @@ import {
   Users,
   Trophy,
   GraduationCap,
+  X,
 } from 'lucide-react';
 import {
   Dialog,
@@ -59,6 +60,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { formatSemesterLabel, sortSemesterValues } from '../lib/semester';
 import toast from 'react-hot-toast';
 import { admissionResultsAPI, examAPI } from '../services/api';
+import PaginationControls, { DEFAULT_PAGINATION, paginationFromDrf } from '../components/PaginationControls';
 
 interface ResultsProps {
   gradientClass: string;
@@ -123,10 +125,16 @@ export function Results({ gradientClass }: ResultsProps) {
   const [examResults, setExamResults] = useState<ExamResult[]>([]);
   const [filteredResults, setFilteredResults] = useState<ExamResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [semesterFilter, setSemesterFilter] = useState('all');
-  const [vivaStatusFilter, setVivaStatusFilter] = useState('all');
-  const [performanceFilter, setPerformanceFilter] = useState('all');
+  const [draftSearch, setDraftSearch] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const [draftSemesterFilter, setDraftSemesterFilter] = useState('all');
+  const [appliedSemesterFilter, setAppliedSemesterFilter] = useState('all');
+  const [draftVivaStatusFilter, setDraftVivaStatusFilter] = useState('all');
+  const [appliedVivaStatusFilter, setAppliedVivaStatusFilter] = useState('all');
+  const [draftPerformanceFilter, setDraftPerformanceFilter] = useState('all');
+  const [appliedPerformanceFilter, setAppliedPerformanceFilter] = useState('all');
+  const [reloadKey, setReloadKey] = useState(0);
+  const [pagination, setPagination] = useState(DEFAULT_PAGINATION);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -144,56 +152,26 @@ export function Results({ gradientClass }: ResultsProps) {
     if (canRead() && user?.id) {
       loadExamResults();
     }
-  }, [user?.id, currentPage, semesterFilter]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [semesterFilter]);
+  }, [user?.id, currentPage, appliedSearch, appliedSemesterFilter, reloadKey]);
 
   // Filter results based on search and filters
   useEffect(() => {
     let filtered = examResults;
 
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(
-        result =>
-          result.student_name
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-          result.student_f_id
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-          result.exam_details.department
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-          result.exam_details.semester
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()),
-      );
-    }
-
-    // Semester filter
-    if (semesterFilter !== 'all') {
-      filtered = filtered.filter(
-        result => result.exam_details.semester === semesterFilter,
-      );
-    }
-
-    if (vivaStatusFilter !== 'all') {
+    if (appliedVivaStatusFilter !== 'all') {
       filtered = filtered.filter(result => {
         const isVivaCompleted = (result.viva_marks?.marks || 0) > 0;
-        return vivaStatusFilter === 'completed'
+        return appliedVivaStatusFilter === 'completed'
           ? isVivaCompleted
           : !isVivaCompleted;
       });
     }
 
     // Performance filter
-    if (performanceFilter !== 'all') {
+    if (appliedPerformanceFilter !== 'all') {
       filtered = filtered.filter(result => {
         const score = result.results.score_percentage;
-        switch (performanceFilter) {
+        switch (appliedPerformanceFilter) {
           case 'excellent':
             return score >= 90;
           case 'good':
@@ -213,10 +191,8 @@ export function Results({ gradientClass }: ResultsProps) {
     setFilteredResults(filtered);
   }, [
     examResults,
-    searchTerm,
-    semesterFilter,
-    vivaStatusFilter,
-    performanceFilter,
+    appliedVivaStatusFilter,
+    appliedPerformanceFilter,
   ]);
 
   const loadExamResults = async () => {
@@ -226,7 +202,8 @@ export function Results({ gradientClass }: ResultsProps) {
       setIsLoading(true);
       const data = await examAPI.getAllResultsByTeacher(user.id, {
         page: currentPage,
-        ...(semesterFilter !== 'all' ? { semester: semesterFilter } : {}),
+        search: appliedSearch || undefined,
+        ...(appliedSemesterFilter !== 'all' ? { semester: appliedSemesterFilter } : {}),
       });
 
       if (data.success) {
@@ -234,6 +211,7 @@ export function Results({ gradientClass }: ResultsProps) {
         setTotalPages(data.data.pagination.total_pages);
         setTotalCount(data.data.pagination.count);
         setCurrentPage(data.data.pagination.current_page);
+        setPagination(paginationFromDrf({ pagination: data.data.pagination }, currentPage));
         toast.success(
           data.message || `Loaded ${data.data.results.length} exam results`,
         );
@@ -244,6 +222,7 @@ export function Results({ gradientClass }: ResultsProps) {
       console.error('Error loading exam results:', error);
       toast.error(error.message || 'Failed to load exam results');
       setExamResults([]);
+      setPagination(DEFAULT_PAGINATION);
     } finally {
       setIsLoading(false);
     }
@@ -262,6 +241,28 @@ export function Results({ gradientClass }: ResultsProps) {
   const handleVivaMarksAdded = () => {
     // Reload the results to get updated viva marks
     loadExamResults();
+  };
+
+  const handleSearch = () => {
+    setCurrentPage(1);
+    setAppliedSearch(draftSearch.trim());
+    setAppliedSemesterFilter(draftSemesterFilter);
+    setAppliedVivaStatusFilter(draftVivaStatusFilter);
+    setAppliedPerformanceFilter(draftPerformanceFilter);
+    setReloadKey((current) => current + 1);
+  };
+
+  const handleClearSearch = () => {
+    setDraftSearch('');
+    setAppliedSearch('');
+    setDraftSemesterFilter('all');
+    setAppliedSemesterFilter('all');
+    setDraftVivaStatusFilter('all');
+    setAppliedVivaStatusFilter('all');
+    setDraftPerformanceFilter('all');
+    setAppliedPerformanceFilter('all');
+    setCurrentPage(1);
+    setReloadKey((current) => current + 1);
   };
 
   const handlePrepareAdmissionBoard = async (examId: number) => {
@@ -386,35 +387,6 @@ export function Results({ gradientClass }: ResultsProps) {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] rounded-lg p-4 sm:p-6 text-white">
-        <h1 className="flex items-center gap-3 mb-2 text-xl font-bold sm:text-2xl md:text-3xl sm:mb-3">
-          <FilePlus className="w-8 h-8" />
-          Viva Marks Entry
-        </h1>
-        <p className="text-sm leading-relaxed text-white/90 sm:text-base">
-          Comprehensive analysis of student exam performance and results.
-        </p>
-        <div className="flex items-center gap-4 mt-3 text-sm">
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4" />
-            <span>{totalStudents} students</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4" />
-            <span>{formatPercentage(averageScore)} avg</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Trophy className="w-4 h-4" />
-            <span>{excellentCount} excellent</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Award className="w-4 h-4" />
-            <span>{goodCount} good</span>
-          </div>
-        </div>
-      </div>
-
       {/* Quick Stats */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card className="border-2 border-blue-200 bg-blue-50/50">
@@ -488,14 +460,19 @@ export function Results({ gradientClass }: ResultsProps) {
               <Input
                 id="search"
                 placeholder="Search by name, form ID, department..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
+                value={draftSearch}
+                onChange={e => setDraftSearch(e.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    handleSearch();
+                  }
+                }}
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="semester">Semester</Label>
-              <Select value={semesterFilter} onValueChange={setSemesterFilter}>
+              <Select value={draftSemesterFilter} onValueChange={setDraftSemesterFilter}>
                 <SelectTrigger id="semester">
                   <SelectValue placeholder="All semesters" />
                 </SelectTrigger>
@@ -513,8 +490,8 @@ export function Results({ gradientClass }: ResultsProps) {
             <div className="space-y-2">
               <Label htmlFor="performance">Performance</Label>
               <Select
-                value={performanceFilter}
-                onValueChange={setPerformanceFilter}
+                value={draftPerformanceFilter}
+                onValueChange={setDraftPerformanceFilter}
               >
                 <SelectTrigger id="performance">
                   <SelectValue placeholder="All performance" />
@@ -535,8 +512,8 @@ export function Results({ gradientClass }: ResultsProps) {
             <div className="space-y-2">
               <Label htmlFor="viva-status">Viva Status</Label>
               <Select
-                value={vivaStatusFilter}
-                onValueChange={setVivaStatusFilter}
+                value={draftVivaStatusFilter}
+                onValueChange={setDraftVivaStatusFilter}
               >
                 <SelectTrigger id="viva-status">
                   <SelectValue placeholder="All viva status" />
@@ -551,19 +528,47 @@ export function Results({ gradientClass }: ResultsProps) {
 
             <div className="space-y-2">
               <Label>&nbsp;</Label>
-              <Button
-                onClick={loadExamResults}
-                variant="outline"
-                className="w-full"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                )}
-                Refresh
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleSearch}
+                  className="flex-1"
+                  disabled={isLoading}
+                >
+                  <Search className="w-4 h-4 mr-2" />
+                  Search
+                </Button>
+                <Button
+                  onClick={handleClearSearch}
+                  variant="outline"
+                  className="flex-1"
+                  disabled={
+                    isLoading ||
+                    (!draftSearch &&
+                      !appliedSearch &&
+                      draftSemesterFilter === 'all' &&
+                      appliedSemesterFilter === 'all' &&
+                      draftVivaStatusFilter === 'all' &&
+                      appliedVivaStatusFilter === 'all' &&
+                      draftPerformanceFilter === 'all' &&
+                      appliedPerformanceFilter === 'all')
+                  }
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Clear
+                </Button>
+                <Button
+                  onClick={() => setReloadKey((current) => current + 1)}
+                  variant="outline"
+                  disabled={isLoading}
+                  aria-label="Refresh results"
+                >
+                  {isLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -747,6 +752,12 @@ export function Results({ gradientClass }: ResultsProps) {
                   })}
                 </TableBody>
               </Table>
+              <PaginationControls
+                pagination={pagination}
+                onPageChange={setCurrentPage}
+                isLoading={isLoading}
+                itemLabel="results"
+              />
             </div>
           )}
         </CardContent>

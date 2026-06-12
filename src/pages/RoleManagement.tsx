@@ -130,14 +130,6 @@
 
     return (
       <div className="space-y-4 sm:space-y-6">
-        {/* Header */}
-        <div className={`bg-gradient-to-r from-[#2E3094] to-[#4C51BF] rounded-lg p-4 sm:p-6 text-white`}>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2 sm:mb-3">Role Management</h1>
-          <p className="text-white/90 text-sm sm:text-base leading-relaxed">
-            Manage system roles and permissions for your application.
-          </p>
-        </div>
-
         {/* Main Card */}
         <Card className="border-2 border-gray-200">
           <CardHeader className="pb-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">

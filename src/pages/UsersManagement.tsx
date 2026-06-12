@@ -186,14 +186,6 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Header */}
-      <div className={`bg-gradient-to-r from-[#2E3094] to-[#4C51BF] rounded-lg p-4 sm:p-6 text-white`}>
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2 sm:mb-3">Users Management</h1>
-        <p className="text-white/90 text-sm sm:text-base leading-relaxed">
-          Manage user accounts and their roles in the system.
-        </p>
-      </div>
-
       {/* Actions Bar */}
       <Card className="border-2 border-gray-200">
         <CardContent className="p-4 sm:p-6">
