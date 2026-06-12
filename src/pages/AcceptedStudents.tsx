@@ -755,7 +755,7 @@ export function AcceptedStudents() {
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className="border-slate-200 bg-white text-slate-900 shadow-lg"
+                className="bg-white shadow-lg border-slate-200 text-slate-900"
               >
                 <DropdownMenuItem
                   disabled={isExportDisabled}
@@ -843,7 +843,7 @@ export function AcceptedStudents() {
             <CardHeader>
               <CardTitle className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-wrap items-center gap-3">
-                  <span>Semester Result Sheet</span>
+                  <span>Bulk Selection</span>
                   {canRevertCurrentTab ? (
                     <div className="flex items-center gap-2">
                       <Input
@@ -858,7 +858,7 @@ export function AcceptedStudents() {
                             setTopCandidateCount(value);
                           }
                         }}
-                        placeholder="Top on page"
+                        placeholder=""
                         className="w-24 h-8"
                       />
                     </div>
