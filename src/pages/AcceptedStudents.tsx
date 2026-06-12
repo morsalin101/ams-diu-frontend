@@ -753,7 +753,10 @@ export function AcceptedStudents() {
                   <ChevronDown className="w-4 h-4 ml-2" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent
+                align="end"
+                className="border-slate-200 bg-white text-slate-900 shadow-lg"
+              >
                 <DropdownMenuItem
                   disabled={isExportDisabled}
                   onSelect={() => {
