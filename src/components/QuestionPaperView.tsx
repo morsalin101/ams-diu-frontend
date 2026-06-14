@@ -3,6 +3,7 @@ import { Question } from './CreateQuestions';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { X } from 'lucide-react';
+import diuLogo from '../assets/diu-logo.png';
 
 interface QuestionPaperViewProps {
   questions: Question[];
@@ -64,8 +65,8 @@ export function QuestionPaperView({ questions, examConfig, onClose }: QuestionPa
           <div className="flex items-center justify-between pb-4 sm:pb-6 border-b-2 border-gray-500">
             {/* Left Section: Logo and University Info */}
             <div className="flex items-center gap-4 sm:gap-6">
-              {/* University Logo (Placeholder) */}
-              <img src="/diu_logo.png" alt="DIU Logo" className="w-16 h-16 sm:w-20 sm:h-20" />
+              {/* University Logo */}
+              <img src={diuLogo} alt="DIU Logo" className="w-16 h-16 sm:w-20 sm:h-20" />
               
               {/* University Details */}
               <div className="text-left">

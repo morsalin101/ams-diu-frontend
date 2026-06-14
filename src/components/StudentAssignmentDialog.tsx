@@ -31,7 +31,7 @@ interface Teacher {
     id: number;
     role_name: string;
   };
-  department_details: {
+  department_details?: {
     id: number;
     department_name: string;
     department_shortname: string;
@@ -106,16 +106,22 @@ export function StudentAssignmentDialog({
 
   // Filter available students based on date filter and search term
   const filteredAvailableStudents = availableStudents.filter(student => {
+    const searchText = studentSearchTerm.toLowerCase();
+    const fullName = student.full_name || '';
+    const username = student.username || '';
+    const formId = student.f_id || '';
+    const registrationSemester = student.registration_semester || '';
     const matchesSearch = !studentSearchTerm || 
-      student.full_name.toLowerCase().includes(studentSearchTerm.toLowerCase()) ||
-      student.username.toLowerCase().includes(studentSearchTerm.toLowerCase()) ||
-      student.f_id.toLowerCase().includes(studentSearchTerm.toLowerCase()) ||
-      student.registration_semester.toLowerCase().includes(studentSearchTerm.toLowerCase());
+      fullName.toLowerCase().includes(searchText) ||
+      username.toLowerCase().includes(searchText) ||
+      formId.toLowerCase().includes(searchText) ||
+      registrationSemester.toLowerCase().includes(searchText);
 
     const matchesSemester =
-      semesterFilter === 'all' || student.registration_semester === semesterFilter;
+      semesterFilter === 'all' || registrationSemester === semesterFilter;
     
-    const matchesDate = !filterDate || (filterDate === 'today' && isToday(student.created_at));
+    const matchesDate =
+      !filterDate || filterDate === 'all' || (filterDate === 'today' && isToday(student.created_at));
     
     return matchesSearch && matchesSemester && matchesDate;
   });
@@ -128,7 +134,7 @@ export function StudentAssignmentDialog({
 
   // Filter schedules based on date filter
   const filteredSchedules = schedules.filter(schedule => {
-    return !filterDate || (filterDate === 'today' && isToday(schedule.created_at));
+    return !filterDate || filterDate === 'all' || (filterDate === 'today' && isToday(schedule.created_at));
   });
 
   const handleClose = () => {
@@ -174,7 +180,7 @@ export function StudentAssignmentDialog({
             {/* Student Selection Panel */}
             <div className="space-y-4 sm:space-y-5 flex flex-col h-full min-h-[420px] xl:min-h-0">
               <div className="flex-shrink-0">
-                <Label className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 block">Select Students</Label>
+                <div className="text-lg sm:text-xl font-semibold text-gray-800 mb-3">Select Students</div>
                 
                 {/* Student Search */}
                 <div className="grid grid-cols-1 sm:grid-cols-[minmax(260px,1fr)_220px_auto] gap-3 mb-4">
@@ -314,17 +320,17 @@ export function StudentAssignmentDialog({
 
             {/* Assignment Details Panel */}
             <div className="space-y-4 sm:space-y-5 flex flex-col h-full min-h-[320px] xl:min-h-0 xl:overflow-y-auto pr-1">
-              <Label className="text-lg sm:text-xl font-semibold text-gray-800 mb-2 block">Assignment Details</Label>
+              <div className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">Assignment Details</div>
               
               <div className="flex-1 space-y-5">
                 {/* Teacher Selection */}
                 <div className="space-y-2 sm:space-y-3">
-                  <Label htmlFor="teacher" className="text-base sm:text-lg font-medium">Teacher *</Label>
+                  <div className="text-base sm:text-lg font-medium">Teacher *</div>
                   <Select
                     value={assignmentForm.teacher_id}
                     onValueChange={(value) => onAssignmentFormChange({ ...assignmentForm, teacher_id: value })}
                   >
-                    <SelectTrigger className="h-11 sm:h-12 text-sm sm:text-base">
+                    <SelectTrigger className="h-11 sm:h-12 text-sm sm:text-base" aria-label="Teacher">
                       <SelectValue placeholder="Select a teacher" />
                     </SelectTrigger>
                     <SelectContent>
@@ -333,7 +339,7 @@ export function StudentAssignmentDialog({
                           <div className="flex flex-col">
                             <span className="font-medium">{teacher.username}</span>
                             <span className="text-sm text-gray-500">
-                              {teacher.department_details.department_name} ({teacher.department_details.department_shortname})
+                              {teacher.department_details?.department_name || 'No department'} ({teacher.department_details?.department_shortname || 'N/A'})
                             </span>
                           </div>
                         </SelectItem>
@@ -346,12 +352,12 @@ export function StudentAssignmentDialog({
 
                 {/* Schedule Selection */}
                 <div className="space-y-2 sm:space-y-3">
-                  <Label htmlFor="schedule" className="text-base sm:text-lg font-medium">Schedule *</Label>
+                  <div className="text-base sm:text-lg font-medium">Schedule *</div>
                   <Select
                     value={assignmentForm.schedule_id}
                     onValueChange={(value) => onAssignmentFormChange({ ...assignmentForm, schedule_id: value })}
                   >
-                    <SelectTrigger className="h-11 sm:h-12 text-sm sm:text-base">
+                    <SelectTrigger className="h-11 sm:h-12 text-sm sm:text-base" aria-label="Schedule">
                       <SelectValue placeholder="Select a schedule" />
                     </SelectTrigger>
                     <SelectContent>

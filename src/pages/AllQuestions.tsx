@@ -12,6 +12,7 @@ import { QuestionPaperView } from '../components/QuestionPaperView';
 import { admissionResultsAPI, departmentAPI, examAPI } from '../services/api';
 import { usePermissions } from '../hooks/usePermissions';
 import PaginationControls, { DEFAULT_PAGINATION, paginationFromDrf } from '../components/PaginationControls';
+import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
 
 interface Exam {
@@ -26,12 +27,18 @@ interface Exam {
   created_at: string;
 }
 
+interface DepartmentOption {
+  department_shortname?: string | null;
+}
+
 interface AllQuestionsProps {
   gradientClass: string;
 }
 
-export function AllQuestions({ gradientClass }: AllQuestionsProps) {
-  const { canRead, canWrite, canEdit, canDelete } = usePermissions();
+export function AllQuestions({ gradientClass: _gradientClass }: AllQuestionsProps) {
+  const { canRead, canEdit, canDelete } = usePermissions();
+  const regularButtonClass =
+    'border border-[#d9daf0] bg-[#ffffff] text-[#2E3094] hover:bg-[#8082b5] hover:text-white';
   const [exams, setExams] = useState<Exam[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [draftSearch, setDraftSearch] = useState('');
@@ -110,16 +117,15 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
         admissionResultsAPI.getSemesterOptions(),
       ]);
 
-      const departmentRows = departmentResponse?.data || [];
+      const departmentRows: DepartmentOption[] = Array.isArray(departmentResponse?.data)
+        ? departmentResponse.data
+        : [];
       setDepartments(
         Array.from(
           new Set(
             departmentRows
-              .flatMap((department: any) => [
-                department.department_shortname,
-                department.department_name,
-              ])
-              .filter(Boolean),
+              .map((department) => department.department_shortname?.trim())
+              .filter((shortname): shortname is string => Boolean(shortname)),
           ),
         ).sort(),
       );
@@ -246,28 +252,25 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
     <div className="space-y-4 sm:space-y-6">
       <div className="flex justify-end">
         <Link to="/create-questions">
-          <Button className="bg-[#3a3ea5] hover:bg-[#30348f]">+Create Questions</Button>
+          <Button className={regularButtonClass}>+Create Questions</Button>
         </Link>
       </div>
 
       {/* Filters and Search */}
       <Card className="border-2 border-gray-200">
-        <CardHeader className="pb-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <CardHeader className="pb-0 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
           <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-800">
-            <Filter className="h-5 w-5 text-blue-600" />
+            <Filter className="w-5 h-5 text-blue-600" />
             Filters & Search
           </CardTitle>
-          <CardDescription>
-            Find specific exams by department, semester, or exam ID
-          </CardDescription>
         </CardHeader>
-        <CardContent className="p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row gap-4 items-end">
+        <CardContent className="px-4 py-2 sm:px-5 sm:py-3">
+          <div className="flex flex-col items-end gap-4 sm:flex-row">
             {/* Search */}
             <div className="flex-1 space-y-2">
               <label className="text-sm font-medium text-gray-700">Search</label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Search className="absolute w-4 h-4 text-gray-400 transform -translate-y-1/2 left-3 top-1/2" />
                 <Input
                   placeholder="Search by department, semester, or exam ID..."
                   value={draftSearch}
@@ -283,7 +286,7 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
             </div>
 
             {/* Department Filter */}
-            <div className="w-full sm:w-48 space-y-2">
+            <div className="w-full space-y-2 sm:w-48">
               <label className="text-sm font-medium text-gray-700">Department</label>
               <Select value={draftDepartmentFilter} onValueChange={setDraftDepartmentFilter}>
                 <SelectTrigger>
@@ -299,7 +302,7 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
             </div>
 
             {/* Semester Filter */}
-            <div className="w-full sm:w-48 space-y-2">
+            <div className="w-full space-y-2 sm:w-48">
               <label className="text-sm font-medium text-gray-700">Semester</label>
               <Select value={draftSemesterFilter} onValueChange={setDraftSemesterFilter}>
                 <SelectTrigger>
@@ -315,7 +318,7 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
             </div>
 
             {/* Date Filter */}
-            <div className="w-full sm:w-48 space-y-2">
+            <div className="w-full space-y-2 sm:w-48">
               <label className="text-sm font-medium text-gray-700">Date Filter</label>
               <Select value={draftDateFilter} onValueChange={setDraftDateFilter}>
                 <SelectTrigger>
@@ -331,9 +334,9 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
             <Button
               onClick={handleSearch}
               disabled={isLoading}
-              className="w-full sm:w-auto"
+              className={cn('w-full sm:w-auto', regularButtonClass)}
             >
-              <Search className="h-4 w-4 mr-2" />
+              <Search className="w-4 h-4 mr-2" />
               Search
             </Button>
 
@@ -353,7 +356,7 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
               variant="outline"
               className="w-full sm:w-auto"
             >
-              <X className="h-4 w-4 mr-2" />
+              <X className="w-4 h-4 mr-2" />
               Clear
             </Button>
 
@@ -365,9 +368,9 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
               className="w-full sm:w-auto"
             >
               {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : (
-                <RefreshCw className="h-4 w-4 mr-2" />
+                <RefreshCw className="w-4 h-4 mr-2" />
               )}
               Refresh
             </Button>
@@ -375,31 +378,19 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
         </CardContent>
       </Card>
 
-      {/* Results Summary */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 bg-gray-50 rounded-lg">
-        <div className="flex items-center gap-2">
-          <FileText className="h-5 w-5 text-blue-600" />
-          <span className="font-semibold text-gray-800">
-            Showing {exams.length} of {totalCount} exams
-          </span>
-        </div>
-        <div className="text-sm text-gray-600">
-          Last updated: {new Date().toLocaleTimeString()}
-        </div>
-      </div>
 
       {/* Exams Grid */}
       {isLoading ? (
-        <div className="flex justify-center items-center py-12">
+        <div className="flex items-center justify-center py-12">
           <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+            <Loader2 className="w-8 h-8 mx-auto mb-4 text-blue-600 animate-spin" />
             <p className="text-gray-600">Loading exams...</p>
           </div>
         </div>
       ) : exams.length === 0 ? (
         <Card className="p-8 text-center">
-          <FileText className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">No exams found</h3>
+          <FileText className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+          <h3 className="mb-2 text-lg font-semibold text-gray-800">No exams found</h3>
           <p className="text-gray-600">
             {hasAppliedFilters
               ? 'Try adjusting your search criteria or filters.'
@@ -409,11 +400,11 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
       ) : (
         <Card className="overflow-hidden">
           <CardContent className="p-4 sm:p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 md:gap-6">
               {exams.map((exam) => (
-                <Card key={exam.id} className="border-2 border-gray-200 hover:shadow-lg transition-shadow duration-200">
+                <Card key={exam.id} className="transition-shadow duration-200 border-2 border-gray-200 hover:shadow-lg">
                   <CardHeader className="pb-3">
-                    <div className="flex justify-between items-start">
+                    <div className="flex items-start justify-between">
                       <CardTitle className="text-lg font-bold text-gray-800">
                         Exam #{exam.id}
                       </CardTitle>
@@ -434,19 +425,19 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div className="flex items-center gap-2">
-                        <Building className="h-4 w-4 text-blue-600" />
+                        <Building className="w-4 h-4 text-blue-600" />
                         <span className="font-medium">{exam.department}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-green-600" />
+                        <Calendar className="w-4 h-4 text-green-600" />
                         <span className="font-medium">{exam.semester}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-purple-600" />
+                        <Users className="w-4 h-4 text-purple-600" />
                         <span>{exam.total_marks} marks</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-orange-600" />
+                        <Clock className="w-4 h-4 text-orange-600" />
                         <span>{exam.duration_minutes} min</span>
                       </div>
                     </div>
@@ -456,7 +447,7 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
                         <span>Questions Progress</span>
                         <span>{Math.round((exam.present_question / exam.total_questions) * 100)}%</span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="w-full h-2 bg-gray-200 rounded-full">
                         <div
                           className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] h-2 rounded-full transition-all duration-300"
                           style={{ width: `${(exam.present_question / exam.total_questions) * 100}%` }}
@@ -470,9 +461,12 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
                           onClick={() => handleViewQuestions(exam.id, true)}
                           variant="default"
                           size="sm"
-                          className="flex-1 bg-gradient-to-r from-[#4C51BF] to-[#667EEA] ${gradientClass} hover:from-blue-700 hover:to-purple-700"
+                          className={cn(
+                            'flex-1',
+                            regularButtonClass,
+                          )}
                         >
-                          <Eye className="h-3 w-3 mr-1" />
+                          <Eye className="w-3 h-3 mr-1" />
                           View
                         </Button>
                       )}
@@ -481,9 +475,9 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
                           onClick={() => handleViewQuestions(exam.id, false)}
                           variant="outline"
                           size="sm"
-                          className="flex-1 border-gray-300 hover:border-blue-400"
+                          className="flex-1"
                         >
-                          <Edit className="h-3 w-3 mr-1" />
+                          <Edit className="w-3 h-3 mr-1" />
                           Edit
                         </Button>
                       )}
@@ -492,13 +486,13 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
                           onClick={() => handleDeleteExam(exam.id)}
                           variant="outline"
                           size="sm"
-                          className="flex-1 border-red-600 text-red-600 hover:bg-red-50"
+                          className="flex-1 text-red-600 border-red-600 hover:bg-red-50"
                           disabled={deletingId === exam.id}
                         >
                           {deletingId === exam.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                           ) : (
-                            <Trash2 className="h-4 w-4 mr-2" />
+                            <Trash2 className="w-4 h-4 mr-2" />
                           )}
                           Delete
                         </Button>
@@ -537,12 +531,12 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
       <Dialog open={showQuestionManager} onOpenChange={setShowQuestionManager}>
         <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-hidden mx-2 sm:mx-0 p-0">
           <DialogHeader className="p-6 pb-4 border-b">
-            <div className="flex justify-between items-start">
+            <div className="flex items-start justify-between">
               <div>
                 <DialogTitle className="text-xl font-bold">
                   {isReadOnlyMode ? 'View Questions' : 'Manage Questions'} - Exam #{selectedExamId}
                 </DialogTitle>
-                <DialogDescription className="text-base mt-2">
+                <DialogDescription className="mt-2 text-base">
                   {selectedExam && (
                     <div className="flex flex-wrap gap-2 text-sm">
                       <Badge variant="outline">{selectedExam.department}</Badge>
@@ -557,9 +551,9 @@ export function AllQuestions({ gradientClass }: AllQuestionsProps) {
                 variant="outline"
                 size="sm"
                 onClick={handleCloseQuestionManager}
-                className="border-gray-300 hover:border-red-400 hover:bg-red-50 text-gray-600 hover:text-red-600"
+                className="text-gray-600 border-gray-300 hover:border-red-400 hover:bg-red-50 hover:text-red-600"
               >
-                <X className="h-4 w-4" />
+                <X className="w-4 h-4" />
               </Button>
             </div>
           </DialogHeader>

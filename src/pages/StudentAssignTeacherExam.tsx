@@ -57,7 +57,7 @@ interface Teacher {
     id: number;
     role_name: string;
   };
-  department_details: {
+  department_details?: {
     id: number;
     department_name: string;
     department_shortname: string;
@@ -89,6 +89,14 @@ interface Schedule {
 
 export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentManagementProps) {
   const { canWrite, canRead, canDelete } = usePermissions();
+
+  const getResponseRows = (response: any) => {
+    if (Array.isArray(response)) return response;
+    if (Array.isArray(response?.data)) return response.data;
+    if (Array.isArray(response?.results)) return response.results;
+    if (Array.isArray(response?.students)) return response.students;
+    return [];
+  };
 
   // State managementStudentAssignTeacherExamz
   const [assignments, setAssignments] = useState<StudentAssignment[]>([]);
@@ -170,8 +178,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
         date_filter: appliedFilterDate === 'today' ? 'today' : undefined,
       });
       if (response && (response.success !== false)) {
-        const data = response.data || response;
-        setAssignments(Array.isArray(data) ? data : []);
+        setAssignments(getResponseRows(response));
         setPagination(paginationFromDrf(response, page));
         setAssignmentFilterOptions(response.filter_options || {});
       }
@@ -187,22 +194,12 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
   const loadStudents = async () => {
     try {
       const response = await studentsAPI.getAllStudentsForLookup();
-      let studentsData = [];
-      if (Array.isArray(response)) {
-        studentsData = response;
-      } else if (response && Array.isArray(response.students)) {
-        // Handle the new API format with 'students' array
-        studentsData = response.students;
-      } else if (response && Array.isArray(response.results)) {
-        studentsData = response.results;
-      } else if (response && Array.isArray(response.data)) {
-        studentsData = response.data;
-      } else {
+      const studentsData = getResponseRows(response);
+      if (studentsData.length === 0 && response && !Array.isArray(response)) {
         console.warn('Unexpected students API response format:', response);
-        studentsData = [];
       }
-      
-      setStudents(Array.isArray(studentsData) ? studentsData : []);
+
+      setStudents(studentsData);
     } catch (error: any) {
       console.error('Error loading students:', error);
       toast.error('Failed to load students');
@@ -213,8 +210,8 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
   const loadTeachers = async () => {
     try {
       const response = await usersAPI.getTeachers();
-      if (response && response.success && response.data) {
-        setTeachers(Array.isArray(response.data) ? response.data : []);
+      if (response && (response.success !== false)) {
+        setTeachers(getResponseRows(response));
       }
     } catch (error: any) {
       console.error('Error loading teachers:', error);
@@ -227,10 +224,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
     try {
       const response = await scheduleAPI.getAllSchedulesForLookup();
       if (response && (response.success !== false)) {
-        const data = response.data || response;
-        // Handle paginated response with results array
-        const schedulesData = data.results || data;
-        setSchedules(Array.isArray(schedulesData) ? schedulesData : []);
+        setSchedules(getResponseRows(response));
       }
     } catch (error: any) {
       console.error('Error loading schedules:', error);
@@ -468,7 +462,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
                   <SelectItem value="all">All Teachers</SelectItem>
                   {teachers.map(teacher => (
                     <SelectItem key={teacher.id} value={teacher.id.toString()}>
-                      {teacher.username} ({teacher.department_details.department_shortname})
+                      {teacher.username} ({teacher.department_details?.department_shortname || 'N/A'})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -632,17 +626,17 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
                       <TableCell>
                         <div>
                           <p className="font-medium">{assignment.student_full_name}</p>
-                          <p className="text-sm text-gray-500">@{assignment.student_username}</p>
+                          <p className="text-sm text-gray-500">@{assignment.student_username || 'unknown'}</p>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{assignment.student_f_id}</Badge>
+                        <Badge variant="outline">{assignment.student_f_id || 'N/A'}</Badge>
                       </TableCell>
                       <TableCell>
-                        <p className="font-medium">@{assignment.teacher_username}</p>
+                        <p className="font-medium">@{assignment.teacher_username || 'unknown'}</p>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary">{assignment.exam_department}</Badge>
+                        <Badge variant="secondary">{assignment.exam_department || 'N/A'}</Badge>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{assignment.student_registration_semester || 'N/A'}</Badge>

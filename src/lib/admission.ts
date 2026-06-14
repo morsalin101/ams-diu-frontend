@@ -13,6 +13,7 @@ export interface AdmissionConfiguration {
   exam: number | null;
   exam_department?: string;
   seat_limit: number;
+  waiting_student_limit: number;
   threshold: number;
   notes?: string;
   created_at: string;
@@ -69,7 +70,7 @@ export interface AdmissionResult {
 export const RESULT_STATUS_LABELS: Record<AdmissionResult["result_status"], string> = {
   SELECTED: "Selected",
   WAITING: "Waiting",
-  REJECTED: "Rejected",
+  REJECTED: "Not Selected",
   ABSENT: "Absent",
 };
 

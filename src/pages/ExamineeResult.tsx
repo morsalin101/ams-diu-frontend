@@ -384,7 +384,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
     setIsRejecting(true);
     try {
       if (!configuration?.id) {
-        throw new Error("Set threshold and seat limit before rejecting candidates.");
+        throw new Error("Set threshold and seat limit before marking candidates as not selected.");
       }
 
       await admissionResultsAPI.bulkUpdateStatus({
@@ -393,11 +393,11 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
         result_status: "REJECTED",
       });
 
-      toast.success("Selected candidates have been rejected.");
+      toast.success("Selected candidates have been marked as not selected.");
       await refreshBoard();
     } catch (rejectError: any) {
       console.error("Error rejecting candidates:", rejectError);
-      toast.error(rejectError?.message || "Failed to reject candidates");
+      toast.error(rejectError?.message || "Failed to mark candidates as not selected");
     } finally {
       setIsRejecting(false);
     }
@@ -664,7 +664,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm font-medium text-gray-600">Rejected / Absent</p>
+            <p className="text-sm font-medium text-gray-600">Not Selected / Absent</p>
             <p className="text-2xl font-bold text-rose-600">
               {summary.REJECTED + summary.ABSENT}
             </p>
@@ -677,7 +677,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
           <AlertDescription className="flex flex-col gap-3 text-blue-900 sm:flex-row sm:items-center sm:justify-between">
             <span>
               No saved admission setup exists for {formatSemesterLabel(selectedSemester)} yet.
-              Set threshold and seat limit before accepting or rejecting candidates.
+              Set threshold and seat limit before accepting candidates or marking them as not selected.
             </span>
             <a
               href="/student-acceptance-criteria"
@@ -771,7 +771,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
                   ) : (
                     <XCircle className="w-4 h-4 mr-2" />
                   )}
-                  Reject
+                  Mark Not Selected
                 </Button>
               )}
               <Button
@@ -890,7 +890,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
                             </Badge>
                             {isAbsentCandidate || isRejectedCandidate ? (
                               <p className="text-xs text-slate-500">
-                                Manual acceptance or rejection allowed
+                                Manual acceptance or not-selected marking allowed
                               </p>
                             ) : null}
                           </div>

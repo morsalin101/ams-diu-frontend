@@ -827,7 +827,7 @@ export function AcceptedStudents() {
             </Card>
             <Card>
               <CardContent className="p-4">
-                <p className="text-sm font-medium text-gray-600">Rejected</p>
+                <p className="text-sm font-medium text-gray-600">Not Selected</p>
                 <p className="text-2xl font-bold text-rose-600">{summary.REJECTED}</p>
               </CardContent>
             </Card>
@@ -888,7 +888,7 @@ export function AcceptedStudents() {
               >
                 <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
                   <TabsTrigger value="selected">Selected ({summary.SELECTED})</TabsTrigger>
-                  <TabsTrigger value="rejected">Rejected ({summary.REJECTED})</TabsTrigger>
+                  <TabsTrigger value="rejected">Not Selected ({summary.REJECTED})</TabsTrigger>
                   <TabsTrigger value="waiting">Waiting ({summary.WAITING})</TabsTrigger>
                   <TabsTrigger value="absent">Absent ({summary.ABSENT})</TabsTrigger>
                 </TabsList>
