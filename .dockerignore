@@ -1,0 +1,12 @@
+node_modules
+dist
+dist-ssr
+.git
+.github
+.vscode
+.idea
+*.log
+.DS_Store
+.env
+.env.*
+ams-diu-frontend
