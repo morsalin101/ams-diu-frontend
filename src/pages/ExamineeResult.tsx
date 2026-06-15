@@ -8,7 +8,6 @@ import {
   Loader2,
   RefreshCw,
   Search,
-  Users,
   X,
   XCircle,
 } from "lucide-react";
@@ -53,7 +52,7 @@ const DEFAULT_SUMMARY = {
 
 export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
   const { canRead, canWrite } = usePermissions();
-  const { department, isFallback, isLoading: isDepartmentLoading, error: departmentError } =
+  const { department, isLoading: isDepartmentLoading, error: departmentError } =
     useEffectiveDepartment();
   const hasReadAccess = canRead();
   const hasWriteAccess = canWrite();
@@ -484,16 +483,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
   }
 
   return (
-    <div className="space-y-6">
-      {isFallback && department && (
-        <Alert className="border-amber-200 bg-amber-50">
-          <AlertTriangle className="w-4 h-4 text-amber-600" />
-          <AlertDescription className="text-amber-800">
-            This user has no department assigned. Using the CSE fallback board for now.
-          </AlertDescription>
-        </Alert>
-      )}
-
+    <div className="space-y-4">
       {departmentError && !department && (
         <Alert variant="destructive">
           <AlertTriangle className="w-4 h-4" />
@@ -501,20 +491,49 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
         </Alert>
       )}
 
-      <Card className="border-2 border-gray-200">
-        <CardHeader className="pb-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
-          <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-800">
-            <Users className="w-5 h-5 text-blue-600" />
-            Board Controls
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <Card>
+          <CardContent className="p-3">
+            <p className="text-xs font-medium text-gray-600">Total Candidates</p>
+            <p className="text-xl font-bold text-blue-600">{pagination.count}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3">
+            <p className="text-xs font-medium text-gray-600">Waiting</p>
+            <p className="text-xl font-bold text-amber-600">{summary.WAITING}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3">
+            <p className="text-xs font-medium text-gray-600">Selected</p>
+            <p className="text-xl font-bold text-green-600">{summary.SELECTED}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3">
+            <p className="text-xs font-medium text-gray-600">Not Selected / Absent</p>
+            <p className="text-xl font-bold text-rose-600">
+              {summary.REJECTED + summary.ABSENT}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="border border-gray-200">
+        <CardHeader className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold text-gray-800">
+            <Search className="w-4 h-4 text-blue-600" />
+            Search &amp; Filters
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-4 space-y-4 sm:p-6">
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
-            <div className="space-y-2">
+        <CardContent className="p-4 space-y-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <div className="space-y-1.5">
               <Label>Department</Label>
               <div className="flex items-center justify-between h-10 px-3 border rounded-md bg-gray-50">
-                <span className="text-sm font-medium text-gray-800 max-w-[180px] truncate block" title={department?.department_name}>
-                  {isDepartmentLoading ? "Resolving department..." : department?.department_name || "Unavailable"}
+                <span className="text-sm font-medium text-gray-800 max-w-[120px] truncate block" title={department?.department_name}>
+                  {isDepartmentLoading ? "Resolving..." : department?.department_name || "Unavailable"}
                 </span>
                 {department && (
                   <Badge variant="outline">{department.department_shortname}</Badge>
@@ -522,7 +541,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label>Semester</Label>
               <SemesterCombobox
                 value={selectedSemester}
@@ -532,7 +551,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="search-candidates">Search</Label>
               <div className="relative">
                 <Search className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
@@ -551,77 +570,33 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label>Sort By</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <Select value={draftSortBy} onValueChange={(value: "name" | "score") => setDraftSortBy(value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="name">Name</SelectItem>
-                    <SelectItem value="score">Score</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={draftSortOrder} onValueChange={(value: "asc" | "desc") => setDraftSortOrder(value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="asc">Ascending</SelectItem>
-                    <SelectItem value="desc">Descending</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <Select value={draftSortBy} onValueChange={(value: "name" | "score") => setDraftSortBy(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name">Name</SelectItem>
+                  <SelectItem value="score">Score</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="flex items-end gap-2">
-              <Button
-                onClick={handleSearch}
-                disabled={isLoading || !department || !selectedSemester}
-                className="flex-1"
-              >
-                <Search className="w-4 h-4 mr-2" />
-                Search
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleClearSearch}
-                disabled={
-                  isLoading ||
-                  (!draftSearch &&
-                    !appliedSearch &&
-                    !draftMinimumScoreFilter &&
-                    !appliedMinimumScoreFilter &&
-                    draftSortBy === "score" &&
-                    appliedSortBy === "score" &&
-                    draftSortOrder === "desc" &&
-                    appliedSortOrder === "desc")
-                }
-                className="flex-1"
-              >
-                <X className="w-4 h-4 mr-2" />
-                Clear
-              </Button>
-              <Button
-                variant="outline"
-                onClick={refreshBoard}
-                disabled={isLoading || !department || !selectedSemester}
-                className="flex-1"
-              >
-                {isLoading ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                )}
-                Refresh
-              </Button>
+            <div className="space-y-1.5">
+              <Label>Order</Label>
+              <Select value={draftSortOrder} onValueChange={(value: "asc" | "desc") => setDraftSortOrder(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="asc">Ascending</SelectItem>
+                  <SelectItem value="desc">Descending</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="space-y-2">
+            <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
               <Label htmlFor="minimum-score-filter">Filter by Total Mark</Label>
               <Input
                 id="minimum-score-filter"
@@ -640,37 +615,49 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
               />
             </div>
           </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              onClick={handleSearch}
+              disabled={isLoading || !department || !selectedSemester}
+            >
+              <Search className="w-4 h-4 mr-2" />
+              Search
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClearSearch}
+              disabled={
+                isLoading ||
+                (!draftSearch &&
+                  !appliedSearch &&
+                  !draftMinimumScoreFilter &&
+                  !appliedMinimumScoreFilter &&
+                  draftSortBy === "score" &&
+                  appliedSortBy === "score" &&
+                  draftSortOrder === "desc" &&
+                  appliedSortOrder === "desc")
+              }
+            >
+              <X className="w-4 h-4 mr-2" />
+              Clear
+            </Button>
+            <Button
+              variant="outline"
+              onClick={refreshBoard}
+              disabled={isLoading || !department || !selectedSemester}
+            >
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4 mr-2" />
+              )}
+              Refresh
+            </Button>
+          </div>
         </CardContent>
       </Card>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm font-medium text-gray-600">Total Candidates</p>
-            <p className="text-2xl font-bold text-blue-600">{pagination.count}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm font-medium text-gray-600">Waiting</p>
-            <p className="text-2xl font-bold text-amber-600">{summary.WAITING}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm font-medium text-gray-600">Selected</p>
-            <p className="text-2xl font-bold text-green-600">{summary.SELECTED}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm font-medium text-gray-600">Not Selected / Absent</p>
-            <p className="text-2xl font-bold text-rose-600">
-              {summary.REJECTED + summary.ABSENT}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
 
       {!configuration && selectedSemester && (
         <Alert className="border-blue-200 bg-blue-50">
@@ -688,13 +675,6 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
           </AlertDescription>
         </Alert>
       )}
-
-      <Alert className="border-slate-200 bg-slate-50">
-        <AlertDescription className="text-slate-700">
-          Filter behavior: an empty total mark filter shows all non-selected candidates.
-          Any number filters the board to candidates with totals greater than or equal to that value.
-        </AlertDescription>
-      </Alert>
 
       {isBulkDownloading && (
         <Alert className="border-blue-200 bg-blue-50">
@@ -743,7 +723,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
                     isAccepting ||
                     isRejecting
                   }
-                  className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#23257a] hover:to-[#4046a8]"
+                  className="text-white bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#23257a] hover:to-[#4046a8]"
                 >
                   {isAccepting ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -764,7 +744,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
                     isRejecting ||
                     isAccepting
                   }
-                  className="bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700"
+                  className="text-white bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700"
                 >
                   {isRejecting ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
