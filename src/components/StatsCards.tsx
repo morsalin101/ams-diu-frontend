@@ -100,23 +100,23 @@ export function StatsCards({ gradientClass }: StatsCardsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
       {statsCards.map((stat, index) => {
         const Icon = stat.icon;
-        
+
         return (
           <Card key={stat.title} className="relative overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-            <CardHeader className="space-y-0 px-5 pb-1 pt-5">
-              <CardTitle className="pr-14 text-base font-semibold text-slate-950">
+            <CardHeader className="space-y-0 px-4 pb-1 pt-4">
+              <CardTitle className="pr-14 text-sm font-semibold text-slate-950">
                 {stat.title}
               </CardTitle>
             </CardHeader>
-            <div className="absolute right-5 top-5 rounded-lg bg-blue-100 p-2.5 text-blue-700 shadow-sm">
-              <Icon className="h-5 w-5" />
+            <div className="absolute right-4 top-4 rounded-lg bg-blue-100 p-2 text-blue-700 shadow-sm">
+              <Icon className="h-4 w-4" />
             </div>
-            <CardContent className="px-5 pb-5 pt-0">
-              <div className="text-3xl font-bold leading-tight text-[#0D1B4C]">{stat.value}</div>
-              <div className="mt-1.5 text-sm text-slate-700">
+            <CardContent className="px-4 pb-4 pt-0">
+              <div className="text-2xl font-bold leading-tight text-[#0D1B4C]">{stat.value}</div>
+              <div className="mt-1 text-xs text-slate-700">
                 {stat.description}
               </div>
             </CardContent>

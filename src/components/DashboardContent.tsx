@@ -9,12 +9,12 @@ interface DashboardContentProps {
 
 export function DashboardContent({ gradientClass }: DashboardContentProps) {
   return (
-    <div className="space-y-5 md:space-y-7">
+    <div className="space-y-3 md:space-y-4">
       {/* Welcome Section */}
-      <div className="relative overflow-hidden rounded-lg border border-blue-200 bg-gradient-to-r from-white via-blue-50/50 to-blue-100/70 px-5 py-5 shadow-sm md:px-8 md:py-7">
+      <div className="relative overflow-hidden rounded-lg border border-blue-200 bg-gradient-to-r from-white via-blue-50/50 to-blue-100/70 px-4 py-3 shadow-sm md:px-6 md:py-4">
         <div className="relative z-10">
-          <h2 className="mb-2 text-2xl font-bold text-[#0D1B4C] md:text-[32px]">Welcome back, Admin!</h2>
-          <p className="text-base text-slate-700 md:text-lg">Here's what's happening with your dashboard today.</p>
+          <h2 className="mb-1 text-xl font-bold text-[#0D1B4C] md:text-2xl">Welcome back, Admin!</h2>
+          <p className="text-sm text-slate-700 md:text-base">Here's what's happening with your dashboard today.</p>
         </div>
         <div className="pointer-events-none absolute bottom-0 right-4 hidden h-24 w-80 opacity-25 md:block">
           <div className="absolute bottom-0 right-0 h-2 w-full rounded-t-full bg-blue-300" />
@@ -35,7 +35,7 @@ export function DashboardContent({ gradientClass }: DashboardContentProps) {
       <QuestionsStatsDetail gradientClass={gradientClass} />
 
       {/* Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
         {/* Quick Actions */}
         {/* <div className="lg:col-span-2 order-2 lg:order-1">
           <QuickActions gradientClass={gradientClass} />

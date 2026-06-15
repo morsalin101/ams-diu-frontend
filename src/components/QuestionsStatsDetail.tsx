@@ -79,37 +79,37 @@ export function QuestionsStatsDetail({ gradientClass }: QuestionsStatsDetailProp
   };
 
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 md:gap-7">
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-3 md:gap-4">
       {/* Subjects Breakdown */}
       <Card className="rounded-lg border border-slate-200 bg-white shadow-sm lg:col-span-2">
-        <CardHeader className="flex flex-row items-start justify-between px-6 pb-3 pt-6">
+        <CardHeader className="flex flex-row items-start justify-between px-4 pb-2 pt-4">
           <div>
-            <CardTitle className="flex items-center gap-3 text-2xl font-bold text-slate-950">
+            <CardTitle className="flex items-center gap-2 text-lg font-bold text-slate-950 md:text-xl">
               <BookOpen className="h-5 w-5" />
               Subject Distribution
             </CardTitle>
-            <CardDescription className="mt-1 text-base text-slate-700">
+            <CardDescription className="mt-1 text-sm text-slate-700">
               Questions breakdown by subject
             </CardDescription>
           </div>
-          <Button onClick={loadStats} variant="outline" size="icon" className="h-10 w-10 rounded-lg border-slate-300 text-slate-700">
-            <RefreshCw className="h-5 w-5" />
+          <Button onClick={loadStats} variant="outline" size="icon" className="h-9 w-9 rounded-lg border-slate-300 text-slate-700">
+            <RefreshCw className="h-4 w-4" />
           </Button>
         </CardHeader>
-        <CardContent className="px-6 pb-6">
+        <CardContent className="px-4 pb-4">
           <div>
             {Object.entries(stats.subjects)
               .sort(([,a], [,b]) => b - a)
               .map(([subject, count], index) => {
                 const percentage = Math.round((count / stats.total_questions) * 100);
                 return (
-                  <div key={subject} className="border-b border-dashed border-slate-200 py-4 last:border-0">
+                  <div key={subject} className="border-b border-dashed border-slate-200 py-2.5 last:border-0">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className={`h-4 w-4 rounded-full ${getSubjectColor(index)}`}></div>
-                        <span className="text-lg font-semibold text-slate-950">{subject}</span>
+                      <div className="flex items-center gap-3">
+                        <div className={`h-3 w-3 rounded-full ${getSubjectColor(index)}`}></div>
+                        <span className="text-base font-semibold text-slate-950">{subject}</span>
                       </div>
-                      <div className="flex items-center gap-10 text-base">
+                      <div className="flex items-center gap-6 text-sm">
                         <span className="font-semibold text-slate-950">{count} questions</span>
                         <span className="min-w-10 text-right text-slate-700">
                           {percentage}%
@@ -124,32 +124,32 @@ export function QuestionsStatsDetail({ gradientClass }: QuestionsStatsDetailProp
       </Card>
 
       {/* Question Types & Semesters */}
-      <div className="space-y-5 md:space-y-7">
+      <div className="space-y-3 md:space-y-4">
         {/* Question Types */}
         <Card className="rounded-lg border border-slate-200 bg-white shadow-sm">
-          <CardHeader className="px-5 pb-0 pt-5">
-            <CardTitle className="flex items-center gap-3 text-xl font-bold text-slate-950">
+          <CardHeader className="px-4 pb-0 pt-4">
+            <CardTitle className="flex items-center gap-2 text-base font-bold text-slate-950 md:text-lg">
               <BarChart3 className="h-5 w-5" />
               Question Types
             </CardTitle>
           </CardHeader>
-          <CardContent className="px-5 pb-5 pt-0">
+          <CardContent className="px-4 pb-4 pt-0">
             <div>
               {Object.entries(stats.types).map(([type, count]) => {
                 const percentage = Math.round((count / stats.total_questions) * 100);
                 return (
-                  <div key={type} className="flex items-center justify-between border-b border-dashed border-slate-200 py-2.5 last:border-0">
+                  <div key={type} className="flex items-center justify-between border-b border-dashed border-slate-200 py-2 last:border-0">
                     <div className="flex items-center gap-3">
                       <div className={`h-3 w-3 rounded-full ${
                         type === 'option' ? 'bg-blue-500' : 'bg-green-500'
                       }`}></div>
-                      <span className="text-base font-semibold text-slate-950">
+                      <span className="text-sm font-semibold text-slate-950">
                         {type === 'option' ? 'Multiple Choice' : 'Text Answer'}
                       </span>
                     </div>
                     <div className="text-right">
-                      <div className="text-base font-semibold text-slate-950">{count}</div>
-                      <div className="text-sm text-slate-700">{percentage}%</div>
+                      <div className="text-sm font-semibold text-slate-950">{count}</div>
+                      <div className="text-xs text-slate-700">{percentage}%</div>
                     </div>
                   </div>
                 );
@@ -160,20 +160,20 @@ export function QuestionsStatsDetail({ gradientClass }: QuestionsStatsDetailProp
 
         {/* Semesters */}
         <Card className="rounded-lg border border-slate-200 bg-white shadow-sm">
-          <CardHeader className="px-6 pb-2 pt-6">
-            <CardTitle className="flex items-center gap-4 text-2xl font-bold text-slate-950">
+          <CardHeader className="px-4 pb-2 pt-4">
+            <CardTitle className="flex items-center gap-3 text-base font-bold text-slate-950 md:text-lg">
               <FileText className="h-5 w-5" />
               Semesters
             </CardTitle>
           </CardHeader>
-          <CardContent className="px-6 pb-6">
-            <div className="space-y-3">
+          <CardContent className="px-4 pb-4">
+            <div className="space-y-2">
               {Object.entries(stats.semesters).map(([semester, count]) => (
-                <div key={semester} className="flex items-center justify-between py-2">
-                  <Badge className="rounded-full bg-green-100 px-4 py-2 text-base font-semibold text-green-700 hover:bg-green-100">
+                <div key={semester} className="flex items-center justify-between py-1.5">
+                  <Badge className="rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-700 hover:bg-green-100">
                     {semester}
                   </Badge>
-                  <div className="flex items-center gap-3 text-base">
+                  <div className="flex items-center gap-3 text-sm">
                     <span className="font-semibold text-slate-950">{count}</span>
                     <span className="text-slate-700">Active</span>
                   </div>
