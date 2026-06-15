@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Eye,
@@ -8,27 +8,52 @@ import {
   Search,
   Trash2,
   X,
-} from "lucide-react";
-import toast from "react-hot-toast";
+} from 'lucide-react';
+import toast from 'react-hot-toast';
 
-import { Alert, AlertDescription } from "../components/ui/alert";
-import { Badge } from "../components/ui/badge";
-import { Button } from "../components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
-import { Checkbox } from "../components/ui/checkbox";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../components/ui/dialog";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
-import { usePermissions } from "../hooks/usePermissions";
-import { examAPI } from "../services/api";
+import { Alert, AlertDescription } from '../components/ui/alert';
+import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '../components/ui/card';
+import { Checkbox } from '../components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../components/ui/table';
+import { usePermissions } from '../hooks/usePermissions';
+import { examAPI } from '../services/api';
 
 interface QuestionBankItem {
   id: number;
   subject: string;
   questions: unknown;
-  type: "option" | "text";
+  type: 'option' | 'text';
   text?: string | null;
   options?: unknown;
   answer?: unknown;
@@ -48,7 +73,7 @@ interface DeleteQuestionsProps {
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
 function pickDisplayValue(value: unknown): unknown {
@@ -60,7 +85,7 @@ function pickDisplayValue(value: unknown): unknown {
     value.english ??
     value.both ??
     value.bangla ??
-    Object.values(value).find((item) => {
+    Object.values(value).find(item => {
       if (Array.isArray(item)) {
         return item.length > 0;
       }
@@ -69,9 +94,9 @@ function pickDisplayValue(value: unknown): unknown {
         return Object.keys(item).length > 0;
       }
 
-      return item !== null && item !== undefined && String(item).trim() !== "";
+      return item !== null && item !== undefined && String(item).trim() !== '';
     }) ??
-    ""
+    ''
   );
 }
 
@@ -79,29 +104,29 @@ function stringifyDisplayValue(value: unknown): string {
   const displayValue = pickDisplayValue(value);
 
   if (displayValue === null || displayValue === undefined) {
-    return "";
+    return '';
   }
 
-  if (typeof displayValue === "string") {
+  if (typeof displayValue === 'string') {
     return displayValue;
   }
 
-  if (typeof displayValue === "number" || typeof displayValue === "boolean") {
+  if (typeof displayValue === 'number' || typeof displayValue === 'boolean') {
     return String(displayValue);
   }
 
   if (Array.isArray(displayValue)) {
     return displayValue
-      .map((item) => stringifyDisplayValue(item))
+      .map(item => stringifyDisplayValue(item))
       .filter(Boolean)
-      .join(", ");
+      .join(', ');
   }
 
   if (isRecord(displayValue)) {
     return Object.values(displayValue)
-      .map((item) => stringifyDisplayValue(item))
+      .map(item => stringifyDisplayValue(item))
       .filter(Boolean)
-      .join(", ");
+      .join(', ');
   }
 
   return String(displayValue);
@@ -113,7 +138,7 @@ function getQuestionText(question: QuestionBankItem) {
 
 function normalizeToken(value: unknown) {
   return stringifyDisplayValue(value)
-    .replace(/[()[\]]/g, "")
+    .replace(/[()[\]]/g, '')
     .trim()
     .toLowerCase();
 }
@@ -123,13 +148,13 @@ function getAnswerValues(answer: unknown): string[] {
 
   if (Array.isArray(displayAnswer)) {
     return displayAnswer
-      .map((item) => stringifyDisplayValue(item))
+      .map(item => stringifyDisplayValue(item))
       .filter(Boolean);
   }
 
   if (isRecord(displayAnswer)) {
     return Object.values(displayAnswer)
-      .map((item) => stringifyDisplayValue(item))
+      .map(item => stringifyDisplayValue(item))
       .filter(Boolean);
   }
 
@@ -138,7 +163,7 @@ function getAnswerValues(answer: unknown): string[] {
 }
 
 function parseOptions(options: unknown): unknown {
-  if (typeof options !== "string") {
+  if (typeof options !== 'string') {
     return options;
   }
 
@@ -152,7 +177,9 @@ function parseOptions(options: unknown): unknown {
 function getQuestionOptions(question: QuestionBankItem): NormalizedOption[] {
   const parsedOptions = parseOptions(question.options);
   const displayOptions = pickDisplayValue(parsedOptions);
-  const answerTokens = new Set(getAnswerValues(question.answer).map(normalizeToken));
+  const answerTokens = new Set(
+    getAnswerValues(question.answer).map(normalizeToken),
+  );
 
   if (Array.isArray(displayOptions)) {
     return displayOptions
@@ -160,8 +187,8 @@ function getQuestionOptions(question: QuestionBankItem): NormalizedOption[] {
         key: String.fromCharCode(65 + index),
         value: stringifyDisplayValue(option),
       }))
-      .filter((option) => option.value)
-      .map((option) => ({
+      .filter(option => option.value)
+      .map(option => ({
         ...option,
         isCorrect:
           answerTokens.has(normalizeToken(option.key)) ||
@@ -175,8 +202,8 @@ function getQuestionOptions(question: QuestionBankItem): NormalizedOption[] {
         key,
         value: stringifyDisplayValue(value),
       }))
-      .filter((option) => option.value)
-      .map((option) => ({
+      .filter(option => option.value)
+      .map(option => ({
         ...option,
         isCorrect:
           answerTokens.has(normalizeToken(option.key)) ||
@@ -186,34 +213,40 @@ function getQuestionOptions(question: QuestionBankItem): NormalizedOption[] {
 
   const optionsText = stringifyDisplayValue(displayOptions);
   return optionsText
-    ? [{ key: "Option", value: optionsText, isCorrect: answerTokens.has(normalizeToken(optionsText)) }]
+    ? [
+        {
+          key: 'Option',
+          value: optionsText,
+          isCorrect: answerTokens.has(normalizeToken(optionsText)),
+        },
+      ]
     : [];
 }
 
 function compareQuestions(
   left: QuestionBankItem,
   right: QuestionBankItem,
-  sortBy: "id" | "subject" | "marks" | "semester",
-  order: "asc" | "desc",
+  sortBy: 'id' | 'subject' | 'marks' | 'semester',
+  order: 'asc' | 'desc',
 ) {
-  const direction = order === "asc" ? 1 : -1;
+  const direction = order === 'asc' ? 1 : -1;
 
-  if (sortBy === "subject") {
+  if (sortBy === 'subject') {
     return left.subject.localeCompare(right.subject) * direction;
   }
 
-  if (sortBy === "marks") {
+  if (sortBy === 'marks') {
     return (left.marks - right.marks) * direction;
   }
 
-  if (sortBy === "semester") {
+  if (sortBy === 'semester') {
     return left.semester.localeCompare(right.semester) * direction;
   }
 
   return (left.id - right.id) * direction;
 }
 
-export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
+export function DeleteQuestions({ gradientClass = '' }: DeleteQuestionsProps) {
   const { canRead, canDelete } = usePermissions();
   const hasReadAccess = canRead();
   const hasDeleteAccess = canDelete();
@@ -222,15 +255,18 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<number[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [subjectFilter, setSubjectFilter] = useState("all");
-  const [semesterFilter, setSemesterFilter] = useState("all");
-  const [departmentFilter, setDepartmentFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [marksFilter, setMarksFilter] = useState("all");
-  const [sortBy, setSortBy] = useState<"id" | "subject" | "marks" | "semester">("id");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [previewQuestion, setPreviewQuestion] = useState<QuestionBankItem | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [subjectFilter, setSubjectFilter] = useState('all');
+  const [semesterFilter, setSemesterFilter] = useState('all');
+  const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [marksFilter, setMarksFilter] = useState('all');
+  const [sortBy, setSortBy] = useState<'id' | 'subject' | 'marks' | 'semester'>(
+    'id',
+  );
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [previewQuestion, setPreviewQuestion] =
+    useState<QuestionBankItem | null>(null);
 
   const loadQuestions = async () => {
     setIsLoading(true);
@@ -240,8 +276,8 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
       setQuestions(nextQuestions);
       setSelectedQuestionIds([]);
     } catch (error: any) {
-      console.error("Error loading question bank:", error);
-      toast.error(error?.message || "Failed to load question bank");
+      console.error('Error loading question bank:', error);
+      toast.error(error?.message || 'Failed to load question bank');
       setQuestions([]);
     } finally {
       setIsLoading(false);
@@ -271,25 +307,29 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
     return [...questions]
-      .filter((question) => {
+      .filter(question => {
         const questionText = getQuestionText(question).toLowerCase();
         const matchesSearch =
           !normalizedSearch ||
           questionText.includes(normalizedSearch) ||
           question.subject.toLowerCase().includes(normalizedSearch) ||
           question.semester.toLowerCase().includes(normalizedSearch) ||
-          question.department_shortname.toLowerCase().includes(normalizedSearch) ||
+          question.department_shortname
+            .toLowerCase()
+            .includes(normalizedSearch) ||
           String(question.id).includes(normalizedSearch);
 
         const matchesSubject =
-          subjectFilter === "all" || question.subject === subjectFilter;
+          subjectFilter === 'all' || question.subject === subjectFilter;
         const matchesSemester =
-          semesterFilter === "all" || question.semester === semesterFilter;
+          semesterFilter === 'all' || question.semester === semesterFilter;
         const matchesDepartment =
-          departmentFilter === "all" || question.department_shortname === departmentFilter;
-        const matchesType = typeFilter === "all" || question.type === typeFilter;
+          departmentFilter === 'all' ||
+          question.department_shortname === departmentFilter;
+        const matchesType =
+          typeFilter === 'all' || question.type === typeFilter;
         const matchesMarks =
-          marksFilter === "all" || String(question.marks) === marksFilter;
+          marksFilter === 'all' || String(question.marks) === marksFilter;
 
         return (
           matchesSearch &&
@@ -314,70 +354,80 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
   ]);
 
   const uniqueSubjects = useMemo(
-    () => Array.from(new Set(questions.map((question) => question.subject))).sort(),
+    () =>
+      Array.from(new Set(questions.map(question => question.subject))).sort(),
     [questions],
   );
   const uniqueSemesters = useMemo(
-    () => Array.from(new Set(questions.map((question) => question.semester))).sort(),
+    () =>
+      Array.from(new Set(questions.map(question => question.semester))).sort(),
     [questions],
   );
   const uniqueDepartments = useMemo(
     () =>
-      Array.from(new Set(questions.map((question) => question.department_shortname))).sort(),
+      Array.from(
+        new Set(questions.map(question => question.department_shortname)),
+      ).sort(),
     [questions],
   );
   const uniqueMarks = useMemo(
     () =>
-      Array.from(new Set(questions.map((question) => question.marks)))
+      Array.from(new Set(questions.map(question => question.marks)))
         .sort((left, right) => left - right)
         .map(String),
     [questions],
   );
 
   const selectedVisibleIds = filteredQuestions
-    .map((question) => question.id)
-    .filter((id) => selectedQuestionIds.includes(id));
+    .map(question => question.id)
+    .filter(id => selectedQuestionIds.includes(id));
   const allVisibleSelected =
-    filteredQuestions.length > 0 && selectedVisibleIds.length === filteredQuestions.length;
+    filteredQuestions.length > 0 &&
+    selectedVisibleIds.length === filteredQuestions.length;
 
   const clearFilters = () => {
-    setSearchTerm("");
-    setSubjectFilter("all");
-    setSemesterFilter("all");
-    setDepartmentFilter("all");
-    setTypeFilter("all");
-    setMarksFilter("all");
-    setSortBy("id");
-    setSortOrder("desc");
+    setSearchTerm('');
+    setSubjectFilter('all');
+    setSemesterFilter('all');
+    setDepartmentFilter('all');
+    setTypeFilter('all');
+    setMarksFilter('all');
+    setSortBy('id');
+    setSortOrder('desc');
   };
 
   const toggleQuestion = (questionId: number, checked: boolean) => {
-    setSelectedQuestionIds((currentIds) => {
+    setSelectedQuestionIds(currentIds => {
       if (checked) {
         return [...new Set([...currentIds, questionId])];
       }
 
-      return currentIds.filter((id) => id !== questionId);
+      return currentIds.filter(id => id !== questionId);
     });
   };
 
   const toggleAllVisible = (checked: boolean) => {
     if (checked) {
-      setSelectedQuestionIds((currentIds) => [
-        ...new Set([...currentIds, ...filteredQuestions.map((question) => question.id)]),
+      setSelectedQuestionIds(currentIds => [
+        ...new Set([
+          ...currentIds,
+          ...filteredQuestions.map(question => question.id),
+        ]),
       ]);
       return;
     }
 
-    const visibleIdSet = new Set(filteredQuestions.map((question) => question.id));
-    setSelectedQuestionIds((currentIds) =>
-      currentIds.filter((id) => !visibleIdSet.has(id)),
+    const visibleIdSet = new Set(
+      filteredQuestions.map(question => question.id),
+    );
+    setSelectedQuestionIds(currentIds =>
+      currentIds.filter(id => !visibleIdSet.has(id)),
     );
   };
 
   const handleDeleteSingle = async (question: QuestionBankItem) => {
     if (!hasDeleteAccess) {
-      toast.error("You do not have permission to delete questions.");
+      toast.error('You do not have permission to delete questions.');
       return;
     }
 
@@ -392,18 +442,18 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
     try {
       await examAPI.deleteQuestionBankItem(question.id);
       toast.success(`Question #${question.id} deleted successfully.`);
-      setQuestions((currentQuestions) =>
-        currentQuestions.filter((item) => item.id !== question.id),
+      setQuestions(currentQuestions =>
+        currentQuestions.filter(item => item.id !== question.id),
       );
-      setSelectedQuestionIds((currentIds) =>
-        currentIds.filter((id) => id !== question.id),
+      setSelectedQuestionIds(currentIds =>
+        currentIds.filter(id => id !== question.id),
       );
       if (previewQuestion?.id === question.id) {
         setPreviewQuestion(null);
       }
     } catch (error: any) {
-      console.error("Error deleting question-bank item:", error);
-      toast.error(error?.message || "Failed to delete question");
+      console.error('Error deleting question-bank item:', error);
+      toast.error(error?.message || 'Failed to delete question');
     } finally {
       setIsDeleting(false);
     }
@@ -411,12 +461,12 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
 
   const handleBulkDelete = async () => {
     if (!hasDeleteAccess) {
-      toast.error("You do not have permission to delete questions.");
+      toast.error('You do not have permission to delete questions.');
       return;
     }
 
     if (selectedQuestionIds.length === 0) {
-      toast.error("Select at least one question to delete.");
+      toast.error('Select at least one question to delete.');
       return;
     }
 
@@ -429,11 +479,12 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
 
     setIsDeleting(true);
     try {
-      const response = await examAPI.bulkDeleteQuestionBankItems(selectedQuestionIds);
+      const response =
+        await examAPI.bulkDeleteQuestionBankItems(selectedQuestionIds);
       const deletedIds = response?.deleted_ids || selectedQuestionIds;
 
-      setQuestions((currentQuestions) =>
-        currentQuestions.filter((question) => !deletedIds.includes(question.id)),
+      setQuestions(currentQuestions =>
+        currentQuestions.filter(question => !deletedIds.includes(question.id)),
       );
       setSelectedQuestionIds([]);
       if (previewQuestion && deletedIds.includes(previewQuestion.id)) {
@@ -441,28 +492,39 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
       }
 
       toast.success(
-        response?.message || `Deleted ${deletedIds.length} question(s) successfully.`,
+        response?.message ||
+          `Deleted ${deletedIds.length} question(s) successfully.`,
       );
     } catch (error: any) {
-      console.error("Error bulk deleting question-bank items:", error);
-      toast.error(error?.message || "Failed to delete selected questions");
+      console.error('Error bulk deleting question-bank items:', error);
+      toast.error(error?.message || 'Failed to delete selected questions');
     } finally {
       setIsDeleting(false);
     }
   };
 
-  const previewOptions = previewQuestion ? getQuestionOptions(previewQuestion) : [];
-  const previewAnswers = previewQuestion ? getAnswerValues(previewQuestion.answer) : [];
+  const previewOptions = previewQuestion
+    ? getQuestionOptions(previewQuestion)
+    : [];
+  const previewAnswers = previewQuestion
+    ? getAnswerValues(previewQuestion.answer)
+    : [];
   const previewAnswerText =
-    previewAnswers.length > 0 ? previewAnswers.join(", ") : stringifyDisplayValue(previewQuestion?.text);
+    previewAnswers.length > 0
+      ? previewAnswers.join(', ')
+      : stringifyDisplayValue(previewQuestion?.text);
 
   if (!hasReadAccess) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-red-500" />
-          <h3 className="mb-2 text-lg font-semibold text-gray-800">Access Denied</h3>
-          <p className="text-gray-600">You don't have permission to access this page.</p>
+          <h3 className="mb-2 text-lg font-semibold text-gray-800">
+            Access Denied
+          </h3>
+          <p className="text-gray-600">
+            You don't have permission to access this page.
+          </p>
         </div>
       </div>
     );
@@ -470,12 +532,6 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
 
   return (
     <div className="p-4 space-y-6 sm:p-6">
-      <div className="flex flex-wrap items-center gap-3 text-sm text-slate-700">
-        <Badge variant="outline">{questions.length} total</Badge>
-        <Badge variant="outline">{filteredQuestions.length} visible</Badge>
-        <Badge variant="outline">{selectedQuestionIds.length} selected</Badge>
-      </div>
-
       <Card className="border-2 border-gray-200">
         <CardHeader className="pb-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
           <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-800">
@@ -483,19 +539,20 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
             Filters & Search
           </CardTitle>
           <CardDescription>
-            Narrow the question bank by search, subject, semester, department, type, marks, and sort order.
+            Narrow the question bank by search, subject, semester, department,
+            type, marks, and sort order.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4 space-y-4 sm:p-6">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div className="space-y-2 xl:col-span-2">
+            <div className="space-y-2">
               <Label htmlFor="question-search">Search</Label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <Input
                   id="question-search"
                   value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
+                  onChange={event => setSearchTerm(event.target.value)}
                   placeholder="Search by question text, subject, semester, department, or ID"
                   className="pl-10"
                 />
@@ -510,7 +567,7 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All subjects</SelectItem>
-                  {uniqueSubjects.map((subject) => (
+                  {uniqueSubjects.map(subject => (
                     <SelectItem key={subject} value={subject}>
                       {subject}
                     </SelectItem>
@@ -527,7 +584,7 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All semesters</SelectItem>
-                  {uniqueSemesters.map((semester) => (
+                  {uniqueSemesters.map(semester => (
                     <SelectItem key={semester} value={semester}>
                       {semester}
                     </SelectItem>
@@ -538,13 +595,16 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
 
             <div className="space-y-2">
               <Label>Department</Label>
-              <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+              <Select
+                value={departmentFilter}
+                onValueChange={setDepartmentFilter}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="All departments" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All departments</SelectItem>
-                  {uniqueDepartments.map((department) => (
+                  {uniqueDepartments.map(department => (
                     <SelectItem key={department} value={department}>
                       {department}
                     </SelectItem>
@@ -575,7 +635,7 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All marks</SelectItem>
-                  {uniqueMarks.map((marks) => (
+                  {uniqueMarks.map(marks => (
                     <SelectItem key={marks} value={marks}>
                       {marks}
                     </SelectItem>
@@ -588,9 +648,9 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
               <Label>Sort By</Label>
               <Select
                 value={sortBy}
-                onValueChange={(value: "id" | "subject" | "marks" | "semester") =>
-                  setSortBy(value)
-                }
+                onValueChange={(
+                  value: 'id' | 'subject' | 'marks' | 'semester',
+                ) => setSortBy(value)}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -608,7 +668,7 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
               <Label>Order</Label>
               <Select
                 value={sortOrder}
-                onValueChange={(value: "asc" | "desc") => setSortOrder(value)}
+                onValueChange={(value: 'asc' | 'desc') => setSortOrder(value)}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -627,7 +687,11 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
                 <X className="w-4 h-4 mr-2" />
                 Clear Filters
               </Button>
-              <Button variant="outline" onClick={loadQuestions} disabled={isLoading}>
+              <Button
+                variant="outline"
+                onClick={loadQuestions}
+                disabled={isLoading}
+              >
                 {isLoading ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
@@ -659,7 +723,8 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
         <Alert className="border-amber-200 bg-amber-50">
           <AlertTriangle className="h-4 w-4 text-amber-600" />
           <AlertDescription className="text-amber-800">
-            You can view question-bank items here, but delete actions are disabled for your role.
+            You can view question-bank items here, but delete actions are
+            disabled for your role.
           </AlertDescription>
         </Alert>
       ) : null}
@@ -675,11 +740,13 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
         <Card className="border-2 border-gray-300 border-dashed">
           <CardContent className="py-8 text-center">
             <Trash2 className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-            <h3 className="mb-2 text-lg font-semibold text-gray-600">No Questions Found</h3>
+            <h3 className="mb-2 text-lg font-semibold text-gray-600">
+              No Questions Found
+            </h3>
             <p className="text-gray-500">
               {questions.length === 0
-                ? "No reusable question-bank items are available yet."
-                : "No question-bank items match your current filters."}
+                ? 'No reusable question-bank items are available yet.'
+                : 'No question-bank items match your current filters.'}
             </p>
           </CardContent>
         </Card>
@@ -694,8 +761,12 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
                       <TableHead className="w-12">
                         <Checkbox
                           checked={allVisibleSelected}
-                          onCheckedChange={(checked) => toggleAllVisible(Boolean(checked))}
-                          disabled={!hasDeleteAccess || filteredQuestions.length === 0}
+                          onCheckedChange={checked =>
+                            toggleAllVisible(Boolean(checked))
+                          }
+                          disabled={
+                            !hasDeleteAccess || filteredQuestions.length === 0
+                          }
                           aria-label="Select all visible questions"
                         />
                       </TableHead>
@@ -713,14 +784,16 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
                   </TableHeader>
                   <TableBody>
                     {filteredQuestions.map((question, index) => {
-                      const isChecked = selectedQuestionIds.includes(question.id);
+                      const isChecked = selectedQuestionIds.includes(
+                        question.id,
+                      );
 
                       return (
                         <TableRow key={question.id}>
                           <TableCell>
                             <Checkbox
                               checked={isChecked}
-                              onCheckedChange={(checked) =>
+                              onCheckedChange={checked =>
                                 toggleQuestion(question.id, Boolean(checked))
                               }
                               disabled={!hasDeleteAccess}
@@ -728,7 +801,9 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
                             />
                           </TableCell>
                           <TableCell>{index + 1}</TableCell>
-                          <TableCell className="font-medium">#{question.id}</TableCell>
+                          <TableCell className="font-medium">
+                            #{question.id}
+                          </TableCell>
                           <TableCell className="max-w-xl">
                             <div className="text-sm text-gray-800 line-clamp-2">
                               {getQuestionText(question)}
@@ -739,7 +814,7 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
                           <TableCell>{question.department_shortname}</TableCell>
                           <TableCell>
                             <Badge variant="outline">
-                              {question.type === "option" ? "MCQ" : "Text"}
+                              {question.type === 'option' ? 'MCQ' : 'Text'}
                             </Badge>
                           </TableCell>
                           <TableCell>{question.marks}</TableCell>
@@ -777,7 +852,7 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
           </Card>
 
           <div className="grid grid-cols-1 gap-4 lg:hidden">
-            {filteredQuestions.map((question) => {
+            {filteredQuestions.map(question => {
               const isChecked = selectedQuestionIds.includes(question.id);
 
               return (
@@ -786,7 +861,7 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
                     <div className="flex items-start gap-3">
                       <Checkbox
                         checked={isChecked}
-                        onCheckedChange={(checked) =>
+                        onCheckedChange={checked =>
                           toggleQuestion(question.id, Boolean(checked))
                         }
                         disabled={!hasDeleteAccess}
@@ -797,9 +872,11 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
                         <div className="flex flex-wrap items-center gap-2">
                           <Badge variant="outline">#{question.id}</Badge>
                           <Badge variant="outline">{question.subject}</Badge>
-                          <Badge variant="secondary">{question.marks} marks</Badge>
+                          <Badge variant="secondary">
+                            {question.marks} marks
+                          </Badge>
                           <Badge variant="outline">
-                            {question.type === "option" ? "MCQ" : "Text"}
+                            {question.type === 'option' ? 'MCQ' : 'Text'}
                           </Badge>
                         </div>
 
@@ -809,11 +886,15 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
 
                         <div className="grid grid-cols-1 gap-2 text-sm text-gray-600 sm:grid-cols-2">
                           <div>
-                            <span className="font-medium text-gray-700">Semester:</span>{" "}
+                            <span className="font-medium text-gray-700">
+                              Semester:
+                            </span>{' '}
                             {question.semester}
                           </div>
                           <div>
-                            <span className="font-medium text-gray-700">Department:</span>{" "}
+                            <span className="font-medium text-gray-700">
+                              Department:
+                            </span>{' '}
                             {question.department_shortname}
                           </div>
                         </div>
@@ -851,7 +932,7 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
 
       <Dialog
         open={Boolean(previewQuestion)}
-        onOpenChange={(open) => {
+        onOpenChange={open => {
           if (!open) {
             setPreviewQuestion(null);
           }
@@ -863,7 +944,8 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
               <DialogHeader>
                 <DialogTitle>Question Details</DialogTitle>
                 <DialogDescription>
-                  Review the full question before deleting it from the question bank.
+                  Review the full question before deleting it from the question
+                  bank.
                 </DialogDescription>
               </DialogHeader>
 
@@ -872,41 +954,57 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
                   <Badge variant="outline">#{previewQuestion.id}</Badge>
                   <Badge variant="outline">{previewQuestion.subject}</Badge>
                   <Badge variant="outline">{previewQuestion.semester}</Badge>
-                  <Badge variant="outline">{previewQuestion.department_shortname}</Badge>
-                  <Badge variant="secondary">
-                    {previewQuestion.type === "option" ? "MCQ" : "Text"}
+                  <Badge variant="outline">
+                    {previewQuestion.department_shortname}
                   </Badge>
-                  <Badge variant="secondary">{previewQuestion.marks} marks</Badge>
+                  <Badge variant="secondary">
+                    {previewQuestion.type === 'option' ? 'MCQ' : 'Text'}
+                  </Badge>
+                  <Badge variant="secondary">
+                    {previewQuestion.marks} marks
+                  </Badge>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="font-semibold text-gray-800">Question</Label>
+                  <Label className="font-semibold text-gray-800">
+                    Question
+                  </Label>
                   <div className="rounded-md border bg-gray-50 p-3">
                     <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-800">
-                      {getQuestionText(previewQuestion) || "No question text available."}
+                      {getQuestionText(previewQuestion) ||
+                        'No question text available.'}
                     </p>
                   </div>
                 </div>
 
-                {previewQuestion.type === "option" ? (
+                {previewQuestion.type === 'option' ? (
                   <div className="space-y-2">
-                    <Label className="font-semibold text-gray-800">Options</Label>
+                    <Label className="font-semibold text-gray-800">
+                      Options
+                    </Label>
                     {previewOptions.length > 0 ? (
                       <div className="space-y-2">
-                        {previewOptions.map((option) => (
+                        {previewOptions.map(option => (
                           <div
                             key={`${option.key}-${option.value}`}
                             className={`rounded-md border p-3 text-sm ${
                               option.isCorrect
-                                ? "border-green-300 bg-green-50 text-green-800"
-                                : "border-gray-200 bg-white text-gray-700"
+                                ? 'border-green-300 bg-green-50 text-green-800'
+                                : 'border-gray-200 bg-white text-gray-700'
                             }`}
                           >
                             <div className="flex flex-wrap items-start gap-2">
-                              <span className="font-semibold">{option.key}.</span>
-                              <span className="min-w-0 flex-1 break-words">{option.value}</span>
+                              <span className="font-semibold">
+                                {option.key}.
+                              </span>
+                              <span className="min-w-0 flex-1 break-words">
+                                {option.value}
+                              </span>
                               {option.isCorrect ? (
-                                <Badge variant="outline" className="border-green-300 bg-green-100 text-green-700">
+                                <Badge
+                                  variant="outline"
+                                  className="border-green-300 bg-green-100 text-green-700"
+                                >
                                   Correct
                                 </Badge>
                               ) : null}
@@ -924,11 +1022,13 @@ export function DeleteQuestions({ gradientClass = "" }: DeleteQuestionsProps) {
 
                 <div className="space-y-2">
                   <Label className="font-semibold text-gray-800">
-                    {previewQuestion.type === "option" ? "Answer" : "Text Answer"}
+                    {previewQuestion.type === 'option'
+                      ? 'Answer'
+                      : 'Text Answer'}
                   </Label>
                   <div className="rounded-md border bg-white p-3">
                     <p className="whitespace-pre-wrap break-words text-sm text-gray-700">
-                      {previewAnswerText || "No answer available."}
+                      {previewAnswerText || 'No answer available.'}
                     </p>
                   </div>
                 </div>

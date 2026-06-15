@@ -9,11 +9,23 @@ interface DashboardContentProps {
 
 export function DashboardContent({ gradientClass }: DashboardContentProps) {
   return (
-    <div className="space-y-4 md:space-y-6">
+    <div className="space-y-5 md:space-y-7">
       {/* Welcome Section */}
-      <div className={`bg-gradient-to-r ${gradientClass} text-white p-4 md:p-6 rounded-lg`}>
-        <h2 className="text-xl md:text-2xl font-bold mb-2">Welcome back, Admin!</h2>
-        <p className="text-white/80 text-sm md:text-base">Here's what's happening with your dashboard today.</p>
+      <div className="relative overflow-hidden rounded-lg border border-blue-200 bg-gradient-to-r from-white via-blue-50/50 to-blue-100/70 px-5 py-5 shadow-sm md:px-8 md:py-7">
+        <div className="relative z-10">
+          <h2 className="mb-2 text-2xl font-bold text-[#0D1B4C] md:text-[32px]">Welcome back, Admin!</h2>
+          <p className="text-base text-slate-700 md:text-lg">Here's what's happening with your dashboard today.</p>
+        </div>
+        <div className="pointer-events-none absolute bottom-0 right-4 hidden h-24 w-80 opacity-25 md:block">
+          <div className="absolute bottom-0 right-0 h-2 w-full rounded-t-full bg-blue-300" />
+          <div className="absolute bottom-2 right-16 h-20 w-24 rounded-t-sm bg-blue-300/70" />
+          <div className="absolute bottom-2 right-40 h-14 w-20 rounded-t-sm bg-blue-300/60" />
+          <div className="absolute bottom-2 right-4 h-12 w-14 rounded-t-sm bg-blue-300/50" />
+          <div className="absolute bottom-2 right-72 h-10 w-10 rounded-full bg-blue-300/60" />
+          <div className="absolute bottom-2 right-64 h-8 w-2 bg-blue-300/60" />
+          <div className="absolute right-24 top-5 h-2 w-3 rounded-full bg-blue-300/70" />
+          <div className="absolute right-44 top-1 h-2 w-3 rounded-full bg-blue-300/60" />
+        </div>
       </div>
 
       {/* Stats Cards */}

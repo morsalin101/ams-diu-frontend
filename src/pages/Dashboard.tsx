@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { SidebarProvider, SidebarInset, SidebarTrigger, useSidebar } from '../components/ui/sidebar';
+import { SidebarProvider, SidebarInset, SidebarTrigger } from '../components/ui/sidebar';
 import { AppSidebar } from '../components/AppSidebar';
 import { DashboardContent } from '../components/DashboardContent';
 import { CreateQuestions } from './CreateQuestions';
@@ -12,16 +12,21 @@ import { RoleMenuManagement } from '../components/RoleMenuManagement';
 import { MenuManagement } from './MenuManagement';
 import { MenuAccessManagement } from './MenuAccessManagement';
 import { ThemeColorSelector } from '../components/ThemeColorSelector';
-import { MobileMenu } from '../components/MobileMenu';
 import { Button } from '../components/ui/button';
 import { Bell, Settings, User, Menu } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Badge } from '../components/ui/badge';
 
 // Internal component that can access sidebar context
-function DashboardContent_({ currentPage, currentGradient }: { currentPage: string; currentGradient: string }) {
-  const { open } = useSidebar();
-
+function DashboardContent_({
+  currentPage,
+  currentGradient,
+  onThemeChange,
+}: {
+  currentPage: string;
+  currentGradient: string;
+  onThemeChange: (color: string, gradient: string) => void;
+}) {
   const renderContent = () => {
     switch (currentPage) {
       case 'dashboard':
@@ -69,10 +74,7 @@ function DashboardContent_({ currentPage, currentGradient }: { currentPage: stri
           {/* Right side controls */}
           <div className="flex items-center gap-3">
             {/* Theme selector */}
-            <ThemeColorSelector onColorChange={(color: string, gradient: string) => {
-              // Update CSS custom properties
-              document.documentElement.style.setProperty('--primary', color);
-            }} />
+            <ThemeColorSelector onColorChange={onThemeChange} />
             
             {/* Notification Bell */}
             <Button variant="ghost" size="sm" className="relative p-2">
@@ -112,15 +114,8 @@ function DashboardContent_({ currentPage, currentGradient }: { currentPage: stri
 }
 
 export function Dashboard() {
-  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [currentPage] = useState('dashboard');
   const [currentGradient, setCurrentGradient] = useState('from-[#2E3094] to-[#4C51BF]');
-
-  // Logo configuration - customize this as needed
-  const logoConfig = {
-    // src: '/path/to/your/logo.png', // Uncomment and add your logo path
-    // alt: 'Your Company Logo',
-    title: 'Admin Panel', // You can change this title
-  };
 
   const handleThemeChange = (color: string, gradient: string) => {
     setCurrentGradient(gradient);
@@ -131,14 +126,13 @@ export function Dashboard() {
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="flex h-screen w-full bg-background">
-        <AppSidebar
-          currentPage={currentPage}
-          onPageChange={setCurrentPage}
-          gradientClass={currentGradient}
-          logo={logoConfig}
-        />
+        <AppSidebar />
         <SidebarInset className="flex-1 flex flex-col">
-          <DashboardContent_ currentPage={currentPage} currentGradient={currentGradient} />
+          <DashboardContent_
+            currentPage={currentPage}
+            currentGradient={currentGradient}
+            onThemeChange={handleThemeChange}
+          />
         </SidebarInset>
       </div>
     </SidebarProvider>

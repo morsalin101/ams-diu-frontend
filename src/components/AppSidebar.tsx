@@ -30,13 +30,13 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar className="border-r-2 border-indigo-500" collapsible="icon">
-      <div className="h-16 flex items-center px-6 bg-gradient-to-r from-[#2E3094] to-[#4C51BF] text-white border-b border-white-200 shrink-0">
-        <div className="flex items-center w-full min-w-0 gap-3">
+    <Sidebar className="border-r border-slate-200" collapsible="icon">
+      <div className="flex h-[76px] sm:h-[88px] items-center px-5 sm:px-8 bg-gradient-to-r from-[#0D1B4C] to-[#1E3A8A] text-white border-b border-r border-white/10 shadow-md shrink-0">
+        <div className="flex items-center w-full min-w-0">
           <img 
             src={logoImage} 
             alt="Admin Panel Logo" 
-            className="flex-shrink-0 object-contain h-10"
+            className="flex-shrink-0 object-contain h-12 sm:h-16 w-auto max-w-full"
           />
         </div>
       </div>

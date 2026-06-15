@@ -457,7 +457,6 @@ const MySchedule: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle>Filter Schedule</CardTitle>
-          <CardDescription>Filter schedules by date</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex gap-2">
@@ -487,9 +486,6 @@ const MySchedule: React.FC = () => {
             <span>Exam Schedules</span>
             <Badge variant="outline">{filteredExamSchedules.length} schedules</Badge>
           </CardTitle>
-          <CardDescription>
-            {filterDate === 'today' ? "Today's written exam schedules" : 'List of written exams scheduled for you'}
-          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
