@@ -1,14 +1,48 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog';
 import { Badge } from '../components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Sliders, Plus, Trash2, RefreshCw, AlertTriangle, Building, Edit, Loader2 } from 'lucide-react';
-import { thresholdAPI, departmentAPI, admissionResultsAPI } from '../services/api';
-import { buildAcademicSemesterOptions, formatSemesterLabel } from '../lib/semester';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select';
+import {
+  Sliders,
+  Plus,
+  Trash2,
+  RefreshCw,
+  AlertTriangle,
+  Building,
+  Edit,
+  Loader2,
+} from 'lucide-react';
+import {
+  thresholdAPI,
+  departmentAPI,
+  admissionResultsAPI,
+} from '../services/api';
+import {
+  buildAcademicSemesterOptions,
+  formatSemesterLabel,
+} from '../lib/semester';
 import { usePermissions } from '../hooks/usePermissions';
 import toast from 'react-hot-toast';
 
@@ -49,8 +83,11 @@ const ThresholdManagement: React.FC = () => {
   const [selectedSemester, setSelectedSemester] = useState<string | null>(null);
   const [mappings, setMappings] = useState<ThresholdFormData[]>([]);
   const [filterSemester, setFilterSemester] = useState<string>('all');
-  const [editingThresholdId, setEditingThresholdId] = useState<number | null>(null);
-  const [editingThreshold, setEditingThreshold] = useState<ThresholdMapping | null>(null);
+  const [editingThresholdId, setEditingThresholdId] = useState<number | null>(
+    null,
+  );
+  const [editingThreshold, setEditingThreshold] =
+    useState<ThresholdMapping | null>(null);
   const [isSavingThresholds, setIsSavingThresholds] = useState(false);
 
   useEffect(() => {
@@ -75,7 +112,7 @@ const ThresholdManagement: React.FC = () => {
       await Promise.all([
         loadDepartments(),
         loadSemesterOptions(),
-        loadThresholds()
+        loadThresholds(),
       ]);
     } catch (error) {
       console.error('Error loading initial data:', error);
@@ -99,11 +136,17 @@ const ThresholdManagement: React.FC = () => {
   const loadSemesterOptions = async () => {
     try {
       const response = await admissionResultsAPI.getSemesterOptions();
-      const apiSemesters = Array.isArray(response?.semesters) ? response.semesters : [];
+      const apiSemesters = Array.isArray(response?.semesters)
+        ? response.semesters
+        : [];
       const generatedSemesters = buildSemesterOptions();
 
       const mergedSemesters = Array.from(
-        new Set([...generatedSemesters, ...apiSemesters].map((semester) => formatSemesterLabel(semester))).values(),
+        new Set(
+          [...generatedSemesters, ...apiSemesters].map(semester =>
+            formatSemesterLabel(semester),
+          ),
+        ).values(),
       );
 
       setSemesterOptions(mergedSemesters);
@@ -124,10 +167,12 @@ const ThresholdManagement: React.FC = () => {
       const params = semester ? { semester } : {};
       const response = await thresholdAPI.getThresholdMappings(params);
       if (response.success) {
-        const normalizedThresholds = (response.thresholds || []).map((threshold: ThresholdMapping) => ({
-          ...threshold,
-          department_id: threshold.department_id ?? threshold.department,
-        }));
+        const normalizedThresholds = (response.thresholds || []).map(
+          (threshold: ThresholdMapping) => ({
+            ...threshold,
+            department_id: threshold.department_id ?? threshold.department,
+          }),
+        );
         setThresholds(normalizedThresholds);
       }
     } catch (error: any) {
@@ -138,12 +183,21 @@ const ThresholdManagement: React.FC = () => {
 
   const handleOpenDialog = () => {
     if (!canWrite()) {
-      toast.error('You do not have permission to set student acceptance criteria');
+      toast.error(
+        'You do not have permission to set student acceptance criteria',
+      );
       return;
     }
 
     setSelectedSemester(null);
-    setMappings([{ department_id: 0, threshold: 0, seat_limit: 5, waiting_student_limit: 0 }]);
+    setMappings([
+      {
+        department_id: 0,
+        threshold: 0,
+        seat_limit: 5,
+        waiting_student_limit: 0,
+      },
+    ]);
     setEditingThresholdId(null);
     setEditingThreshold(null);
     setIsDialogOpen(true);
@@ -151,7 +205,9 @@ const ThresholdManagement: React.FC = () => {
 
   const handleEditThreshold = (threshold: ThresholdMapping) => {
     if (!canEdit()) {
-      toast.error('You do not have permission to edit student acceptance criteria');
+      toast.error(
+        'You do not have permission to edit student acceptance criteria',
+      );
       return;
     }
 
@@ -159,12 +215,14 @@ const ThresholdManagement: React.FC = () => {
     setEditingThreshold(threshold);
     setEditingThresholdId(threshold.id);
     setSelectedSemester(threshold.semester);
-    setMappings([{
-      department_id: departmentId,
-      threshold: threshold.min_threshold_mark,
-      seat_limit: threshold.seat_limit,
-      waiting_student_limit: threshold.waiting_student_limit ?? 0,
-    }]);
+    setMappings([
+      {
+        department_id: departmentId,
+        threshold: threshold.min_threshold_mark,
+        seat_limit: threshold.seat_limit,
+        waiting_student_limit: threshold.waiting_student_limit ?? 0,
+      },
+    ]);
     setIsDialogOpen(true);
   };
 
@@ -172,7 +230,12 @@ const ThresholdManagement: React.FC = () => {
     // Disabled: keep the dialog focused on one department threshold per semester.
     setMappings([
       ...mappings,
-      { department_id: 0, threshold: 0, seat_limit: 5, waiting_student_limit: 0 },
+      {
+        department_id: 0,
+        threshold: 0,
+        seat_limit: 5,
+        waiting_student_limit: 0,
+      },
     ]);
   };
 
@@ -180,7 +243,11 @@ const ThresholdManagement: React.FC = () => {
     setMappings(mappings.filter((_, i) => i !== index));
   };
 
-  const handleMappingChange = (index: number, field: keyof ThresholdFormData, value: number) => {
+  const handleMappingChange = (
+    index: number,
+    field: keyof ThresholdFormData,
+    value: number,
+  ) => {
     const updatedMappings = [...mappings];
     updatedMappings[index][field] = value;
     setMappings(updatedMappings);
@@ -188,7 +255,9 @@ const ThresholdManagement: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!canWrite()) {
-      toast.error('You do not have permission to save student acceptance criteria');
+      toast.error(
+        'You do not have permission to save student acceptance criteria',
+      );
       return;
     }
 
@@ -197,7 +266,9 @@ const ThresholdManagement: React.FC = () => {
       return;
     }
 
-    const validMappings = mappings.filter(m => m.department_id > 0 && m.threshold > 0);
+    const validMappings = mappings.filter(
+      m => m.department_id > 0 && m.threshold > 0,
+    );
     if (validMappings.length === 0) {
       toast.error('Please add at least one valid department threshold mapping');
       return;
@@ -220,16 +291,22 @@ const ThresholdManagement: React.FC = () => {
           threshold: m.threshold,
           seat_limit: m.seat_limit,
           waiting_student_limit: m.waiting_student_limit || 0,
-        }))
+        })),
       };
 
       const response = await thresholdAPI.setThresholdMappings(data);
       if (response.success) {
-        toast.success(response.message || 'Threshold mappings saved successfully');
+        toast.success(
+          response.message || 'Threshold mappings saved successfully',
+        );
         setIsDialogOpen(false);
         setEditingThresholdId(null);
         setEditingThreshold(null);
-        await loadThresholds(filterSemester && filterSemester !== 'all' ? filterSemester : undefined);
+        await loadThresholds(
+          filterSemester && filterSemester !== 'all'
+            ? filterSemester
+            : undefined,
+        );
       }
     } catch (error: any) {
       console.error('Error saving thresholds:', error);
@@ -239,13 +316,22 @@ const ThresholdManagement: React.FC = () => {
     }
   };
 
-  const handleDeleteThreshold = async (thresholdId: number, departmentName: string) => {
+  const handleDeleteThreshold = async (
+    thresholdId: number,
+    departmentName: string,
+  ) => {
     if (!canDelete()) {
-      toast.error('You do not have permission to delete student acceptance criteria');
+      toast.error(
+        'You do not have permission to delete student acceptance criteria',
+      );
       return;
     }
 
-    if (!confirm(`Are you sure you want to delete the threshold for "${departmentName}"?`)) {
+    if (
+      !confirm(
+        `Are you sure you want to delete the threshold for "${departmentName}"?`,
+      )
+    ) {
       return;
     }
 
@@ -262,21 +348,28 @@ const ThresholdManagement: React.FC = () => {
   };
 
   // Group thresholds by semester
-  const groupedThresholds = thresholds.reduce((acc, threshold) => {
-    if (!acc[threshold.semester]) {
-      acc[threshold.semester] = [];
-    }
-    acc[threshold.semester].push(threshold);
-    return acc;
-  }, {} as Record<string, ThresholdMapping[]>);
+  const groupedThresholds = thresholds.reduce(
+    (acc, threshold) => {
+      if (!acc[threshold.semester]) {
+        acc[threshold.semester] = [];
+      }
+      acc[threshold.semester].push(threshold);
+      return acc;
+    },
+    {} as Record<string, ThresholdMapping[]>,
+  );
 
   if (!canRead()) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-red-500" />
-          <h3 className="mb-2 text-lg font-semibold text-gray-800">Access Denied</h3>
-          <p className="text-gray-600">You don't have permission to access this page.</p>
+          <h3 className="mb-2 text-lg font-semibold text-gray-800">
+            Access Denied
+          </h3>
+          <p className="text-gray-600">
+            You don't have permission to access this page.
+          </p>
         </div>
       </div>
     );
@@ -285,12 +378,21 @@ const ThresholdManagement: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap justify-end gap-2">
-        <Button variant="outline" onClick={() => loadThresholds()} disabled={isLoading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+        <Button
+          variant="outline"
+          onClick={() => loadThresholds()}
+          disabled={isLoading}
+        >
+          <RefreshCw
+            className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`}
+          />
           Refresh
         </Button>
         {canWrite() && (
-          <Button onClick={handleOpenDialog} className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF]">
+          <Button
+            onClick={handleOpenDialog}
+            className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF]"
+          >
             <Plus className="w-4 h-4 mr-2" />
             Set Thresholds
           </Button>
@@ -301,7 +403,6 @@ const ThresholdManagement: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle>Filter Thresholds</CardTitle>
-          <CardDescription>Filter thresholds by semester</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-end gap-4">
@@ -313,7 +414,7 @@ const ThresholdManagement: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Semesters</SelectItem>
-                  {semesterOptions.map((semester) => (
+                  {semesterOptions.map(semester => (
                     <SelectItem key={semester} value={semester}>
                       {formatSemesterLabel(semester)}
                     </SelectItem>
@@ -322,7 +423,10 @@ const ThresholdManagement: React.FC = () => {
               </Select>
             </div>
             {filterSemester && filterSemester !== 'all' && (
-              <Button variant="outline" onClick={() => setFilterSemester('all')}>
+              <Button
+                variant="outline"
+                onClick={() => setFilterSemester('all')}
+              >
                 Clear Filter
               </Button>
             )}
@@ -350,84 +454,125 @@ const ThresholdManagement: React.FC = () => {
           ) : thresholds.length > 0 ? (
             <div className="space-y-6">
               {/* Group by semester */}
-              {Object.entries(groupedThresholds).map(([semester, semesterThresholds]) => (
-                <div key={semester} className="p-4 border rounded-lg bg-gray-50">
-                  <div className="flex items-center gap-2 mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">{semester}</h3>
-                    <Badge variant="secondary">{semesterThresholds.length} departments</Badge>
-                  </div>
-                  
-                  {/* Individual threshold rows */}
-                  <div className="space-y-3">
-                    {semesterThresholds.map((threshold) => (
-                      <Card key={threshold.id} className="p-4 bg-white border-l-4 border-l-blue-500">
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                          {/* Threshold Content */}
-                          <div className="flex-1 min-w-0 space-y-2">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Badge variant="outline" className="text-blue-700 border-blue-200 bg-blue-50">
-                                <Building className="w-3 h-3 mr-1" />
-                                {threshold.department_shortname}
-                              </Badge>
-                              <Badge variant="outline" className="text-orange-700 border-orange-200 bg-orange-50">
-                                Min Marks: {threshold.min_threshold_mark}
-                              </Badge>
-                              <Badge variant="outline" className="text-green-700 border-green-200 bg-green-50">
-                                Seats: {threshold.seat_limit}
-                              </Badge>
-                              <Badge variant="outline" className="text-amber-700 border-amber-200 bg-amber-50">
-                                Waiting: {threshold.waiting_student_limit ?? 0}
-                              </Badge>
+              {Object.entries(groupedThresholds).map(
+                ([semester, semesterThresholds]) => (
+                  <div
+                    key={semester}
+                    className="p-4 border rounded-lg bg-gray-50"
+                  >
+                    <div className="flex items-center gap-2 mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {semester}
+                      </h3>
+                      <Badge variant="secondary">
+                        {semesterThresholds.length} departments
+                      </Badge>
+                    </div>
+
+                    {/* Individual threshold rows */}
+                    <div className="space-y-3">
+                      {semesterThresholds.map(threshold => (
+                        <Card
+                          key={threshold.id}
+                          className="p-4 bg-white border-l-4 border-l-blue-500"
+                        >
+                          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                            {/* Threshold Content */}
+                            <div className="flex-1 min-w-0 space-y-2">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Badge
+                                  variant="outline"
+                                  className="text-blue-700 border-blue-200 bg-blue-50"
+                                >
+                                  <Building className="w-3 h-3 mr-1" />
+                                  {threshold.department_shortname}
+                                </Badge>
+                                <Badge
+                                  variant="outline"
+                                  className="text-orange-700 border-orange-200 bg-orange-50"
+                                >
+                                  Min Marks: {threshold.min_threshold_mark}
+                                </Badge>
+                                <Badge
+                                  variant="outline"
+                                  className="text-green-700 border-green-200 bg-green-50"
+                                >
+                                  Seats: {threshold.seat_limit}
+                                </Badge>
+                                <Badge
+                                  variant="outline"
+                                  className="text-amber-700 border-amber-200 bg-amber-50"
+                                >
+                                  Waiting:{' '}
+                                  {threshold.waiting_student_limit ?? 0}
+                                </Badge>
+                              </div>
+                              <div>
+                                <h4
+                                  className="block w-full overflow-hidden font-medium text-gray-900 text-ellipsis whitespace-nowrap"
+                                  title={threshold.department_name}
+                                >
+                                  {threshold.department_name}
+                                </h4>
+                                <p className="text-xs text-gray-500">
+                                  Created:{' '}
+                                  {new Date(
+                                    threshold.created_at,
+                                  ).toLocaleDateString()}
+                                </p>
+                              </div>
                             </div>
-                            <div>
-                              <h4 className="block w-full overflow-hidden font-medium text-gray-900 text-ellipsis whitespace-nowrap" title={threshold.department_name}>
-                                {threshold.department_name}
-                              </h4>
-                              <p className="text-xs text-gray-500">
-                                Created: {new Date(threshold.created_at).toLocaleDateString()}
-                              </p>
+
+                            {/* Actions */}
+                            <div className="flex gap-2 lg:justify-end">
+                              {canEdit() && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleEditThreshold(threshold)}
+                                  className="flex-1 lg:flex-none"
+                                >
+                                  <Edit className="w-4 h-4 mr-2" />
+                                  Edit
+                                </Button>
+                              )}
+                              {canDelete() && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    handleDeleteThreshold(
+                                      threshold.id,
+                                      threshold.department_name,
+                                    )
+                                  }
+                                  className="flex-1 text-red-600 lg:flex-none hover:text-red-700"
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Delete
+                                </Button>
+                              )}
                             </div>
                           </div>
-                          
-                          {/* Actions */}
-                          <div className="flex gap-2 lg:justify-end">
-                            {canEdit() && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleEditThreshold(threshold)}
-                                className="flex-1 lg:flex-none"
-                              >
-                                <Edit className="w-4 h-4 mr-2" />
-                                Edit
-                              </Button>
-                            )}
-                            {canDelete() && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleDeleteThreshold(threshold.id, threshold.department_name)}
-                                className="flex-1 text-red-600 lg:flex-none hover:text-red-700"
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
+                        </Card>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ),
+              )}
             </div>
           ) : (
             <div className="py-8 text-center text-gray-500">
               <Sliders className="w-12 h-12 mx-auto mb-4 text-gray-300" />
               <p className="text-lg font-medium">No thresholds found</p>
-              <p className="text-sm">Set department thresholds to get started</p>
+              <p className="text-sm">
+                Set department thresholds to get started
+              </p>
               {canWrite() && (
-                <Button onClick={handleOpenDialog} className="mt-4 bg-gradient-to-r from-[#2E3094] to-[#4C51BF]">
+                <Button
+                  onClick={handleOpenDialog}
+                  className="mt-4 bg-gradient-to-r from-[#2E3094] to-[#4C51BF]"
+                >
                   <Plus className="w-4 h-4 mr-2" />
                   Set Thresholds
                 </Button>
@@ -442,28 +587,30 @@ const ThresholdManagement: React.FC = () => {
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingThresholdId ? 'Edit Department Threshold' : 'Set Department Thresholds'}
+              {editingThresholdId
+                ? 'Edit Department Threshold'
+                : 'Set Department Thresholds'}
             </DialogTitle>
             <DialogDescription>
-              {editingThresholdId 
+              {editingThresholdId
                 ? 'Update the threshold and seat limit for this department'
                 : 'Set minimum marks and seat limits for each department in a semester'}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             {/* Semester Selection */}
             <div>
               <Label htmlFor="semester">Select Semester *</Label>
-              <Select 
-                value={selectedSemester || ''} 
+              <Select
+                value={selectedSemester || ''}
                 onValueChange={setSelectedSemester}
               >
                 <SelectTrigger id="semester">
                   <SelectValue placeholder="Select a semester" />
                 </SelectTrigger>
                 <SelectContent>
-                  {semesterOptions.map((semester) => (
+                  {semesterOptions.map(semester => (
                     <SelectItem key={semester} value={semester}>
                       {formatSemesterLabel(semester)}
                     </SelectItem>
@@ -492,111 +639,168 @@ const ThresholdManagement: React.FC = () => {
               </div>
 
               {mappings.map((mapping, index) => {
-                const selectedDepartment = departments.find((dept) => dept.id === mapping.department_id);
+                const selectedDepartment = departments.find(
+                  dept => dept.id === mapping.department_id,
+                );
                 const selectedDepartmentLabel = selectedDepartment
                   ? `${selectedDepartment.department_shortname} - ${selectedDepartment.department_name}`
                   : '';
 
                 return (
-                <Card key={index} className="p-4 border-l-4 border-l-blue-400">
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_150px_150px_190px] lg:items-end">
-                      <div className="min-w-0">
-                        <Label htmlFor={`dept-${index}`} className="text-xs">Department *</Label>
-                        <Select
-                          value={mapping.department_id > 0 ? mapping.department_id.toString() : ''}
-                          onValueChange={(value) => handleMappingChange(index, 'department_id', parseInt(value))}
-                        >
-                          <SelectTrigger
-                            id={`dept-${index}`}
-                            className="w-full min-w-0 overflow-hidden h-9 [&>span:first-child]:min-w-0 [&>span:first-child]:truncate"
-                            title={selectedDepartmentLabel}
+                  <Card
+                    key={index}
+                    className="p-4 border-l-4 border-l-blue-400"
+                  >
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_150px_150px_190px] lg:items-end">
+                        <div className="min-w-0">
+                          <Label htmlFor={`dept-${index}`} className="text-xs">
+                            Department *
+                          </Label>
+                          <Select
+                            value={
+                              mapping.department_id > 0
+                                ? mapping.department_id.toString()
+                                : ''
+                            }
+                            onValueChange={value =>
+                              handleMappingChange(
+                                index,
+                                'department_id',
+                                parseInt(value),
+                              )
+                            }
                           >
-                            <SelectValue placeholder="Select department" />
-                          </SelectTrigger>
-                          <SelectContent className="max-w-[min(90vw,28rem)]">
-                            {departments.map((dept) => (
-                              <SelectItem
-                                key={dept.id}
-                                value={dept.id.toString()}
-                                className="max-w-[min(90vw,28rem)] overflow-hidden"
-                              >
-                                <span className="block min-w-0 max-w-full truncate" title={`${dept.department_shortname} - ${dept.department_name}`}>
-                                  {dept.department_shortname} - {dept.department_name}
-                                </span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                            <SelectTrigger
+                              id={`dept-${index}`}
+                              className="w-full min-w-0 overflow-hidden h-9 [&>span:first-child]:min-w-0 [&>span:first-child]:truncate"
+                              title={selectedDepartmentLabel}
+                            >
+                              <SelectValue placeholder="Select department" />
+                            </SelectTrigger>
+                            <SelectContent className="max-w-[min(90vw,28rem)]">
+                              {departments.map(dept => (
+                                <SelectItem
+                                  key={dept.id}
+                                  value={dept.id.toString()}
+                                  className="max-w-[min(90vw,28rem)] overflow-hidden"
+                                >
+                                  <span
+                                    className="block min-w-0 max-w-full truncate"
+                                    title={`${dept.department_shortname} - ${dept.department_name}`}
+                                  >
+                                    {dept.department_shortname} -{' '}
+                                    {dept.department_name}
+                                  </span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label
+                            htmlFor={`threshold-${index}`}
+                            className="text-xs"
+                          >
+                            Min. Marks *
+                          </Label>
+                          <Input
+                            id={`threshold-${index}`}
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={mapping.threshold || ''}
+                            onChange={e =>
+                              handleMappingChange(
+                                index,
+                                'threshold',
+                                parseFloat(e.target.value),
+                              )
+                            }
+                            placeholder="60.0"
+                            className="h-9"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`seats-${index}`} className="text-xs">
+                            Seat Limit *
+                          </Label>
+                          <Input
+                            id={`seats-${index}`}
+                            type="number"
+                            min="1"
+                            value={mapping.seat_limit || ''}
+                            onChange={e =>
+                              handleMappingChange(
+                                index,
+                                'seat_limit',
+                                parseInt(e.target.value),
+                              )
+                            }
+                            placeholder="5"
+                            className="h-9"
+                          />
+                        </div>
+                        <div>
+                          <Label
+                            htmlFor={`waiting-${index}`}
+                            className="text-xs"
+                          >
+                            No. of Waiting Students
+                          </Label>
+                          <Input
+                            id={`waiting-${index}`}
+                            type="number"
+                            min="0"
+                            value={mapping.waiting_student_limit ?? 0}
+                            onChange={e =>
+                              handleMappingChange(
+                                index,
+                                'waiting_student_limit',
+                                parseInt(e.target.value) || 0,
+                              )
+                            }
+                            placeholder="0"
+                            className="h-9"
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <Label htmlFor={`threshold-${index}`} className="text-xs">Min. Marks *</Label>
-                        <Input
-                          id={`threshold-${index}`}
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={mapping.threshold || ''}
-                          onChange={(e) => handleMappingChange(index, 'threshold', parseFloat(e.target.value))}
-                          placeholder="60.0"
-                          className="h-9"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor={`seats-${index}`} className="text-xs">Seat Limit *</Label>
-                        <Input
-                          id={`seats-${index}`}
-                          type="number"
-                          min="1"
-                          value={mapping.seat_limit || ''}
-                          onChange={(e) => handleMappingChange(index, 'seat_limit', parseInt(e.target.value))}
-                          placeholder="5"
-                          className="h-9"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor={`waiting-${index}`} className="text-xs">No. of Waiting Students</Label>
-                        <Input
-                          id={`waiting-${index}`}
-                          type="number"
-                          min="0"
-                          value={mapping.waiting_student_limit ?? 0}
-                          onChange={(e) => handleMappingChange(index, 'waiting_student_limit', parseInt(e.target.value) || 0)}
-                          placeholder="0"
-                          className="h-9"
-                        />
-                      </div>
+
+                      {mappings.length > 1 && (
+                        <div className="flex justify-end">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleRemoveMapping(index)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Remove
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                    
-                    {mappings.length > 1 && (
-                      <div className="flex justify-end">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleRemoveMapping(index)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="w-4 h-4 mr-1" />
-                          Remove
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </Card>
+                  </Card>
                 );
               })}
             </div>
 
             {/* Actions */}
             <div className="flex justify-end gap-2 pt-4 border-t">
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSavingThresholds}>
+              <Button
+                variant="outline"
+                onClick={() => setIsDialogOpen(false)}
+                disabled={isSavingThresholds}
+              >
                 Cancel
               </Button>
               <Button
                 onClick={handleSubmit}
                 className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF]"
-                disabled={!selectedSemester || isSavingThresholds || !canWrite()}
+                disabled={
+                  !selectedSemester || isSavingThresholds || !canWrite()
+                }
               >
                 {isSavingThresholds ? (
                   <>

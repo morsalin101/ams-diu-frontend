@@ -660,22 +660,48 @@ export function AcceptedStudents() {
         </Alert>
       )}
 
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm font-medium text-gray-600">Selected</p>
+            <p className="text-2xl font-bold text-green-600">{summary.SELECTED}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm font-medium text-gray-600">Waiting</p>
+            <p className="text-2xl font-bold text-amber-600">{summary.WAITING}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm font-medium text-gray-600">Rejected</p>
+            <p className="text-2xl font-bold text-rose-600">{summary.REJECTED}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm font-medium text-gray-600">Absent</p>
+            <p className="text-2xl font-bold text-slate-600">{summary.ABSENT}</p>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="w-5 h-5 text-blue-600" />
-            Result Controls
+            Search & Filters
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 xl:grid-cols-[1fr_1fr_1fr_auto_auto_auto_auto] gap-4 items-end">
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(8rem,0.75fr)_1fr_1.2fr_auto_auto_auto] gap-4 items-end">
             <div className="space-y-2">
               <Label>Department</Label>
-              <div className="flex items-center justify-between h-10 px-3 border rounded-md bg-gray-50">
+              <div className="flex items-center h-10 px-3 border rounded-md bg-gray-50">
                 <span className="text-sm font-medium text-gray-800">
-                  {isDepartmentLoading ? "Resolving department..." : department?.department_name || "Unavailable"}
+                  {isDepartmentLoading ? "Resolving..." : department?.department_shortname || "Unavailable"}
                 </span>
-                {department && <Badge variant="outline">{department.department_shortname}</Badge>}
               </div>
             </div>
 
@@ -737,66 +763,7 @@ export function AcceptedStudents() {
               )}
               Refresh
             </Button>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  disabled={isExportDisabled}
-                  className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#23257a] hover:to-[#4046a8]"
-                >
-                  {exportingFormat ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Download className="w-4 h-4 mr-2" />
-                  )}
-                  Export
-                  <ChevronDown className="w-4 h-4 ml-2" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="bg-white shadow-lg border-slate-200 text-slate-900"
-              >
-                <DropdownMenuItem
-                  disabled={isExportDisabled}
-                  onSelect={() => {
-                    void exportPdf();
-                  }}
-                >
-                  <FileText className="w-4 h-4" />
-                  PDF
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={isExportDisabled}
-                  onSelect={() => {
-                    void exportExcel();
-                  }}
-                >
-                  <FileSpreadsheet className="w-4 h-4" />
-                  Excel (.xlsx)
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
-          {canRevertCurrentTab ? (
-            <div className="flex flex-wrap items-center justify-end gap-3">
-              <Button
-                variant="outline"
-                onClick={handleRevert}
-                disabled={selectedStudentIds.length === 0 || isReverting}
-              >
-                {isReverting ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                )}
-                Revert Status
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                Revert sends candidates back to their stored status.
-              </span>
-            </div>
-          ) : null}
         </CardContent>
       </Card>
 
@@ -812,33 +779,6 @@ export function AcceptedStudents() {
         </Alert>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-            <Card>
-              <CardContent className="p-4">
-                <p className="text-sm font-medium text-gray-600">Selected</p>
-                <p className="text-2xl font-bold text-green-600">{summary.SELECTED}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <p className="text-sm font-medium text-gray-600">Waiting</p>
-                <p className="text-2xl font-bold text-amber-600">{summary.WAITING}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <p className="text-sm font-medium text-gray-600">Not Selected</p>
-                <p className="text-2xl font-bold text-rose-600">{summary.REJECTED}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <p className="text-sm font-medium text-gray-600">Absent</p>
-                <p className="text-2xl font-bold text-slate-600">{summary.ABSENT}</p>
-              </CardContent>
-            </Card>
-          </div>
-
           <Card>
             <CardHeader>
               <CardTitle className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -864,17 +804,76 @@ export function AcceptedStudents() {
                     </div>
                   ) : null}
                 </div>
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                  {department && (
-                    <Badge variant="outline">
-                      {department.department_shortname}
-                    </Badge>
-                  )}
-                  {selectedSemester && (
-                    <Badge variant="secondary">{formatSemesterLabel(selectedSemester)}</Badge>
-                  )}
-                  <Badge variant="outline">Faculty of {facultyName}</Badge>
-                  <Badge variant="outline">{PRETTY_STATUS_LABELS[TAB_TO_STATUS[activeTab]]}</Badge>
+                <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    {department && (
+                      <Badge variant="outline">
+                        {department.department_shortname}
+                      </Badge>
+                    )}
+                    {selectedSemester && (
+                      <Badge variant="secondary">{formatSemesterLabel(selectedSemester)}</Badge>
+                    )}
+                    <Badge variant="outline">Faculty of {facultyName}</Badge>
+                    <Badge variant="outline">{PRETTY_STATUS_LABELS[TAB_TO_STATUS[activeTab]]}</Badge>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="sm"
+                          disabled={isExportDisabled}
+                          className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#23257a] hover:to-[#4046a8]"
+                        >
+                          {exportingFormat ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <Download className="w-4 h-4 mr-2" />
+                          )}
+                          Export
+                          <ChevronDown className="w-4 h-4 ml-2" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        align="end"
+                        className="bg-white shadow-lg border-slate-200 text-slate-900"
+                      >
+                        <DropdownMenuItem
+                          disabled={isExportDisabled}
+                          onSelect={() => {
+                            void exportPdf();
+                          }}
+                        >
+                          <FileText className="w-4 h-4" />
+                          PDF
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          disabled={isExportDisabled}
+                          onSelect={() => {
+                            void exportExcel();
+                          }}
+                        >
+                          <FileSpreadsheet className="w-4 h-4" />
+                          Excel (.xlsx)
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    {canRevertCurrentTab ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleRevert}
+                        disabled={selectedStudentIds.length === 0 || isReverting}
+                      >
+                        {isReverting ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <RotateCcw className="w-4 h-4 mr-2" />
+                        )}
+                        Revert Status
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
               </CardTitle>
             </CardHeader>
