@@ -83,7 +83,7 @@ export function DashboardHeader({}: DashboardHeaderProps) {
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-3 sm:gap-5 flex-1 min-w-0">
           <SidebarTrigger className="md:hidden text-white hover:bg-white/15 hover:text-white" />
-          <h1 className="truncate text-xl font-semibold text-white sm:text-[26px]">
+          <h1 className="truncate py-0.5 text-xl font-semibold leading-[1.3] text-white sm:text-[26px]">
             {pageTitle}
           </h1>
         </div>
