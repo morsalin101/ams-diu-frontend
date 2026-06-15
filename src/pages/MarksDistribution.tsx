@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '../components/ui/card';
@@ -275,8 +274,8 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">
+          <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-red-500" />
+          <h3 className="mb-2 text-lg font-semibold text-gray-800">
             Access Denied
           </h3>
           <p className="text-gray-600">
@@ -288,9 +287,9 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
   }
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
+    <div className="p-4 space-y-6 sm:p-6">
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -302,7 +301,7 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
                   {distributions.length}
                 </p>
               </div>
-              <BarChart3 className="h-8 w-8 text-blue-500" />
+              <BarChart3 className="w-8 h-8 text-blue-500" />
             </div>
           </CardContent>
         </Card>
@@ -316,7 +315,7 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
                   {new Set(distributions.map(d => d.department)).size}
                 </p>
               </div>
-              <Building2 className="h-8 w-8 text-green-500" />
+              <Building2 className="w-8 h-8 text-green-500" />
             </div>
           </CardContent>
         </Card>
@@ -340,7 +339,7 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
                   %
                 </p>
               </div>
-              <Target className="h-8 w-8 text-purple-500" />
+              <Target className="w-8 h-8 text-purple-500" />
             </div>
           </CardContent>
         </Card>
@@ -356,7 +355,7 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
                   {filteredDistributions.length}
                 </p>
               </div>
-              <Search className="h-8 w-8 text-orange-500" />
+              <Search className="w-8 h-8 text-orange-500" />
             </div>
           </CardContent>
         </Card>
@@ -369,18 +368,14 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
             <Filter className="w-5 h-5 text-blue-600" />
             Filters & Search
           </CardTitle>
-          <CardDescription>
-            Filter marks distribution by department or search for specific
-            records.
-          </CardDescription>
         </CardHeader>
-        <CardContent className="p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-end">
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-end">
             <div className="relative flex-1">
-              <Label htmlFor="marks-search" className="block mb-2">
+              <Label htmlFor="marks-search" className="block mb-1">
                 Search
               </Label>
-              <Search className="absolute left-3 top-8 transform -translate-y-0 text-gray-400 h-4 w-4" />
+              <Search className="absolute w-4 h-4 text-gray-400 left-3 top-7" />
               <Input
                 id="marks-search"
                 placeholder="Search departments..."
@@ -427,7 +422,7 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
 
               {canWrite() && (
                 <Button onClick={handleCreateDialog} size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus className="w-4 h-4 mr-2" />
                   Add Distribution
                 </Button>
               )}
@@ -440,7 +435,7 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
       {isLoading && (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+            <Loader2 className="w-8 h-8 mx-auto mb-4 text-blue-600 animate-spin" />
             <p className="text-gray-600">Loading marks distribution...</p>
           </div>
         </div>
@@ -452,8 +447,8 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
           {filteredDistributions.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center">
-                <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                <BarChart3 className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                <h3 className="mb-2 text-lg font-semibold text-gray-800">
                   No Marks Distribution Found
                 </h3>
                 <p className="text-gray-600">
@@ -470,22 +465,22 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
                 className="transition-shadow hover:shadow-md"
               >
                 <CardContent className="p-6">
-                  <div className="flex flex-col lg:flex-row gap-4">
+                  <div className="flex flex-col gap-4 lg:flex-row">
                     {/* Distribution Content */}
                     <div className="flex-1 space-y-4">
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge
                           variant="outline"
-                          className="bg-blue-50 text-blue-700 border-blue-200"
+                          className="text-blue-700 border-blue-200 bg-blue-50"
                         >
-                          <Building2 className="h-3 w-3 mr-1" />
+                          <Building2 className="w-3 h-3 mr-1" />
                           {distribution.department_shortname}
                         </Badge>
                         <Badge
                           variant="outline"
-                          className="bg-green-50 text-green-700 border-green-200"
+                          className="text-green-700 border-green-200 bg-green-50"
                         >
-                          <CheckCircle className="h-3 w-3 mr-1" />
+                          <CheckCircle className="w-3 h-3 mr-1" />
                           Total:{' '}
                           {distribution.ssc +
                             distribution.hsc +
@@ -497,13 +492,13 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
                       </div>
 
                       <div>
-                        <h3 className="font-medium text-gray-900 mb-2">
+                        <h3 className="mb-2 font-medium text-gray-900">
                           {distribution.department_name}
                         </h3>
 
                         {/* Marks Distribution Grid */}
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                          <div className="bg-blue-50 p-3 rounded-lg">
+                        <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+                          <div className="p-3 rounded-lg bg-blue-50">
                             <p className="text-sm font-medium text-blue-700">
                               SSC
                             </p>
@@ -511,7 +506,7 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
                               {distribution.ssc}%
                             </p>
                           </div>
-                          <div className="bg-green-50 p-3 rounded-lg">
+                          <div className="p-3 rounded-lg bg-green-50">
                             <p className="text-sm font-medium text-green-700">
                               HSC
                             </p>
@@ -519,7 +514,7 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
                               {distribution.hsc}%
                             </p>
                           </div>
-                          <div className="bg-orange-50 p-3 rounded-lg">
+                          <div className="p-3 rounded-lg bg-orange-50">
                             <p className="text-sm font-medium text-orange-700">
                               Diploma
                             </p>
@@ -527,7 +522,7 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
                               {distribution.diploma}%
                             </p>
                           </div>
-                          <div className="bg-purple-50 p-3 rounded-lg">
+                          <div className="p-3 rounded-lg bg-purple-50">
                             <p className="text-sm font-medium text-purple-700">
                               Main Marks
                             </p>
@@ -535,7 +530,7 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
                               {distribution.main_marks}%
                             </p>
                           </div>
-                          <div className="bg-indigo-50 p-3 rounded-lg">
+                          <div className="p-3 rounded-lg bg-indigo-50">
                             <p className="text-sm font-medium text-indigo-700">
                               Viva Marks
                             </p>
@@ -549,14 +544,14 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
 
                     {/* Actions */}
                     {canWrite() && (
-                      <div className="flex lg:flex-col gap-2">
+                      <div className="flex gap-2 lg:flex-col">
                         <Button
                           onClick={() => handleDelete(distribution.id)}
                           variant="outline"
                           size="sm"
-                          className="flex-1 lg:flex-none text-red-600 hover:text-red-700 hover:bg-red-50"
+                          className="flex-1 text-red-600 lg:flex-none hover:text-red-700 hover:bg-red-50"
                         >
-                          <Trash2 className="h-4 w-4 mr-2" />
+                          <Trash2 className="w-4 h-4 mr-2" />
                           Delete
                         </Button>
                       </div>
@@ -687,15 +682,15 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
             </div>
 
             {/* Total Display */}
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <div className="flex justify-between items-center">
+            <div className="p-3 rounded-lg bg-gray-50">
+              <div className="flex items-center justify-between">
                 <span className="font-medium">Total:</span>
                 <span className={`font-bold text-lg ${getTotalColor()}`}>
                   {calculateTotal()}%
                 </span>
               </div>
               {calculateTotal() !== 100 && (
-                <p className="text-sm text-red-600 mt-1">
+                <p className="mt-1 text-sm text-red-600">
                   Total must equal 100% (currently {calculateTotal()}%)
                 </p>
               )}
@@ -707,11 +702,11 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
                 variant="outline"
                 onClick={() => setShowCreateDialog(false)}
               >
-                <X className="h-4 w-4 mr-2" />
+                <X className="w-4 h-4 mr-2" />
                 Cancel
               </Button>
               <Button type="submit" disabled={calculateTotal() !== 100}>
-                <Save className="h-4 w-4 mr-2" />
+                <Save className="w-4 h-4 mr-2" />
                 Create Distribution
               </Button>
             </div>
