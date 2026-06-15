@@ -105,18 +105,18 @@ export function StatsCards({ gradientClass }: StatsCardsProps) {
         const Icon = stat.icon;
         
         return (
-          <Card key={stat.title} className="relative min-h-[190px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-            <CardHeader className="flex flex-row items-start justify-between space-y-0 px-6 pb-4 pt-6">
-              <CardTitle className="text-base font-semibold text-slate-950">
+          <Card key={stat.title} className="relative overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+            <CardHeader className="space-y-0 px-5 pb-1 pt-5">
+              <CardTitle className="pr-14 text-base font-semibold text-slate-950">
                 {stat.title}
               </CardTitle>
-              <div className="rounded-xl bg-blue-100 p-3 text-blue-700 shadow-sm">
-                <Icon className="h-6 w-6" />
-              </div>
             </CardHeader>
-            <CardContent className="px-6 pb-6">
-              <div className="text-4xl font-bold text-[#0D1B4C]">{stat.value}</div>
-              <div className="mt-3 text-base text-slate-700">
+            <div className="absolute right-5 top-5 rounded-lg bg-blue-100 p-2.5 text-blue-700 shadow-sm">
+              <Icon className="h-5 w-5" />
+            </div>
+            <CardContent className="px-5 pb-5 pt-0">
+              <div className="text-3xl font-bold leading-tight text-[#0D1B4C]">{stat.value}</div>
+              <div className="mt-1.5 text-sm text-slate-700">
                 {stat.description}
               </div>
             </CardContent>

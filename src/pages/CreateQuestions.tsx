@@ -5,11 +5,11 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Badge } from '../components/ui/badge';
-import { Settings, BarChart3, HelpCircle, Clock, Award, Building, Calendar, Loader2, FileText, Plus, X, Edit, Eye, Trash2, Save, RefreshCw, AlertTriangle, BookOpen } from 'lucide-react';
+import { Settings, Building, Loader2, FileText, Plus, Trash2, Save, RefreshCw, AlertTriangle, BookOpen } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Textarea } from '../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { examAPI, subjectAPI, departmentAPI, subjectDepartmentAPI } from '../services/api';
+import { examAPI, subjectAPI, subjectDepartmentAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { buildAcademicSemesterOptions } from '../lib/semester';
@@ -27,8 +27,8 @@ interface Subject {
 
 interface Question {
   id: number;
-  question_text?: string;
-  questions?: string; // Backend might use either field
+  question_text?: string | string[] | Record<string, string>;
+  questions?: string | string[] | Record<string, string>; // Backend might use either field
   subject: string;
   type: string;
   options?: string[] | string | Record<string, string>;
@@ -41,19 +41,7 @@ interface MissingQuestionSlot {
   marks: number;
 }
 
-interface ExamData {
-  department_id: number;
-  semester: string;
-  duration_minutes: number;
-  language: string;
-  faculty: string;
-  subjects: Array<{
-    subject: string;
-    marks: number;
-  }>;
-}
-
-export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
+export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestionsProps) {
   const { user } = useAuth();
   const { canWrite, canRead } = usePermissions();
   
@@ -139,23 +127,6 @@ export function CreateQuestions({ gradientClass }: CreateQuestionsProps) {
     } finally {
       setIsLoadingSubjects(false);
     }
-  };
-
-  // Add subject to exam
-  const addSubject = () => {
-    setSelectedSubjects([...selectedSubjects, { subject: '', marks: 0 }]);
-  };
-
-  // Remove subject from exam
-  const removeSubject = (index: number) => {
-    setSelectedSubjects(selectedSubjects.filter((_, i) => i !== index));
-  };
-
-  // Update subject data
-  const updateSubject = (index: number, field: 'subject' | 'marks', value: string | number) => {
-    const updated = [...selectedSubjects];
-    updated[index] = { ...updated[index], [field]: value };
-    setSelectedSubjects(updated);
   };
 
   // Generate exam questions

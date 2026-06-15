@@ -127,29 +127,29 @@ export function QuestionsStatsDetail({ gradientClass }: QuestionsStatsDetailProp
       <div className="space-y-5 md:space-y-7">
         {/* Question Types */}
         <Card className="rounded-lg border border-slate-200 bg-white shadow-sm">
-          <CardHeader className="px-6 pb-2 pt-6">
-            <CardTitle className="flex items-center gap-4 text-2xl font-bold text-slate-950">
+          <CardHeader className="px-5 pb-0 pt-5">
+            <CardTitle className="flex items-center gap-3 text-xl font-bold text-slate-950">
               <BarChart3 className="h-5 w-5" />
               Question Types
             </CardTitle>
           </CardHeader>
-          <CardContent className="px-6 pb-6">
+          <CardContent className="px-5 pb-5 pt-0">
             <div>
               {Object.entries(stats.types).map(([type, count]) => {
                 const percentage = Math.round((count / stats.total_questions) * 100);
                 return (
-                  <div key={type} className="flex items-center justify-between border-b border-dashed border-slate-200 py-4 last:border-0">
-                    <div className="flex items-center gap-4">
+                  <div key={type} className="flex items-center justify-between border-b border-dashed border-slate-200 py-2.5 last:border-0">
+                    <div className="flex items-center gap-3">
                       <div className={`h-3 w-3 rounded-full ${
                         type === 'option' ? 'bg-blue-500' : 'bg-green-500'
                       }`}></div>
-                      <span className="text-lg font-semibold text-slate-950">
+                      <span className="text-base font-semibold text-slate-950">
                         {type === 'option' ? 'Multiple Choice' : 'Text Answer'}
                       </span>
                     </div>
                     <div className="text-right">
-                      <div className="text-lg font-semibold text-slate-950">{count}</div>
-                      <div className="text-base text-slate-700">{percentage}%</div>
+                      <div className="text-base font-semibold text-slate-950">{count}</div>
+                      <div className="text-sm text-slate-700">{percentage}%</div>
                     </div>
                   </div>
                 );
