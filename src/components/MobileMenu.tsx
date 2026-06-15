@@ -13,7 +13,7 @@ export function MobileMenu({}: MobileMenuProps) {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="sm" className="sm:hidden">
+        <Button variant="ghost" size="sm" className="text-white hover:bg-white/15 hover:text-white sm:hidden">
           <MoreVertical className="h-5 w-5" />
         </Button>
       </SheetTrigger>

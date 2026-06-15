@@ -79,35 +79,35 @@ export function DashboardHeader({}: DashboardHeaderProps) {
   }, [location.pathname, menuItems]);
 
   return (
-    <header className="flex h-14 sm:h-16 items-center gap-2 sm:gap-4 border-b border-white/20 bg-gradient-to-r from-[#2E3094] to-[#4C51BF] px-2 sm:px-4 md:px-6 text-white shadow-sm">
+    <header className="flex h-[76px] sm:h-[88px] items-center gap-2 sm:gap-4 border-b border-white/10 bg-gradient-to-r from-[#0D1B4C] to-[#1E3A8A] px-4 sm:px-8 text-white shadow-md">
       <div className="flex items-center justify-between w-full">
-        <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
-          <SidebarTrigger className="md:hidden text-white hover:bg-white/10 hover:text-white" />
-          <h1 className="truncate text-lg font-semibold text-white sm:text-xl">
+        <div className="flex items-center gap-3 sm:gap-5 flex-1 min-w-0">
+          <SidebarTrigger className="md:hidden text-white hover:bg-white/15 hover:text-white" />
+          <h1 className="truncate text-xl font-semibold text-white sm:text-[26px]">
             {pageTitle}
           </h1>
         </div>
         
-        <div className="flex items-center gap-1 sm:gap-2 md:gap-4">
-          <Button variant="ghost" size="sm" className="relative p-1 text-white hover:bg-white/10 hover:text-white md:p-2">
-            <Bell className="h-4 w-4 md:h-5 md:w-5" />
-            <Badge className="absolute -top-1 -right-1 h-4 w-4 md:h-5 md:w-5 flex items-center justify-center p-0 text-xs bg-white text-[#3a3ea5] hover:bg-white">
+        <div className="flex items-center gap-2 sm:gap-4 md:gap-6">
+          <Button variant="ghost" size="sm" className="relative p-2 text-white hover:bg-white/15 hover:text-white">
+            <Bell className="h-5 w-5 md:h-6 md:w-6" />
+            <Badge className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center p-0 text-xs bg-white text-[#0D1B4C] hover:bg-white">
               3
             </Badge>
           </Button>
           
-          <Button variant="ghost" size="sm" className="p-1 text-white hover:bg-white/10 hover:text-white md:p-2 hidden sm:flex">
-            <Settings className="h-4 w-4 md:h-5 md:w-5" />
+          <Button variant="ghost" size="sm" className="hidden p-2 text-white hover:bg-white/15 hover:text-white sm:flex">
+            <Settings className="h-5 w-5 md:h-6 md:w-6" />
           </Button>
           
-          <div className="flex items-center gap-1 md:gap-2">
-            <Avatar className="h-6 w-6 md:h-8 md:w-8">
+          <div className="flex items-center gap-2 md:gap-3">
+            <Avatar className="h-9 w-9 bg-white/10 ring-1 ring-white/20 md:h-11 md:w-11">
               <AvatarImage src="" alt="Admin" />
               <AvatarFallback className="bg-white/15 text-white">
-                <User className="h-3 w-3 md:h-4 md:w-4" />
+                <User className="h-4 w-4 md:h-5 md:w-5" />
               </AvatarFallback>
             </Avatar>
-            <span className="text-xs md:text-sm font-medium hidden sm:block text-white">Admin User</span>
+            <span className="hidden text-sm font-semibold text-white sm:block md:text-base">Admin User</span>
           </div>
 
           {/* Mobile Menu */}

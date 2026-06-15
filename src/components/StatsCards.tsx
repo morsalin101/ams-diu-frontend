@@ -105,22 +105,22 @@ export function StatsCards({ gradientClass }: StatsCardsProps) {
         const Icon = stat.icon;
         
         return (
-          <Card key={stat.title} className="relative overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
+          <Card key={stat.title} className="relative min-h-[190px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 px-6 pb-4 pt-6">
+              <CardTitle className="text-base font-semibold text-slate-950">
                 {stat.title}
               </CardTitle>
-              <div className={`p-2 rounded-lg bg-gradient-to-r ${gradientClass}`}>
-                <Icon className="h-4 w-4 text-white" />
+              <div className="rounded-xl bg-blue-100 p-3 text-blue-700 shadow-sm">
+                <Icon className="h-6 w-6" />
               </div>
             </CardHeader>
-            <CardContent> 
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <div className="text-xs text-muted-foreground mt-1 mb-4">
+            <CardContent className="px-6 pb-6">
+              <div className="text-4xl font-bold text-[#0D1B4C]">{stat.value}</div>
+              <div className="mt-3 text-base text-slate-700">
                 {stat.description}
               </div>
             </CardContent>
-            <div className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r ${gradientClass}`}></div>
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600"></div>
           </Card>
         );
       })}
