@@ -138,8 +138,6 @@ export function Results({ gradientClass }: ResultsProps) {
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
 
   // Dialog states
   const [showResultDialog, setShowResultDialog] = useState(false);
@@ -208,8 +206,6 @@ export function Results({ gradientClass }: ResultsProps) {
 
       if (data.success) {
         setExamResults(data.data.results);
-        setTotalPages(data.data.pagination.total_pages);
-        setTotalCount(data.data.pagination.count);
         setCurrentPage(data.data.pagination.current_page);
         setPagination(paginationFromDrf({ pagination: data.data.pagination }, currentPage));
         toast.success(
@@ -366,7 +362,7 @@ export function Results({ gradientClass }: ResultsProps) {
   const goodCount = examResults.filter(
     r => r.results.score_percentage >= 80 && r.results.score_percentage < 90,
   ).length;
-  const totalStudents = examResults.length;
+  const totalStudents = pagination.count;
 
   // Permission check
   if (!canRead()) {
