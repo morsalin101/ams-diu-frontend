@@ -248,6 +248,13 @@ export function Results({ gradientClass }: ResultsProps) {
     setReloadKey((current) => current + 1);
   };
 
+  const handleSemesterFilterChange = (value: string) => {
+    setDraftSemesterFilter(value);
+    setAppliedSemesterFilter(value);
+    setCurrentPage(1);
+    setReloadKey((current) => current + 1);
+  };
+
   const handleClearSearch = () => {
     setDraftSearch('');
     setAppliedSearch('');
@@ -363,6 +370,7 @@ export function Results({ gradientClass }: ResultsProps) {
     r => r.results.score_percentage >= 80 && r.results.score_percentage < 90,
   ).length;
   const totalStudents = pagination.count;
+  const currentPageStudentCount = examResults.length;
 
   // Permission check
   if (!canRead()) {
@@ -428,10 +436,10 @@ export function Results({ gradientClass }: ResultsProps) {
             <Target className="w-6 h-6 mx-auto mb-2 text-indigo-600" />
             <div className="text-2xl font-bold text-indigo-600">
               {formatPercentage(
-                totalStudents > 0
+                currentPageStudentCount > 0
                   ? (examResults.filter(r => r.results.score_percentage >= 60)
                       .length /
-                      totalStudents) *
+                      currentPageStudentCount) *
                       100
                   : 0,
               )}
@@ -468,7 +476,10 @@ export function Results({ gradientClass }: ResultsProps) {
 
             <div className="space-y-2">
               <Label htmlFor="semester">Semester</Label>
-              <Select value={draftSemesterFilter} onValueChange={setDraftSemesterFilter}>
+              <Select
+                value={draftSemesterFilter}
+                onValueChange={handleSemesterFilterChange}
+              >
                 <SelectTrigger id="semester">
                   <SelectValue placeholder="All semesters" />
                 </SelectTrigger>

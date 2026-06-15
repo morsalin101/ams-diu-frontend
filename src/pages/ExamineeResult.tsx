@@ -614,47 +614,51 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
                 placeholder="Minimum total mark"
               />
             </div>
-          </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              onClick={handleSearch}
-              disabled={isLoading || !department || !selectedSemester}
-            >
-              <Search className="w-4 h-4 mr-2" />
-              Search
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClearSearch}
-              disabled={
-                isLoading ||
-                (!draftSearch &&
-                  !appliedSearch &&
-                  !draftMinimumScoreFilter &&
-                  !appliedMinimumScoreFilter &&
-                  draftSortBy === "score" &&
-                  appliedSortBy === "score" &&
-                  draftSortOrder === "desc" &&
-                  appliedSortOrder === "desc")
-              }
-            >
-              <X className="w-4 h-4 mr-2" />
-              Clear
-            </Button>
-            <Button
-              variant="outline"
-              onClick={refreshBoard}
-              disabled={isLoading || !department || !selectedSemester}
-            >
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4 mr-2" />
-              )}
-              Refresh
-            </Button>
+            <div className="flex flex-wrap items-end gap-2 sm:col-span-2 lg:col-span-2">
+              <Button
+                variant="outline"
+                onClick={handleSearch}
+                disabled={isLoading || !department || !selectedSemester}
+                className="h-10"
+              >
+                <Search className="w-4 h-4 mr-2" />
+                Search
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClearSearch}
+                disabled={
+                  isLoading ||
+                  (!draftSearch &&
+                    !appliedSearch &&
+                    !draftMinimumScoreFilter &&
+                    !appliedMinimumScoreFilter &&
+                    draftSortBy === "score" &&
+                    appliedSortBy === "score" &&
+                    draftSortOrder === "desc" &&
+                    appliedSortOrder === "desc")
+                }
+                className="h-10"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Clear
+              </Button>
+              <Button
+                variant="outline"
+                onClick={refreshBoard}
+                disabled={isLoading || !department || !selectedSemester}
+                className="h-10"
+              >
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                )}
+                Refresh
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -668,7 +672,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
             </span>
             <a
               href="/student-acceptance-criteria"
-              className="inline-flex h-9 items-center justify-center rounded-md bg-blue-600 px-3 text-sm font-medium text-white hover:bg-blue-700"
+              className="inline-flex items-center justify-center px-3 text-sm font-medium text-white bg-blue-600 rounded-md h-9 hover:bg-blue-700"
             >
               Set Criteria
             </a>
@@ -696,6 +700,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center gap-2">
+                <span>Bulk Selection</span>
                 <Input
                   id="top-candidate-count"
                   type="text"
@@ -708,7 +713,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
                       setTopCandidateCount(value);
                     }
                   }}
-                  placeholder="Top on page"
+                  placeholder=""
                   className="w-24 h-8"
                 />
               </div>
