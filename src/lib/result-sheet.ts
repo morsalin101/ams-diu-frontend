@@ -174,7 +174,7 @@ export function buildResultSheetRows(results: AdmissionResult[]): ResultSheetRow
     ssc: formatNumber(result.student_ssc),
     academic: `${formatNumber(getAcademicDisplayValue(result))} (${getAcademicDisplayLabel(result)})`,
     written: formatNumber(result.mcq_marks),
-    viva: formatNumber(result.viva_marks),
+    viva: result.viva_marks_entered === false ? "Not Given" : formatNumber(result.viva_marks),
     writtenViva: formatNumber(result.written_viva_total),
     total: formatNumber(result.weighted_total_marks),
     remarks: PRETTY_STATUS_LABELS[result.result_status],

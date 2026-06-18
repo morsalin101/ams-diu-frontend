@@ -45,6 +45,7 @@ export interface AdmissionResult {
   department_shortname: string;
   mcq_marks: number;
   viva_marks: number;
+  viva_marks_entered: boolean;
   written_viva_total: number;
   total_marks: number;
   weighted_total_marks: number;
