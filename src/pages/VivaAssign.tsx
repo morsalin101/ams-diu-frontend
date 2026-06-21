@@ -418,7 +418,12 @@ export function VivaAssign({ gradientClass }: VivaAssignmentManagementProps) {
                 </SelectContent>
               </Select>
 
-              <Button onClick={handleSearch} disabled={isLoading} className="w-full sm:w-auto">
+              <Button
+                onClick={handleSearch}
+                variant="outline"
+                disabled={isLoading}
+                className="w-full sm:w-auto"
+              >
                 <Search className="h-4 w-4 mr-2" />
                 Search
               </Button>

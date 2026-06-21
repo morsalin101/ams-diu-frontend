@@ -538,6 +538,7 @@ export function Results({ gradientClass }: ResultsProps) {
               <div className="flex gap-2">
                 <Button
                   onClick={handleSearch}
+                  variant="outline"
                   className="flex-1"
                   disabled={isLoading}
                 >

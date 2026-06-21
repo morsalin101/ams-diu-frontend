@@ -736,6 +736,7 @@ export function AcceptedStudents() {
 
             <Button
               onClick={handleSearch}
+              variant="outline"
               disabled={isDepartmentLoading || isLoading || !department || !selectedSemester}
             >
               <Search className="w-4 h-4 mr-2" />
