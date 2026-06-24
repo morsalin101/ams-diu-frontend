@@ -37,7 +37,7 @@ const PAGE_TITLE_FALLBACKS: Record<string, string> = {
   '/subject-management': 'Subject Management',
   '/subject-department-mapping': 'Subject Department Mapping',
   '/published-exams': 'Published Exams',
-  '/deletequestions': 'Delete Questions',
+  '/deletequestions': 'Delete Questions(DB)',
   '/blocked-questions': 'Blocked Questions',
   '/my-students': 'My Students',
   '/my-schedule': 'My Schedule',

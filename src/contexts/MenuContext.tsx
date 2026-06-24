@@ -171,7 +171,7 @@ export const MenuProvider: React.FC<{ children: React.ReactNode }> = ({ children
         },
         {
           id: 9,
-          label: "Delete Questions",
+          label: "Delete Questions(DB)",
           icon: "Trash2",
           link: "/deletequestions",
           component: "DeleteQuestions",
