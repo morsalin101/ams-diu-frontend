@@ -692,14 +692,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
       <Card>
         <CardHeader>
           <CardTitle className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-wrap items-center gap-3">
-              <span>Candidate Board</span>
-              {selectedSemester ? (
-                <Badge variant="outline">{formatSemesterLabel(selectedSemester)}</Badge>
-              ) : null}
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
                 <span>Bulk Selection</span>
                 <Input
                   id="top-candidate-count"
@@ -717,6 +710,13 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
                   className="w-24 h-8"
                 />
               </div>
+            
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-3">
+              {selectedSemester ? (
+                <Badge variant="outline">{formatSemesterLabel(selectedSemester)}</Badge>
+              ) : null}
+            </div>
               {hasWriteAccess && (
                 <Button
                   onClick={handleAccept}

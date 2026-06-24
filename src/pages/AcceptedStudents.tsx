@@ -105,6 +105,7 @@ export function AcceptedStudents() {
   const [selectedReportStudentId, setSelectedReportStudentId] = useState<number | null>(null);
   const [selectedReportStudentName, setSelectedReportStudentName] = useState("");
   const [downloadingReportId, setDownloadingReportId] = useState<number | null>(null);
+  const [isBulkDownloadingReports, setIsBulkDownloadingReports] = useState(false);
 
   useEffect(() => {
     if (!hasReadAccess) {
@@ -548,6 +549,39 @@ export function AcceptedStudents() {
     }
   };
 
+  const handleDownloadSelectedReports = async () => {
+    if (selectedTabResults.length === 0) {
+      toast.error("Select at least one candidate to download reports.");
+      return;
+    }
+
+    if (selectedTabResults.length === 1) {
+      await handleDownloadReport(selectedTabResults[0]);
+      return;
+    }
+
+    setIsBulkDownloadingReports(true);
+    try {
+      const reports = selectedTabResults.map((result) => ({
+        exam_id: result.exam,
+        student_id: result.student,
+      }));
+
+      const response = await admissionResultsAPI.downloadStudentDetailReportsZip(reports);
+      if (!response?.blob) {
+        throw new Error("Student report ZIP is not available yet.");
+      }
+
+      downloadBlobFile(response.blob, response.filename);
+      toast.success(`Downloaded ${selectedTabResults.length} reports as ZIP.`);
+    } catch (reportError: any) {
+      console.error("Error downloading student report ZIP:", reportError);
+      toast.error(reportError?.message || "Failed to download student reports ZIP");
+    } finally {
+      setIsBulkDownloadingReports(false);
+    }
+  };
+
   useEffect(() => {
     if (parsedTopCandidateCount === null || !canRevertCurrentTab) {
       return;
@@ -821,7 +855,42 @@ export function AcceptedStudents() {
                     <Badge variant="outline">Faculty of {facultyName}</Badge>
                     <Badge variant="outline">{PRETTY_STATUS_LABELS[TAB_TO_STATUS[activeTab]]}</Badge>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
+                    {canRevertCurrentTab ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleRevert}
+                        disabled={selectedStudentIds.length === 0 || isReverting}
+                      >
+                        {isReverting ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <RotateCcw className="w-4 h-4 mr-2" />
+                        )}
+                        Revert Status
+                      </Button>
+                    ) : null}
+                  
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        void handleDownloadSelectedReports();
+                      }}
+                      disabled={
+                        selectedTabResults.length === 0 ||
+                        isBulkDownloadingReports ||
+                        downloadingReportId !== null
+                      }
+                    >
+                      {isBulkDownloadingReports ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Download className="w-4 h-4 mr-2" />
+                      )}
+                      Download Selected
+                    </Button>
+                    <div className="flex flex-wrap items-center gap-2">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
@@ -862,21 +931,7 @@ export function AcceptedStudents() {
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                    {canRevertCurrentTab ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleRevert}
-                        disabled={selectedStudentIds.length === 0 || isReverting}
-                      >
-                        {isReverting ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <RotateCcw className="w-4 h-4 mr-2" />
-                        )}
-                        Revert Status
-                      </Button>
-                    ) : null}
+
                   </div>
                 </div>
               </CardTitle>
@@ -1029,7 +1084,7 @@ export function AcceptedStudents() {
                                       variant="ghost"
                                       size="icon"
                                       onClick={() => handleDownloadReport(result)}
-                                      disabled={downloadingReportId === result.id}
+                                      disabled={downloadingReportId === result.id || isBulkDownloadingReports}
                                       aria-label={`Download report for ${row.studentName}`}
                                     >
                                       {downloadingReportId === result.id ? (

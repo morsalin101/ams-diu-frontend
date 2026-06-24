@@ -36,6 +36,9 @@ interface ExamScheduleProps {
   gradientClass: string;
 }
 
+const sortSchedulesByLatestId = (scheduleList: Schedule[]) =>
+  [...scheduleList].sort((a, b) => b.id - a.id);
+
 export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
   const [exams, setExams] = useState<Exam[]>([]);
   const [todaysExams, setTodaysExams] = useState<Exam[]>([]);
@@ -105,7 +108,7 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
         date_filter: appliedRightFilter === 'today' ? 'today' : undefined,
       });
       const scheduleData = response.results || response.data || response;
-      setSchedules(scheduleData);
+      setSchedules(Array.isArray(scheduleData) ? sortSchedulesByLatestId(scheduleData) : []);
       setPagination(paginationFromDrf(response, page));
     } catch (error) {
       console.error('Error loading schedules:', error);

@@ -133,9 +133,11 @@ export function StudentAssignmentDialog({
   )].sort((a, b) => a.localeCompare(b));
 
   // Filter schedules based on date filter
-  const filteredSchedules = schedules.filter(schedule => {
-    return !filterDate || filterDate === 'all' || (filterDate === 'today' && isToday(schedule.created_at));
-  });
+  const filteredSchedules = schedules
+    .filter(schedule => {
+      return !filterDate || filterDate === 'all' || (filterDate === 'today' && isToday(schedule.created_at));
+    })
+    .sort((a, b) => b.id - a.id);
 
   const handleClose = () => {
     setStudentSearchTerm('');

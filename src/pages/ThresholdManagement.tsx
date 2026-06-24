@@ -252,7 +252,6 @@ const ThresholdManagement: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle>Filter Thresholds</CardTitle>
-          <CardDescription>Filter thresholds by semester</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-end gap-4">
@@ -285,12 +284,9 @@ const ThresholdManagement: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>Department Thresholds</span>
+            <span>Department Threshold & Seat Limit</span>
             <Badge variant="outline">{thresholds.length} thresholds</Badge>
           </CardTitle>
-          <CardDescription>
-            List of all department admission thresholds with seat limits
-          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -314,26 +310,22 @@ const ThresholdManagement: React.FC = () => {
                       <Card key={threshold.id} className="p-4 bg-white border-l-4 border-l-blue-500">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                           {/* Threshold Content */}
-                          <div className="flex-1 min-w-0 space-y-2">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Badge variant="outline" className="text-blue-700 border-blue-200 bg-blue-50">
-                                <Building className="w-3 h-3 mr-1" />
-                                {threshold.department_shortname}
-                              </Badge>
-                              <Badge variant="outline" className="text-orange-700 border-orange-200 bg-orange-50">
-                                Min Marks: {threshold.min_threshold_mark}
-                              </Badge>
-                              <Badge variant="outline" className="text-green-700 border-green-200 bg-green-50">
-                                Seats: {threshold.seat_limit}
-                              </Badge>
-                            </div>
+                          <div className="flex-1 min-w-0 space-y-3">
                             <div>
-                              <h4 className="block w-full overflow-hidden font-medium text-gray-900 text-ellipsis whitespace-nowrap" title={threshold.department_name}>
+                              <h4 className="block w-full overflow-hidden text-base font-semibold text-gray-900 text-ellipsis whitespace-nowrap" title={threshold.department_name}>
                                 {threshold.department_name}
                               </h4>
                               <p className="text-xs text-gray-500">
                                 Created: {new Date(threshold.created_at).toLocaleDateString()}
                               </p>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3">
+                              <Badge variant="outline" className="px-3 py-1.5 text-sm font-semibold text-orange-800 border-2 border-orange-200 bg-orange-50 shadow-sm">
+                                Min Marks: {threshold.min_threshold_mark}
+                              </Badge>
+                              <Badge variant="outline" className="px-3 py-1.5 text-sm font-semibold text-green-800 border-2 border-green-200 bg-green-50 shadow-sm">
+                                Seats: {threshold.seat_limit}
+                              </Badge>
                             </div>
                           </div>
 

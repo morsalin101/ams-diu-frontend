@@ -87,6 +87,8 @@ export function VivaAssignmentDialog({
   
   // Debug logging
   console.log('VivaAssignmentDialog - Schedules received:', schedules);
+
+  const sortedSchedules = [...schedules].sort((a, b) => b.id - a.id);
   
   // Form states
   const [assignmentForm, setAssignmentForm] = useState({
@@ -387,10 +389,10 @@ export function VivaAssignmentDialog({
                       <SelectValue placeholder="Select a schedule" />
                     </SelectTrigger>
                     <SelectContent>
-                      {schedules.length === 0 ? (
+                      {sortedSchedules.length === 0 ? (
                         <div className="p-4 text-center text-gray-500 text-sm">No schedules available</div>
                       ) : (
-                        schedules.map(schedule => (
+                        sortedSchedules.map(schedule => (
                           <SelectItem key={schedule.id} value={schedule.id.toString()}>
                             <div className="flex flex-col">
                               <span className="font-medium text-sm">
