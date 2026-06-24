@@ -341,8 +341,8 @@ export function AcceptedStudents() {
           "SL",
           "Application Serial",
           "Student Name",
-          "SSC",
-          "HSC / Diploma",
+          "SSC Number",
+          "HSC/Diploma Number",
           "Written",
           "Viva",
           "Written + Viva",
@@ -424,8 +424,8 @@ export function AcceptedStudents() {
           SL: row.serial,
           "Application Serial": row.applicationSerial,
           "Student Name": row.studentName,
-          SSC: row.ssc,
-          "HSC / Diploma": row.academic,
+          "SSC Number": row.ssc,
+          "HSC/Diploma Number": row.academic,
           Written: row.written,
           Viva: row.viva,
           "Written + Viva": row.writtenViva,
@@ -438,7 +438,7 @@ export function AcceptedStudents() {
         { wch: 20 },
         { wch: 28 },
         { wch: 10 },
-        { wch: 16 },
+        { wch: 22 },
         { wch: 10 },
         { wch: 10 },
         { wch: 16 },
@@ -930,8 +930,8 @@ export function AcceptedStudents() {
                               <TableHead>SL</TableHead>
                               <TableHead>Application Serial</TableHead>
                               <TableHead>Student Name</TableHead>
-                              <TableHead>SSC</TableHead>
-                              <TableHead>HSC / Diploma</TableHead>
+                              <TableHead>SSC Number</TableHead>
+                              <TableHead>HSC/Diploma Number</TableHead>
                               <TableHead>Written</TableHead>
                               <TableHead>Viva</TableHead>
                               <TableHead>Written + Viva</TableHead>

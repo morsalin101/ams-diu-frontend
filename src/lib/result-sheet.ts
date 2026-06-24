@@ -1,6 +1,4 @@
 import {
-  getAcademicDisplayLabel,
-  getAcademicDisplayValue,
   PRETTY_STATUS_LABELS,
   type AdmissionResult,
   type EffectiveDepartment,
@@ -171,8 +169,8 @@ export function buildResultSheetRows(results: AdmissionResult[]): ResultSheetRow
     applicationSerial: result.student_f_id || "N/A",
     studentName: result.student_full_name || "N/A",
     username: result.student_username || "",
-    ssc: formatNumber(result.student_ssc),
-    academic: `${formatNumber(getAcademicDisplayValue(result))} (${getAcademicDisplayLabel(result)})`,
+    ssc: formatNumber(result.ssc_contribution),
+    academic: formatNumber(result.academic_contribution),
     written: formatNumber(result.mcq_marks),
     viva: result.viva_marks_entered === false ? "Not Given" : formatNumber(result.viva_marks),
     writtenViva: formatNumber(result.written_viva_total),

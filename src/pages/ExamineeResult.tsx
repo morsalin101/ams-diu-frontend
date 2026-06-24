@@ -808,8 +808,8 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
                     <TableHead>SL</TableHead>
                     <TableHead>Application Serial</TableHead>
                     <TableHead>Student Name</TableHead>
-                    <TableHead>SSC</TableHead>
-                    <TableHead>HSC / Diploma</TableHead>
+                    <TableHead>SSC Number</TableHead>
+                    <TableHead>HSC/Diploma Number</TableHead>
                     <TableHead>Written</TableHead>
                     <TableHead>Viva</TableHead>
                     <TableHead>Written + Viva</TableHead>
