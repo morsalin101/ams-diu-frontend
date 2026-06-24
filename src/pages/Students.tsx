@@ -286,13 +286,13 @@ export function Students({ gradientClass }: StudentsProps) {
     <div className="space-y-4 sm:space-y-6">
       {/* Search and Actions */}
       <Card className="border-2 border-gray-200">
-        <CardHeader className="pb-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <CardHeader className="pb-2 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
           <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-800">
             <Users className="h-5 w-5 text-blue-600" />
             Search & Actions
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-4 sm:p-6">
+        <CardContent className="px-4 pt-2 pb-4 sm:px-6 sm:pt-3 sm:pb-6">
           <div className="flex flex-col sm:flex-row gap-4 items-end">
             {/* Search and Filter */}
             <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">

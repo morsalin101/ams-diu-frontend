@@ -280,6 +280,7 @@ export function PublishedExams({ gradientClass }: PublishedExamsProps) {
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Stats */}
+      {/* Stats */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card>
           <CardContent className="p-4">
@@ -326,7 +327,7 @@ export function PublishedExams({ gradientClass }: PublishedExamsProps) {
       <Card className="border-2 border-gray-200">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
+            <Search className="h-5 w-5 text-blue-600" />
             Filters & Search
           </CardTitle>
         </CardHeader>
@@ -447,7 +448,7 @@ export function PublishedExams({ gradientClass }: PublishedExamsProps) {
         ) : (
           filteredExams.map((exam) => (
             <Card key={exam.id} className="border-2 border-gray-200 hover:border-gray-300 transition-colors">
-              <CardContent className="p-6">
+              <CardContent className="p-4 sm:p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
@@ -568,7 +569,7 @@ export function PublishedExams({ gradientClass }: PublishedExamsProps) {
           </DialogHeader>
           
           {selectedResult && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Student Overview */}
               <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
                 <CardContent className="p-4">

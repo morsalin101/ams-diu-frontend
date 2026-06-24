@@ -129,7 +129,7 @@ const MyStudents: React.FC = () => {
   const stats = getStats();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div className="flex justify-end">
         <Button variant="outline" onClick={loadMyStudents} disabled={isLoading}>
           <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />

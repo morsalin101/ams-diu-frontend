@@ -492,7 +492,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
         </Alert>
       )}
 
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Card>
           <CardContent className="p-3">
             <p className="text-xs font-medium text-gray-600">Total Candidates</p>
@@ -522,13 +522,13 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
       </div>
 
       <Card className="border border-gray-200">
-        <CardHeader className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <CardHeader className="px-4 pb-2 pt-3 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
           <CardTitle className="flex items-center gap-2 text-base font-semibold text-gray-800">
             <Search className="w-4 h-4 text-blue-600" />
             Search &amp; Filters
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-4 space-y-3">
+        <CardContent className="px-4 pt-2 pb-4 space-y-3 sm:px-6 sm:pt-3 sm:pb-6">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             <div className="space-y-1.5">
               <Label>Department</Label>

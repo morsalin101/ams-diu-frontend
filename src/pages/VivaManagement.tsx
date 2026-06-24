@@ -344,13 +344,13 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
 
       {/* Filters & Search */}
       <Card className="border-2 border-gray-200">
-        <CardHeader className="pb-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <CardHeader className="pb-2 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
           <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-800">
             <Filter className="w-5 h-5 text-blue-600" />
             Filters & Search
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-4 sm:p-6">
+        <CardContent className="px-4 pt-2 pb-4 sm:px-6 sm:pt-3 sm:pb-6">
           <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:items-end">
             <div className="relative flex-1">
               <Label htmlFor="viva-search" className="block mb-2">

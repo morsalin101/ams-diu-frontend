@@ -681,7 +681,7 @@ export function AcceptedStudents() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {isFallback && department && (
         <Alert className="border-amber-200 bg-amber-50">
           <AlertTriangle className="w-4 h-4 text-amber-600" />
@@ -698,7 +698,7 @@ export function AcceptedStudents() {
         </Alert>
       )}
 
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card>
           <CardContent className="p-4">
             <p className="text-sm font-medium text-gray-600">Selected</p>

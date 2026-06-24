@@ -531,15 +531,15 @@ export function DeleteQuestions({ gradientClass = '' }: DeleteQuestionsProps) {
   }
 
   return (
-    <div className="p-4 space-y-6 sm:p-6">
+    <div className="p-4 space-y-4 sm:p-6 sm:space-y-6">
       <Card className="border-2 border-gray-200">
-        <CardHeader className="pb-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <CardHeader className="pb-2 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
           <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-800">
             <Filter className="w-5 h-5 text-blue-600" />
             Filters & Search
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-4 space-y-4 sm:p-6">
+        <CardContent className="px-4 pt-2 pb-4 space-y-3 sm:px-6 sm:pt-3 sm:pb-6 sm:space-y-4">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div className="space-y-2">
               <Label htmlFor="question-search">Search</Label>

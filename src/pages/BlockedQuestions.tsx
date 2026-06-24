@@ -504,7 +504,7 @@ export function BlockedQuestions({ gradientClass }: { gradientClass: string }) {
       <Card className="border-2 border-gray-200">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Search className="w-5 h-5" />
+            <Search className="w-5 h-5 text-blue-600" />
             Filters & Search
           </CardTitle>
         </CardHeader>
@@ -594,7 +594,7 @@ export function BlockedQuestions({ gradientClass }: { gradientClass: string }) {
         <div className="space-y-4">
           {filteredQuestions.map((question) => (
             <Card key={question.id} className="border-2 border-red-100 bg-red-50/30">
-              <CardContent className="p-6">
+              <CardContent className="p-4 sm:p-6">
                 <div className="flex flex-col gap-4 lg:flex-row">
                   {/* Question Content */}
                   <div className="flex-1">

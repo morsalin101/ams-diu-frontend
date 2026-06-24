@@ -58,7 +58,7 @@ function DashboardContent_({
     <>
       {/* Header - Fixed at top with toggle button on the left */}
       <header className="sticky top-0 z-40 w-full border-b bg-white border-gray-200 shadow-sm">
-        <div className="mx-auto flex h-16 items-center px-6 transition-all duration-300">
+        <div className="mx-auto flex h-16 items-center px-3 sm:px-6 transition-all duration-300">
           {/* Sidebar Toggle Button - Left side of header */}
           <div className="flex items-center mr-4">
             <SidebarTrigger className="p-2 hover:bg-gray-100 rounded-lg transition-colors">

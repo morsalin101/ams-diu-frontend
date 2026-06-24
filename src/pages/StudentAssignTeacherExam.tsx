@@ -389,7 +389,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center">
               <Users className="h-8 w-8 text-blue-600" />
               <div className="ml-4">
@@ -401,7 +401,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
         </Card>
 
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center">
               <User className="h-8 w-8 text-green-600" />
               <div className="ml-4">
@@ -415,7 +415,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
         </Card>
 
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center">
               <BookOpen className="h-8 w-8 text-purple-600" />
               <div className="ml-4">
@@ -427,7 +427,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
         </Card>
 
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center">
               <Calendar className="h-8 w-8 text-orange-600" />
               <div className="ml-4">
@@ -441,7 +441,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
 
       {/* Actions and Filters */}
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
             <div className="flex flex-col sm:flex-row gap-4 flex-1">
               <div className="flex-1 min-w-0">
