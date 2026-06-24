@@ -279,19 +279,47 @@ export function PublishedExams({ gradientClass }: PublishedExamsProps) {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-wrap items-center gap-3 text-sm text-slate-700">
-        <Badge variant="outline" className="gap-2">
-          <BookOpen className="h-4 w-4" />
-          {publishedPagination.count} total exams
-        </Badge>
-        <Badge variant="outline" className="gap-2">
-          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-          {publishedExams.filter(exam => exam.is_published).length} published on page
-        </Badge>
-        <Badge variant="outline" className="gap-2">
-          <XCircle className="h-4 w-4 text-rose-600" />
-          {publishedExams.filter(exam => !exam.is_published).length} unpublished on page
-        </Badge>
+      {/* Stats */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Exams</p>
+                <p className="text-2xl font-bold text-blue-600">{publishedPagination.count}</p>
+              </div>
+              <BookOpen className="w-8 h-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Published</p>
+                <p className="text-2xl font-bold text-emerald-600">
+                  {publishedExams.filter(exam => exam.is_published).length}
+                </p>
+              </div>
+              <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Unpublished</p>
+                <p className="text-2xl font-bold text-rose-600">
+                  {publishedExams.filter(exam => !exam.is_published).length}
+                </p>
+              </div>
+              <XCircle className="w-8 h-8 text-rose-500" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -17,6 +17,13 @@ import toast from 'react-hot-toast';
 interface StudentAssignmentManagementProps {
   gradientClass: string;
 }
+
+const sortAssignmentsByLatest = (list: StudentAssignment[]) =>
+  [...list].sort((a, b) => {
+    const aTime = new Date(a.created_at).getTime();
+    const bTime = new Date(b.created_at).getTime();
+    return bTime - aTime;
+  });
 
 interface StudentAssignment {
   id: number;
@@ -178,7 +185,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
         date_filter: appliedFilterDate === 'today' ? 'today' : undefined,
       });
       if (response && (response.success !== false)) {
-        setAssignments(getResponseRows(response));
+        setAssignments(sortAssignmentsByLatest(getResponseRows(response)));
         setPagination(paginationFromDrf(response, page));
         setAssignmentFilterOptions(response.filter_options || {});
       }
@@ -565,10 +572,10 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
       {/* Assignments Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Student Assignments</CardTitle>
-          <CardDescription>
-            Manage student-teacher-exam assignments
-          </CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-blue-600" />
+            Student Assignments
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">

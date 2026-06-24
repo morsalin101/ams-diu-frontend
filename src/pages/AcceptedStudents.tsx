@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   ChevronDown,
   CheckCircle2,
+  CheckSquare,
   Download,
   Eye,
   FileSpreadsheet,
@@ -821,7 +822,10 @@ export function AcceptedStudents() {
             <CardHeader>
               <CardTitle className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-wrap items-center gap-3">
-                  <span>Bulk Selection</span>
+                  <span className="flex items-center gap-2">
+                    <CheckSquare className="w-5 h-5 text-blue-600" />
+                    Bulk Selection
+                  </span>
                   {canRevertCurrentTab ? (
                     <div className="flex items-center gap-2">
                       <Input

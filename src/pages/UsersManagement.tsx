@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -247,9 +247,6 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
               <Users className="h-5 w-5" />
               All Users
             </CardTitle>
-            <CardDescription>
-              Manage user accounts and permissions
-            </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">

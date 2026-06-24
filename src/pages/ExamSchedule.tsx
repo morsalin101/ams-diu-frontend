@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -36,8 +36,12 @@ interface ExamScheduleProps {
   gradientClass: string;
 }
 
-const sortSchedulesByLatestId = (scheduleList: Schedule[]) =>
-  [...scheduleList].sort((a, b) => b.id - a.id);
+const sortSchedulesByLatest = (scheduleList: Schedule[]) =>
+  [...scheduleList].sort((a, b) => {
+    const aTime = new Date(a.created_at).getTime();
+    const bTime = new Date(b.created_at).getTime();
+    return bTime - aTime;
+  });
 
 export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
   const [exams, setExams] = useState<Exam[]>([]);
@@ -108,7 +112,7 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
         date_filter: appliedRightFilter === 'today' ? 'today' : undefined,
       });
       const scheduleData = response.results || response.data || response;
-      setSchedules(Array.isArray(scheduleData) ? sortSchedulesByLatestId(scheduleData) : []);
+      setSchedules(Array.isArray(scheduleData) ? sortSchedulesByLatest(scheduleData) : []);
       setPagination(paginationFromDrf(response, page));
     } catch (error) {
       console.error('Error loading schedules:', error);
@@ -257,10 +261,7 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
               <Calendar className="h-5 w-5 text-blue-600" />
               Questions
             </CardTitle>
-            <CardDescription>
-              Click on any question to schedule it for an exam
-            </CardDescription>
-            
+
             {/* Left Panel Filter */}
             <div className="mt-4">
               <Select value={leftFilter} onValueChange={(value: 'today' | 'all' | 'unscheduled') => setLeftFilter(value)}>
@@ -369,55 +370,20 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
                   <Clock className="h-5 w-5 text-green-600" />
                   Scheduled Exams
                 </CardTitle>
-                <CardDescription>
-                  View and manage all scheduled exams
-                </CardDescription>
-                
+
                 {/* Right Panel Filters */}
-                <div className="mt-4 space-y-3">
-                  <div className="grid grid-cols-2 gap-2">
-                    <Select value={draftRightFilter} onValueChange={(value: 'today' | 'all') => setDraftRightFilter(value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Filter by date" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Schedules</SelectItem>
-                        <SelectItem value="today">Today Only</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      onClick={handleSearchSchedules}
-                      variant="outline"
-                      size="sm"
-                      disabled={isLoading}
-                    >
-                      <Search className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      onClick={handleClearSchedules}
-                      variant="outline"
-                      size="sm"
-                      disabled={
-                        isLoading ||
-                        (!draftSearch &&
-                          !appliedSearch &&
-                          draftRightFilter === 'all' &&
-                          appliedRightFilter === 'all')
-                      }
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      onClick={() => setReloadKey((current) => current + 1)}
-                      variant="outline"
-                      size="sm"
-                      disabled={isLoading}
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <Select value={draftRightFilter} onValueChange={(value: 'today' | 'all') => setDraftRightFilter(value)}>
+                    <SelectTrigger className="w-44">
+                      <SelectValue placeholder="Filter by date" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Schedules</SelectItem>
+                      <SelectItem value="today">Today Only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="relative flex-1 min-w-[180px]">
+                    <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 h-3 w-3" />
                     <Input
                       placeholder="Search by semester or department..."
                       value={draftSearch}
@@ -427,9 +393,31 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
                           handleSearchSchedules();
                         }
                       }}
-                      className="w-full pl-10"
+                      className="w-full pl-7"
                     />
                   </div>
+                  <Button
+                    onClick={handleClearSchedules}
+                    variant="outline"
+                    size="sm"
+                    disabled={
+                      isLoading ||
+                      (!draftSearch &&
+                        !appliedSearch &&
+                        draftRightFilter === 'all' &&
+                        appliedRightFilter === 'all')
+                    }
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    onClick={() => setReloadKey((current) => current + 1)}
+                    variant="outline"
+                    size="sm"
+                    disabled={isLoading}
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             </div>

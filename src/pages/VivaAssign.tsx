@@ -17,6 +17,13 @@ interface VivaAssignmentManagementProps {
   gradientClass: string;
 }
 
+const sortAssignmentsByLatest = (list: VivaAssignment[]) =>
+  [...list].sort((a, b) => {
+    const aTime = new Date(a.created_at).getTime();
+    const bTime = new Date(b.created_at).getTime();
+    return bTime - aTime;
+  });
+
 interface VivaAssignment {
   id: number;
   student: number;
@@ -143,12 +150,16 @@ export function VivaAssign({ gradientClass }: VivaAssignmentManagementProps) {
         date_filter: appliedFilterDate === 'today' ? 'today' : undefined,
       });
       if (response && response.success && response.assignments) {
-        setAssignments(Array.isArray(response.assignments) ? response.assignments : []);
+        setAssignments(
+          Array.isArray(response.assignments)
+            ? sortAssignmentsByLatest(response.assignments)
+            : []
+        );
         setPagination(paginationFromDrf(response, page));
       } else {
         // Fallback for other response formats
         const data = response.data || response;
-        setAssignments(Array.isArray(data) ? data : []);
+        setAssignments(Array.isArray(data) ? sortAssignmentsByLatest(data) : []);
         setPagination(paginationFromDrf(response, page));
       }
     } catch (error: any) {

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '../components/ui/card';
@@ -589,10 +588,6 @@ export function Results({ gradientClass }: ResultsProps) {
             <Trophy className="w-5 h-5" />
             Student Exam Results
           </CardTitle>
-          <CardDescription>
-            View and manage student exam results with viva assessment
-            capabilities
-          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (

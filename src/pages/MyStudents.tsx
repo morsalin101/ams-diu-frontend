@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Users, User, Calendar, Building, Search, RefreshCw, FileText, X } from 'lucide-react';
+import { Users, User, Calendar, Building, Search, RefreshCw, FileText, X, Filter } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { studentAssignmentAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -185,8 +185,10 @@ const MyStudents: React.FC = () => {
       {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle>Filter Students</CardTitle>
-          <CardDescription>Search and filter your assigned students</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="w-5 h-5 text-blue-600" />
+            Filter Students
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -262,12 +264,12 @@ const MyStudents: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>Assigned Students</span>
+            <span className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-blue-600" />
+              Assigned Students
+            </span>
             <Badge variant="outline">{pagination.count} students</Badge>
           </CardTitle>
-          <CardDescription>
-            List of all students assigned to you
-          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (

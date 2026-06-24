@@ -13,7 +13,7 @@ import { MenuManagement } from './MenuManagement';
 import { MenuAccessManagement } from './MenuAccessManagement';
 import { ThemeColorSelector } from '../components/ThemeColorSelector';
 import { Button } from '../components/ui/button';
-import { Bell, Settings, User, Menu } from 'lucide-react';
+import { Bell, Settings, User, Menu, LayoutDashboard } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Badge } from '../components/ui/badge';
 
@@ -68,7 +68,10 @@ function DashboardContent_({
           
           {/* Title - Centered */}
           <div className="flex-1 text-center">
-            <h1 className="font-semibold text-xl text-gray-800">Admin Panel</h1>
+            <h1 className="font-semibold text-xl text-gray-800 inline-flex items-center gap-2">
+              <LayoutDashboard className="w-5 h-5 text-blue-600" />
+              Admin Panel
+            </h1>
           </div>
           
           {/* Right side controls */}

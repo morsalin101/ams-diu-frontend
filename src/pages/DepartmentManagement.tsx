@@ -183,7 +183,10 @@ const DepartmentManagement: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>All Departments</span>
+            <span className="flex items-center gap-2">
+              <Building className="w-5 h-5 text-blue-600" />
+              All Departments
+            </span>
             <Badge variant="outline">{departments.length} departments</Badge>
           </CardTitle>
         </CardHeader>

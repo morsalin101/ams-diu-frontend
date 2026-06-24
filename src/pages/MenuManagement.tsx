@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -216,8 +216,10 @@ export function MenuManagement() {
       {/* Menus List */}
       <Card>
         <CardHeader>
-          <CardTitle>System Menus</CardTitle>
-          <CardDescription>All available menus in the system</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <Menu className="w-5 h-5 text-blue-600" />
+            System Menus
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (

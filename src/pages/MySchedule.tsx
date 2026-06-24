@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { Calendar, Clock, BookOpen, Building, RefreshCw, FileSearch, User, Users } from 'lucide-react';
+import { Calendar, Clock, BookOpen, Building, RefreshCw, FileSearch, User, Users, Filter, Mic, Check } from 'lucide-react';
 import { studentAssignmentAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -128,6 +128,7 @@ const MySchedule: React.FC = () => {
   const [writtenAssignments, setWrittenAssignments] = useState<WrittenAssignmentItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [filterDate, setFilterDate] = useState<string>('all');
+  const [scheduleType, setScheduleType] = useState<'exam' | 'viva'>('exam');
   const [studentsDialogOpen, setStudentsDialogOpen] = useState(false);
   const [studentsDialogTitle, setStudentsDialogTitle] = useState('');
   const [studentsDialogDescription, setStudentsDialogDescription] = useState('');
@@ -456,7 +457,10 @@ const MySchedule: React.FC = () => {
       {/* Filter Card */}
       <Card>
         <CardHeader>
-          <CardTitle>Filter Schedule</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="w-5 h-5 text-blue-600" />
+            Filter Schedule
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex gap-2">
@@ -479,51 +483,112 @@ const MySchedule: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Exam Schedules */}
+      {/* Schedules */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Exam Schedules</span>
-            <Badge variant="outline">{filteredExamSchedules.length} schedules</Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
-              <span className="ml-2">Loading schedule...</span>
-            </div>
-          ) : filteredExamSchedules.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4">
-              {filteredExamSchedules.map(renderExamScheduleCard)}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">
-              <FileSearch className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <p className="text-lg font-medium">No exam schedules found</p>
-              <p className="text-sm">
-                {filterDate === 'today' 
-                  ? "You don't have any written exams scheduled for today" 
-                  : "You don't have any written exam schedules assigned yet"}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-gray-700" />
+              My Schedules
+            </CardTitle>
+            <div
+              role="tablist"
+              aria-label="Schedule type"
+              className="inline-flex w-full gap-2 rounded-xl border border-gray-200 bg-white p-1.5 shadow-sm sm:w-auto"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={scheduleType === 'exam'}
+                onClick={() => setScheduleType('exam')}
+                className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-200 sm:flex-none sm:px-4 sm:py-2.5 ${
+                  scheduleType === 'exam'
+                    ? 'bg-blue-600 text-white shadow-md ring-1 ring-blue-700'
+                    : 'bg-transparent text-gray-600 hover:bg-blue-50 hover:text-blue-700'
+                }`}
+              >
+                <span
+                  className={`flex h-5 w-5 items-center justify-center rounded-md transition-colors ${
+                    scheduleType === 'exam' ? 'bg-white/20' : 'bg-blue-100 text-blue-600'
+                  }`}
+                >
+                  <Calendar className="h-3.5 w-3.5" />
+                </span>
+                <span className="hidden sm:inline">Exam Schedules</span>
+                <span className="sm:hidden">Exam</span>
+                <span
+                  className={`ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-bold transition-colors ${
+                    scheduleType === 'exam'
+                      ? 'bg-white text-blue-700'
+                      : 'bg-blue-100 text-blue-700'
+                  }`}
+                >
+                  {filteredExamSchedules.length}
+                </span>
+                {scheduleType === 'exam' && (
+                  <Check className="h-4 w-4 text-white" />
+                )}
+              </button>
 
-      {/* Viva Schedules */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Viva Schedules</span>
-            <Badge variant="outline">{filteredVivaSchedules.length} schedules</Badge>
-          </CardTitle>
-          <CardDescription>
-            {filterDate === 'today' ? "Today's viva schedules" : 'List of viva assignments scheduled for you'}
-          </CardDescription>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={scheduleType === 'viva'}
+                onClick={() => setScheduleType('viva')}
+                className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-all duration-200 sm:flex-none sm:px-4 sm:py-2.5 ${
+                  scheduleType === 'viva'
+                    ? 'bg-purple-600 text-white shadow-md ring-1 ring-purple-700'
+                    : 'bg-transparent text-gray-600 hover:bg-purple-50 hover:text-purple-700'
+                }`}
+              >
+                <span
+                  className={`flex h-5 w-5 items-center justify-center rounded-md transition-colors ${
+                    scheduleType === 'viva' ? 'bg-white/20' : 'bg-purple-100 text-purple-600'
+                  }`}
+                >
+                  <Mic className="h-3.5 w-3.5" />
+                </span>
+                <span className="hidden sm:inline">Viva Schedules</span>
+                <span className="sm:hidden">Viva</span>
+                <span
+                  className={`ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-bold transition-colors ${
+                    scheduleType === 'viva'
+                      ? 'bg-white text-purple-700'
+                      : 'bg-purple-100 text-purple-700'
+                  }`}
+                >
+                  {filteredVivaSchedules.length}
+                </span>
+                {scheduleType === 'viva' && (
+                  <Check className="h-4 w-4 text-white" />
+                )}
+              </button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {scheduleType === 'exam' ? (
+            isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+                <span className="ml-2">Loading schedule...</span>
+              </div>
+            ) : filteredExamSchedules.length > 0 ? (
+              <div className="grid grid-cols-1 gap-4">
+                {filteredExamSchedules.map(renderExamScheduleCard)}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <FileSearch className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <p className="text-lg font-medium">No exam schedules found</p>
+                <p className="text-sm">
+                  {filterDate === 'today'
+                    ? "You don't have any written exams scheduled for today"
+                    : "You don't have any written exam schedules assigned yet"}
+                </p>
+              </div>
+            )
+          ) : isLoading ? (
             <div className="flex items-center justify-center py-8">
               <div className="w-6 h-6 border-2 border-gray-300 border-t-amber-500 rounded-full animate-spin"></div>
               <span className="ml-2">Loading viva schedule...</span>
@@ -537,8 +602,8 @@ const MySchedule: React.FC = () => {
               <FileSearch className="h-12 w-12 mx-auto mb-4 text-gray-300" />
               <p className="text-lg font-medium">No viva schedules found</p>
               <p className="text-sm">
-                {filterDate === 'today' 
-                  ? "You don't have any viva scheduled for today" 
+                {filterDate === 'today'
+                  ? "You don't have any viva scheduled for today"
                   : "You don't have any viva schedules assigned yet"}
               </p>
             </div>

@@ -257,14 +257,14 @@ export function AllQuestions({ gradientClass: _gradientClass }: AllQuestionsProp
       </div>
 
       {/* Filters and Search */}
-      <Card className="border-2 border-gray-200">
+      <Card className="gap-0 border-2 border-gray-200">
         <CardHeader className="py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
           <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-800">
             <Filter className="w-5 h-5 text-blue-600" />
             Filters & Search
           </CardTitle>
         </CardHeader>
-        <CardContent className="px-4 py-2 sm:px-5 sm:py-3">
+        <CardContent className="px-4 pt-2 pb-2 sm:px-5 sm:pt-2 sm:pb-3">
           <div className="flex flex-col items-end gap-4 sm:flex-row">
             {/* Search */}
             <div className="flex-1 space-y-2">

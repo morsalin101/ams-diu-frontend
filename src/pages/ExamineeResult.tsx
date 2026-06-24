@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
+  CheckSquare,
   Download,
   Eye,
   FileCheck,
@@ -693,6 +694,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
         <CardHeader>
           <CardTitle className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-2">
+                <CheckSquare className="w-5 h-5 text-blue-600" />
                 <span>Bulk Selection</span>
                 <Input
                   id="top-candidate-count"

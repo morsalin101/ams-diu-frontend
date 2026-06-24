@@ -456,16 +456,48 @@ export function BlockedQuestions({ gradientClass }: { gradientClass: string }) {
   }
 
   return (
-    <div className="p-4 space-y-6 sm:p-6">
-      <div className="flex flex-wrap items-center gap-3 text-sm text-slate-700">
-        <Badge variant="outline" className="gap-2">
-          <FileText className="w-4 h-4" />
-          {filteredQuestions.length} questions
-        </Badge>
-        <Badge variant="outline" className="gap-2">
-          <CheckCircle className="w-4 h-4 text-emerald-600" />
-          {filteredQuestions.filter(q => q.issue_solved).length} resolved
-        </Badge>
+    <div className="px-4 pt-1 pb-4 space-y-6 sm:px-6 sm:pt-1 sm:pb-6">
+      {/* Stats */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Questions</p>
+                <p className="text-2xl font-bold text-blue-600">{filteredQuestions.length}</p>
+              </div>
+              <FileText className="w-8 h-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Resolved</p>
+                <p className="text-2xl font-bold text-emerald-600">
+                  {filteredQuestions.filter(q => q.issue_solved).length}
+                </p>
+              </div>
+              <CheckCircle className="w-8 h-8 text-emerald-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Subjects</p>
+                <p className="text-2xl font-bold text-purple-600">
+                  {new Set(filteredQuestions.map(q => q.subject)).size}
+                </p>
+              </div>
+              <BookOpen className="w-8 h-8 text-purple-500" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}

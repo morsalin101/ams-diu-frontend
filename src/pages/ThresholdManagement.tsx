@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Sliders, Plus, Trash2, RefreshCw, AlertCircle, Building, Edit } from 'lucide-react';
+import { Sliders, Plus, Trash2, RefreshCw, AlertCircle, Building, Edit, Filter } from 'lucide-react';
 import { thresholdAPI, departmentAPI, admissionResultsAPI } from '../services/api';
 import { buildAcademicSemesterOptions, formatSemesterLabel } from '../lib/semester';
 import toast from 'react-hot-toast';
@@ -231,10 +231,7 @@ const ThresholdManagement: React.FC = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Sliders className="w-8 h-8 text-blue-600" />
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">Student Acceptance Criteria</h1>
-            <p className="text-gray-600">Manage semester-wide admission thresholds and seat limits</p>
-          </div>
+          <h1 className="text-2xl font-bold text-gray-800">Student Acceptance Criteria</h1>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => loadThresholds()} disabled={isLoading}>
@@ -251,11 +248,14 @@ const ThresholdManagement: React.FC = () => {
       {/* Filter Card */}
       <Card>
         <CardHeader>
-          <CardTitle>Filter Thresholds</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="w-5 h-5 text-blue-600" />
+            Filter Thresholds
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-end gap-4">
-            <div className="flex-1">
+            <div className="flex-1 space-y-2">
               <Label htmlFor="filter-semester">Select Semester</Label>
               <Select value={filterSemester} onValueChange={setFilterSemester}>
                 <SelectTrigger id="filter-semester">
@@ -284,7 +284,10 @@ const ThresholdManagement: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>Department Threshold & Seat Limit</span>
+            <span className="flex items-center gap-2">
+              <Sliders className="w-5 h-5 text-blue-600" />
+              Department Threshold & Seat Limit
+            </span>
             <Badge variant="outline">{thresholds.length} thresholds</Badge>
           </CardTitle>
         </CardHeader>

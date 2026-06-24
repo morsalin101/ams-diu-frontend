@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Alert, AlertDescription } from '../components/ui/alert';
@@ -280,7 +280,6 @@ export function MenuAccessManagement() {
             <Shield className="w-5 h-5" />
             Select Role
           </CardTitle>
-          <CardDescription>Choose a role to manage its menu access permissions</CardDescription>
         </CardHeader>
         <CardContent>
           <Select
@@ -319,7 +318,6 @@ export function MenuAccessManagement() {
                     <Menu className="w-5 h-5" />
                     System Menus
                   </CardTitle>
-                  <CardDescription>Manage menu access for the selected role</CardDescription>
                 </div>
                 <Button 
                   variant="outline" 
@@ -433,9 +431,6 @@ export function MenuAccessManagement() {
                 <Key className="w-5 h-5" />
                 Access Summary
               </CardTitle>
-              <CardDescription>
-                Menu access permissions for {roles.find(r => r.id === selectedRole)?.role_name}
-              </CardDescription>
             </CardHeader>
             <CardContent>
               {isLoading ? (
