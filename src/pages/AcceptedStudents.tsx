@@ -64,6 +64,9 @@ const TAB_TO_STATUS = {
   absent: "ABSENT",
 } as const;
 
+const RESULT_TAB_TRIGGER_CLASS =
+  "border border-gray-300 bg-white px-3 py-2 shadow-sm hover:border-[#4C51BF] hover:bg-[#4C51BF]/5 data-[state=active]:border-[#2E3094] data-[state=active]:bg-[#2E3094]/10 data-[state=active]:text-[#2E3094] data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#2E3094]/20";
+
 const DEFAULT_SUMMARY = {
   SELECTED: 0,
   WAITING: 0,
@@ -886,11 +889,31 @@ export function AcceptedStudents() {
                   setPage(1);
                 }}
               >
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
-                  <TabsTrigger value="selected">Selected ({summary.SELECTED})</TabsTrigger>
-                  <TabsTrigger value="rejected">Not Selected ({summary.REJECTED})</TabsTrigger>
-                  <TabsTrigger value="waiting">Waiting ({summary.WAITING})</TabsTrigger>
-                  <TabsTrigger value="absent">Absent ({summary.ABSENT})</TabsTrigger>
+                <TabsList className="grid w-full h-auto grid-cols-2 gap-2 p-0 bg-transparent md:grid-cols-4">
+                  <TabsTrigger
+                    value="selected"
+                    className={RESULT_TAB_TRIGGER_CLASS}
+                  >
+                    Selected ({summary.SELECTED})
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="rejected"
+                    className={RESULT_TAB_TRIGGER_CLASS}
+                  >
+                    Not Selected ({summary.REJECTED})
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="waiting"
+                    className={RESULT_TAB_TRIGGER_CLASS}
+                  >
+                    Waiting ({summary.WAITING})
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="absent"
+                    className={RESULT_TAB_TRIGGER_CLASS}
+                  >
+                    Absent ({summary.ABSENT})
+                  </TabsTrigger>
                 </TabsList>
 
                 {Object.entries(TAB_TO_STATUS).map(([tabKey]) => (
