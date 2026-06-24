@@ -41,6 +41,13 @@ interface MissingQuestionSlot {
   marks: number;
 }
 
+interface ExamConfig {
+  semester: string;
+  duration_minutes: number | '';
+  language: string;
+  faculty: string;
+}
+
 export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestionsProps) {
   const { user } = useAuth();
   const { canWrite, canRead } = usePermissions();
@@ -59,9 +66,9 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
   const [isRefillingMissingQuestions, setIsRefillingMissingQuestions] = useState(false);
 
   // Exam configuration
-  const [examConfig, setExamConfig] = useState({
+  const [examConfig, setExamConfig] = useState<ExamConfig>({
     semester: '',
-    duration_minutes: 0,
+    duration_minutes: '',
     language: 'english',
     faculty: 'FSIT'
   });
@@ -74,6 +81,28 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
   const faculties = ['FSIT', 'ENGINEERING'];
   const languages = ['english', 'both'];
   const semesters = buildAcademicSemesterOptions();
+
+  const getLanguageLabel = (language: string) => {
+    if (language === 'both') {
+      return 'Both (Bangla & English)';
+    }
+
+    return language.charAt(0).toUpperCase() + language.slice(1);
+  };
+
+  const getValidatedDurationMinutes = () => {
+    if (examConfig.duration_minutes === '') {
+      toast.error('Please enter exam duration');
+      return null;
+    }
+
+    if (examConfig.duration_minutes < 5 || examConfig.duration_minutes > 500) {
+      toast.error('Duration must be between 5 and 500 minutes');
+      return null;
+    }
+
+    return examConfig.duration_minutes;
+  };
 
   // Load department subjects on component mount
   useEffect(() => {
@@ -157,12 +186,15 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
       return;
     }
 
+    const durationMinutes = getValidatedDurationMinutes();
+    if (durationMinutes === null) return;
+
     try {
       setIsLoading(true);
       const examData = {
         department_id: user.department_details.id,
         semester: examConfig.semester,
-        duration_minutes: examConfig.duration_minutes,
+        duration_minutes: durationMinutes,
         language: examConfig.language,
         faculty: examConfig.faculty,
         subjects: selectedSubjects,
@@ -198,6 +230,9 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
       return;
     }
 
+    const durationMinutes = getValidatedDurationMinutes();
+    if (durationMinutes === null) return;
+
     try {
       setIsLoading(true);
       const examData = {
@@ -205,7 +240,7 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
         semester: examConfig.semester,
         total_questions: generatedQuestions.length,
         total_marks: totalMarks,
-        duration_minutes: examConfig.duration_minutes,
+        duration_minutes: durationMinutes,
         except_semesters: [], // You can add logic to fill this if needed
         language: examConfig.language,
         faculty: examConfig.faculty,
@@ -235,12 +270,15 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
   const handleRegenerateExam = async () => {
     if (!user?.department_details?.id) return;
 
+    const durationMinutes = getValidatedDurationMinutes();
+    if (durationMinutes === null) return;
+
     try {
       setIsLoading(true);
       const regenerateData = {
         department_id: user.department_details.id,
         semester: examConfig.semester,
-        duration_minutes: examConfig.duration_minutes,
+        duration_minutes: durationMinutes,
         language: examConfig.language,
         faculty: examConfig.faculty,
         subjects: selectedSubjects,
@@ -285,6 +323,47 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
     }
 
     return String(value || '');
+  };
+
+  const getQuestionOptionEntries = (question: Question) => {
+    const correctAnswers = (Array.isArray(question.answer) ? question.answer : [question.answer])
+      .map(answer => String(answer));
+    let options = question.options;
+
+    if (typeof options === 'string') {
+      try {
+        options = JSON.parse(options);
+      } catch {
+        options = options.split(',').map(option => option.trim()).filter(Boolean);
+      }
+    }
+
+    if (Array.isArray(options)) {
+      return options.map((option, index) => {
+        const optionKey = String.fromCharCode(65 + index);
+        const optionText = String(option);
+
+        return {
+          key: optionKey,
+          text: optionText,
+          isCorrect: correctAnswers.includes(optionKey) || correctAnswers.includes(optionText)
+        };
+      });
+    }
+
+    if (options && typeof options === 'object') {
+      return Object.entries(options).map(([optionKey, option]) => {
+        const optionText = String(option);
+
+        return {
+          key: optionKey,
+          text: optionText,
+          isCorrect: correctAnswers.includes(optionKey) || correctAnswers.includes(optionText)
+        };
+      });
+    }
+
+    return [];
   };
 
   const handleRefillMissingQuestions = async () => {
@@ -434,7 +513,7 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
     setExamSaved(false);
     setExamConfig({
       semester: '',
-      duration_minutes: 90,
+      duration_minutes: '',
       language: 'english',
       faculty: 'FSIT'
     });
@@ -468,14 +547,11 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
 
       {/* Exam Configuration */}
       <Card className="border-2 border-gray-200">
-        <CardHeader className="bg-gradient-to-r from-[#2E3094]/10 to-[#4C51BF]/10">
+        <CardHeader className="py-4 bg-gradient-to-r from-[#2E3094]/10 to-[#4C51BF]/10">
           <CardTitle className="flex items-center gap-3">
-            <Settings className="h-6 w-6 text-[#4C51BF]" />
-            <span>Exam Configuration</span>
+            <Settings className="h-5 w-5 text-[#4C51BF]" />
+            <span className="leading-none">Exam Configuration</span>
           </CardTitle>
-          <CardDescription>
-            Configure your exam parameters and select subjects
-          </CardDescription>
         </CardHeader>
         <CardContent className="pt-6 space-y-6">
           {/* Basic Configuration */}
@@ -501,11 +577,19 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
               <Label htmlFor="duration">Duration (minutes)</Label>
               <Input
                 id="duration"
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder=""
+                className="bg-white border-gray-300 shadow-sm focus-visible:border-blue-500 focus-visible:ring-blue-500/20"
                 value={examConfig.duration_minutes}
-                onChange={(e) => setExamConfig(prev => ({ ...prev, duration_minutes: parseInt(e.target.value) || 90 }))}
-                min="30"
-                max="300"
+                onChange={(e) => {
+                  const digitsOnly = e.target.value.replace(/\D/g, '');
+                  setExamConfig(prev => ({
+                    ...prev,
+                    duration_minutes: digitsOnly === '' ? '' : Number(digitsOnly)
+                  }));
+                }}
               />
             </div>
 
@@ -521,7 +605,7 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
                 <SelectContent>
                   {languages.map(lang => (
                     <SelectItem key={lang} value={lang}>
-                      {lang.charAt(0).toUpperCase() + lang.slice(1)}
+                      {getLanguageLabel(lang)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -562,7 +646,7 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
                 <p className="text-sm text-gray-600">Loading department subjects...</p>
               </div>
             ) : departmentSubjects.length > 0 ? (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {departmentSubjects.map((subject) => {
                   const existingSubject = selectedSubjects.find(s => s.subject === subject.subject_name);
                   const marks = existingSubject?.marks || 0;
@@ -580,11 +664,14 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
                       
                       <div className="flex items-center gap-2">
                         <Input
-                          type="number"
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
                           placeholder="0"
                           value={marks || ''}
                           onChange={(e) => {
-                            const newMarks = parseInt(e.target.value) || 0;
+                            const digitsOnly = e.target.value.replace(/\D/g, '');
+                            const newMarks = digitsOnly === '' ? 0 : Number(digitsOnly);
                             const existing = selectedSubjects.find(s => s.subject === subject.subject_name);
                             
                             if (newMarks > 0) {
@@ -606,7 +693,6 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
                             }
                           }}
                           className="w-20 text-center"
-                          min="0"
                           disabled={!canWrite()}
                         />
                         <span className="text-sm text-gray-600">marks</span>
@@ -653,7 +739,7 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
                     variant="outline"
                   >
                     <RefreshCw className="w-4 h-4 mr-2" />
-                    Regenerate
+                    Regenerate All
                   </Button>
 
                   <Button 
@@ -722,12 +808,12 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
             </CardHeader>
             <CardContent>
               <Tabs defaultValue={defaultSubject} className="w-full">
-                <TabsList className="grid w-full grid-cols-1 mb-6 sm:grid-cols-2 md:grid-cols-3 lg:flex lg:w-auto">
+                <TabsList className="grid w-full h-auto grid-cols-1 gap-2 p-0 mb-6 bg-transparent sm:grid-cols-2 md:grid-cols-3 lg:flex lg:w-auto lg:flex-wrap lg:justify-start">
                   {subjects.map((subject) => (
                     <TabsTrigger 
                       key={subject} 
                       value={subject}
-                      className="flex items-center gap-2 px-4 py-2"
+                      className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 shadow-sm hover:border-[#4C51BF] hover:bg-[#4C51BF]/5 data-[state=active]:border-[#2E3094] data-[state=active]:bg-[#2E3094]/10 data-[state=active]:text-[#2E3094] data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-[#2E3094]/20"
                     >
                       <BookOpen className="w-4 h-4" />
                       <span className="truncate">{subject}</span>
@@ -813,68 +899,25 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
                             
                             {question.type === 'option' && question.options && (
                               <div className="ml-4 space-y-2">
-                                {(() => {
-                                  // Handle object-based options like {"A": "option1", "B": "option2"}
-                                  if (typeof question.options === 'object' && !Array.isArray(question.options)) {
-                                    const optionEntries = Object.entries(question.options as Record<string, string>);
-                                    const correctAnswers = Array.isArray(question.answer) ? question.answer : [question.answer];
-                                    
-                                    return optionEntries.map(([key, value]) => (
-                                      <div key={key} className={`flex items-center gap-3 p-2 rounded ${
-                                        correctAnswers.includes(key) 
-                                          ? 'bg-green-50 border border-green-200' 
-                                          : 'bg-white border border-gray-200'
-                                      }`}>
-                                        <span className="text-sm font-semibold text-gray-600 min-w-[20px]">
-                                          {key})
-                                        </span>
-                                        <span className={correctAnswers.includes(key) ? 'font-semibold text-green-700' : 'text-gray-700'}>
-                                          {value}
-                                        </span>
-                                        {correctAnswers.includes(key) && (
-                                          <Badge variant="outline" className="ml-auto text-xs text-green-700 bg-green-100 border-green-300">
-                                            ✓ Correct
-                                          </Badge>
-                                        )}
-                                      </div>
-                                    ));
-                                  }
-                                  
-                                  // Handle array or string options (legacy format)
-                                  let options: string[] = [];
-                                  if (typeof question.options === 'string') {
-                                    try {
-                                      options = JSON.parse(question.options);
-                                    } catch {
-                                      options = question.options.split(',');
-                                    }
-                                  } else if (Array.isArray(question.options)) {
-                                    options = question.options;
-                                  }
-                                  
-                                  return options.map((option, optIndex) => {
-                                    const isCorrect = option === question.answer;
-                                    return (
-                                      <div key={optIndex} className={`flex items-center gap-3 p-2 rounded ${
-                                        isCorrect 
-                                          ? 'bg-green-50 border border-green-200' 
-                                          : 'bg-white border border-gray-200'
-                                      }`}>
-                                        <span className="text-sm font-semibold text-gray-600 min-w-[20px]">
-                                          {String.fromCharCode(65 + optIndex)})
-                                        </span>
-                                        <span className={isCorrect ? 'font-semibold text-green-700' : 'text-gray-700'}>
-                                          {option}
-                                        </span>
-                                        {isCorrect && (
-                                          <Badge variant="outline" className="ml-auto text-xs text-green-700 bg-green-100 border-green-300">
-                                            ✓ Correct
-                                          </Badge>
-                                        )}
-                                      </div>
-                                    );
-                                  });
-                                })()}
+                                {getQuestionOptionEntries(question).map((option) => (
+                                  <div key={option.key} className={`flex items-center gap-3 p-2 rounded ${
+                                    option.isCorrect
+                                      ? 'bg-green-50 border border-green-200'
+                                      : 'bg-white border border-gray-200'
+                                  }`}>
+                                    <span className="text-sm font-semibold text-gray-600 min-w-[20px]">
+                                      {option.key})
+                                    </span>
+                                    <span className={option.isCorrect ? 'font-semibold text-green-700' : 'text-gray-700'}>
+                                      {option.text}
+                                    </span>
+                                    {option.isCorrect && (
+                                      <Badge variant="outline" className="ml-auto text-xs text-green-700 bg-green-100 border-green-300">
+                                        ✓ Correct
+                                      </Badge>
+                                    )}
+                                  </div>
+                                ))}
                               </div>
                             )}
                             
