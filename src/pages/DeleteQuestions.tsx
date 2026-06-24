@@ -538,17 +538,13 @@ export function DeleteQuestions({ gradientClass = '' }: DeleteQuestionsProps) {
             <Filter className="w-5 h-5 text-blue-600" />
             Filters & Search
           </CardTitle>
-          <CardDescription>
-            Narrow the question bank by search, subject, semester, department,
-            type, marks, and sort order.
-          </CardDescription>
         </CardHeader>
         <CardContent className="p-4 space-y-4 sm:p-6">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div className="space-y-2">
               <Label htmlFor="question-search">Search</Label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Search className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
                 <Input
                   id="question-search"
                   value={searchTerm}
@@ -705,7 +701,7 @@ export function DeleteQuestions({ gradientClass = '' }: DeleteQuestionsProps) {
               <Button
                 onClick={handleBulkDelete}
                 disabled={selectedQuestionIds.length === 0 || isDeleting}
-                className="bg-red-600 text-white hover:bg-red-700"
+                className="text-white bg-red-600 hover:bg-red-700"
               >
                 {isDeleting ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -721,7 +717,7 @@ export function DeleteQuestions({ gradientClass = '' }: DeleteQuestionsProps) {
 
       {!hasDeleteAccess ? (
         <Alert className="border-amber-200 bg-amber-50">
-          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <AlertTriangle className="w-4 h-4 text-amber-600" />
           <AlertDescription className="text-amber-800">
             You can view question-bank items here, but delete actions are
             disabled for your role.
@@ -822,7 +818,7 @@ export function DeleteQuestions({ gradientClass = '' }: DeleteQuestionsProps) {
                             <Button
                               variant="outline"
                               size="icon"
-                              className="border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
+                              className="text-blue-700 border-blue-200 hover:bg-blue-50 hover:text-blue-800"
                               onClick={() => setPreviewQuestion(question)}
                               title={`View question #${question.id} details`}
                               aria-label={`View question ${question.id} details`}
@@ -903,7 +899,7 @@ export function DeleteQuestions({ gradientClass = '' }: DeleteQuestionsProps) {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
+                            className="text-blue-700 border-blue-200 hover:bg-blue-50 hover:text-blue-800"
                             onClick={() => setPreviewQuestion(question)}
                           >
                             <Eye className="w-4 h-4 mr-2" />
@@ -969,8 +965,8 @@ export function DeleteQuestions({ gradientClass = '' }: DeleteQuestionsProps) {
                   <Label className="font-semibold text-gray-800">
                     Question
                   </Label>
-                  <div className="rounded-md border bg-gray-50 p-3">
-                    <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-800">
+                  <div className="p-3 border rounded-md bg-gray-50">
+                    <p className="text-sm leading-relaxed text-gray-800 break-words whitespace-pre-wrap">
                       {getQuestionText(previewQuestion) ||
                         'No question text available.'}
                     </p>
@@ -997,13 +993,13 @@ export function DeleteQuestions({ gradientClass = '' }: DeleteQuestionsProps) {
                               <span className="font-semibold">
                                 {option.key}.
                               </span>
-                              <span className="min-w-0 flex-1 break-words">
+                              <span className="flex-1 min-w-0 break-words">
                                 {option.value}
                               </span>
                               {option.isCorrect ? (
                                 <Badge
                                   variant="outline"
-                                  className="border-green-300 bg-green-100 text-green-700"
+                                  className="text-green-700 bg-green-100 border-green-300"
                                 >
                                   Correct
                                 </Badge>
@@ -1013,7 +1009,7 @@ export function DeleteQuestions({ gradientClass = '' }: DeleteQuestionsProps) {
                         ))}
                       </div>
                     ) : (
-                      <p className="rounded-md border bg-gray-50 p-3 text-sm text-gray-600">
+                      <p className="p-3 text-sm text-gray-600 border rounded-md bg-gray-50">
                         No options available.
                       </p>
                     )}
@@ -1026,8 +1022,8 @@ export function DeleteQuestions({ gradientClass = '' }: DeleteQuestionsProps) {
                       ? 'Answer'
                       : 'Text Answer'}
                   </Label>
-                  <div className="rounded-md border bg-white p-3">
-                    <p className="whitespace-pre-wrap break-words text-sm text-gray-700">
+                  <div className="p-3 bg-white border rounded-md">
+                    <p className="text-sm text-gray-700 break-words whitespace-pre-wrap">
                       {previewAnswerText || 'No answer available.'}
                     </p>
                   </div>

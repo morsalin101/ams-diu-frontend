@@ -258,7 +258,7 @@ export function AllQuestions({ gradientClass: _gradientClass }: AllQuestionsProp
 
       {/* Filters and Search */}
       <Card className="border-2 border-gray-200">
-        <CardHeader className="pb-0 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <CardHeader className="py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
           <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-800">
             <Filter className="w-5 h-5 text-blue-600" />
             Filters & Search

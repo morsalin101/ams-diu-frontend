@@ -6,7 +6,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
-import { AlertTriangle, RefreshCw, Eye, Calendar, User, MessageSquare, Search, Slash, FileText, Clock, Building2, Loader2, BookOpen, CheckCircle, Edit, Trash2 } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Eye, Calendar, User, MessageSquare, Search, Slash, FileText, Clock, Building2, Loader2, BookOpen, CheckCircle, Edit, Trash2, Plus } from 'lucide-react';
 import { usePermissions } from '../hooks/usePermissions';
 import toast from 'react-hot-toast';
 import { examAPI } from '../services/api';
@@ -14,11 +14,11 @@ import { examAPI } from '../services/api';
 interface BlockedQuestion {
   id: number;
   subject: string;
-  questions: string;
+  questions: string | Record<string, unknown>;
   type: 'option' | 'text';
   text?: string | null;
-  options?: Record<string, string> | null;
-  answer: string[] | string;
+  options?: Record<string, unknown> | string | null;
+  answer: string[] | string | Record<string, unknown>;
   marks: number;
   semester: string;
   department_shortname: string;
@@ -31,6 +31,193 @@ interface BlockedQuestion {
   updated_at: string;
 }
 
+interface EditOptionRow {
+  key: string;
+  text: string;
+}
+
+const languageKeys = ['both', 'english', 'bangla'];
+const englishOptionKeys = ['A', 'B', 'C', 'D', 'E', 'F'];
+const banglaOptionKeys = ['ক', 'খ', 'গ', 'ঘ', 'ঙ', 'চ'];
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const parseMaybeSerialized = (value: unknown): unknown => {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+    return value;
+  }
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    try {
+      return JSON.parse(
+        trimmed
+          .replace(/\bNone\b/g, 'null')
+          .replace(/\bTrue\b/g, 'true')
+          .replace(/\bFalse\b/g, 'false')
+          .replace(/'/g, '"')
+      );
+    } catch {
+      return value;
+    }
+  }
+};
+
+const getDisplayText = (value: unknown): string => {
+  const parsedValue = parseMaybeSerialized(value);
+
+  if (typeof parsedValue === 'string') {
+    return parsedValue;
+  }
+
+  if (Array.isArray(parsedValue)) {
+    return parsedValue.map(getDisplayText).join(', ');
+  }
+
+  if (isRecord(parsedValue)) {
+    for (const languageKey of languageKeys) {
+      if (parsedValue[languageKey] !== undefined) {
+        return getDisplayText(parsedValue[languageKey]);
+      }
+    }
+
+    return Object.values(parsedValue).map(getDisplayText).join(', ');
+  }
+
+  return String(parsedValue ?? '');
+};
+
+const buildQuestionPayload = (originalQuestion: unknown, editedQuestion: string) => {
+  const parsedQuestion = parseMaybeSerialized(originalQuestion);
+
+  if (!isRecord(parsedQuestion)) {
+    return editedQuestion;
+  }
+
+  const nextQuestion = { ...parsedQuestion };
+  const targetLanguageKey =
+    languageKeys.find(languageKey => nextQuestion[languageKey] !== undefined) ||
+    Object.keys(nextQuestion)[0];
+
+  if (!targetLanguageKey) {
+    return editedQuestion;
+  }
+
+  nextQuestion[targetLanguageKey] = editedQuestion;
+  return JSON.stringify(nextQuestion);
+};
+
+const getPreferredOptionLanguageKey = (options: Record<string, unknown>) =>
+  languageKeys.find(languageKey => isRecord(options[languageKey]) || Array.isArray(options[languageKey]));
+
+const buildOptionRecord = (rows: EditOptionRow[]) =>
+  Object.fromEntries(rows.map(row => [row.key, row.text]));
+
+const buildOptionsPayload = (originalOptions: unknown, rows: EditOptionRow[]) => {
+  const optionRecord = buildOptionRecord(rows);
+  const parsedOptions = parseMaybeSerialized(originalOptions);
+
+  if (!isRecord(parsedOptions)) {
+    return optionRecord;
+  }
+
+  const nextOptions = { ...parsedOptions };
+  const targetLanguageKey = getPreferredOptionLanguageKey(nextOptions);
+
+  if (!targetLanguageKey) {
+    return optionRecord;
+  }
+
+  nextOptions[targetLanguageKey] = optionRecord;
+  return nextOptions;
+};
+
+const getNextOptionKey = (rows: EditOptionRow[]) => {
+  const existingKeys = rows.map(row => row.key);
+  const keySet = new Set(existingKeys);
+  const keySequence = existingKeys.some(key => banglaOptionKeys.includes(key))
+    ? banglaOptionKeys
+    : englishOptionKeys;
+
+  return keySequence.find(key => !keySet.has(key)) || String(rows.length + 1);
+};
+
+const collectAnswerTokens = (answer: unknown): string[] => {
+  const parsedAnswer = parseMaybeSerialized(answer);
+
+  if (typeof parsedAnswer === 'string') {
+    return parsedAnswer
+      .split(',')
+      .map(token => token.trim())
+      .filter(Boolean);
+  }
+
+  if (Array.isArray(parsedAnswer)) {
+    return parsedAnswer.flatMap(collectAnswerTokens);
+  }
+
+  if (isRecord(parsedAnswer)) {
+    return Object.values(parsedAnswer).flatMap(collectAnswerTokens);
+  }
+
+  return parsedAnswer === null || parsedAnswer === undefined ? [] : [String(parsedAnswer)];
+};
+
+const getOptionEntries = (options: unknown, answer: unknown) => {
+  const parsedOptions = parseMaybeSerialized(options);
+  const answerTokens = collectAnswerTokens(answer);
+  let optionSource: unknown = parsedOptions;
+
+  if (Array.isArray(optionSource)) {
+    optionSource = Object.fromEntries(
+      optionSource.map((option, index) => [String.fromCharCode(65 + index), option])
+    );
+  }
+
+  if (isRecord(optionSource)) {
+    for (const languageKey of languageKeys) {
+      if (isRecord(optionSource[languageKey]) || Array.isArray(optionSource[languageKey])) {
+        optionSource = optionSource[languageKey];
+        break;
+      }
+    }
+  }
+
+  if (Array.isArray(optionSource)) {
+    return optionSource.map((option, index) => {
+      const key = String.fromCharCode(65 + index);
+      const text = getDisplayText(option);
+
+      return {
+        key,
+        text,
+        isCorrect: answerTokens.includes(key) || answerTokens.includes(text)
+      };
+    });
+  }
+
+  if (isRecord(optionSource)) {
+    return Object.entries(optionSource).map(([key, value]) => {
+      const text = getDisplayText(value);
+
+      return {
+        key,
+        text,
+        isCorrect: answerTokens.includes(key) || answerTokens.includes(text)
+      };
+    });
+  }
+
+  return [];
+};
+
 export function BlockedQuestions({ gradientClass }: { gradientClass: string }) {
   const [blockedQuestions, setBlockedQuestions] = useState<BlockedQuestion[]>([]);
   const [filteredQuestions, setFilteredQuestions] = useState<BlockedQuestion[]>([]);
@@ -42,6 +229,7 @@ export function BlockedQuestions({ gradientClass }: { gradientClass: string }) {
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [editOptionRows, setEditOptionRows] = useState<EditOptionRow[]>([]);
   
   // Edit form state
   const [editFormData, setEditFormData] = useState({
@@ -77,7 +265,7 @@ export function BlockedQuestions({ gradientClass }: { gradientClass: string }) {
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(question =>
-        question.questions.toLowerCase().includes(term) ||
+        getDisplayText(question.questions).toLowerCase().includes(term) ||
         question.subject.toLowerCase().includes(term) ||
         question.remarks.toLowerCase().includes(term) ||
         question.creator_username?.toLowerCase().includes(term)
@@ -139,13 +327,19 @@ export function BlockedQuestions({ gradientClass }: { gradientClass: string }) {
 
   const openEditDialog = (question: BlockedQuestion) => {
     setSelectedQuestion(question);
+    setEditOptionRows(
+      getOptionEntries(question.options, question.answer).map(option => ({
+        key: option.key,
+        text: option.text
+      }))
+    );
     setEditFormData({
       subject: question.subject,
-      questions: question.questions,
+      questions: getDisplayText(question.questions),
       type: question.type,
       text: question.text || '',
       options: typeof question.options === 'object' ? JSON.stringify(question.options) : (question.options || ''),
-      answer: Array.isArray(question.answer) ? question.answer.join(', ') : question.answer,
+      answer: Array.isArray(question.answer) ? question.answer.join(', ') : getDisplayText(question.answer),
       marks: question.marks,
       semester: question.semester,
       department_shortname: question.department_shortname,
@@ -164,10 +358,10 @@ export function BlockedQuestions({ gradientClass }: { gradientClass: string }) {
     try {
       const questionData = {
         subject: editFormData.subject,
-        questions: editFormData.questions,
+        questions: buildQuestionPayload(selectedQuestion.questions, editFormData.questions),
         type: editFormData.type,
         text: editFormData.text || null,
-        options: editFormData.type === 'option' ? editFormData.options : null,
+        options: editFormData.type === 'option' ? buildOptionsPayload(selectedQuestion.options, editOptionRows) : null,
         answer: editFormData.answer,
         marks: editFormData.marks,
         semester: editFormData.semester,
@@ -189,6 +383,26 @@ export function BlockedQuestions({ gradientClass }: { gradientClass: string }) {
       console.error('Error restoring question:', error);
       toast.error(error.message || 'Failed to restore question');
     }
+  };
+
+  const updateEditOptionRow = (index: number, text: string) => {
+    setEditOptionRows(rows =>
+      rows.map((row, rowIndex) => rowIndex === index ? { ...row, text } : row)
+    );
+  };
+
+  const addEditOptionRow = () => {
+    setEditOptionRows(rows => [
+      ...rows,
+      {
+        key: getNextOptionKey(rows),
+        text: ''
+      }
+    ]);
+  };
+
+  const removeEditOptionRow = (index: number) => {
+    setEditOptionRows(rows => rows.filter((_, rowIndex) => rowIndex !== index));
   };
 
   const handleDeleteQuestion = async () => {
@@ -373,7 +587,7 @@ export function BlockedQuestions({ gradientClass }: { gradientClass: string }) {
                     </div>
                     
                     <p className="mb-2 font-medium text-gray-800 line-clamp-2">
-                      {question.questions}
+                      {getDisplayText(question.questions)}
                     </p>
                     
                     <div className="flex items-center gap-4 mb-3 text-sm text-gray-600">
@@ -449,7 +663,7 @@ export function BlockedQuestions({ gradientClass }: { gradientClass: string }) {
                 
                 <div className="p-4 rounded-lg bg-gray-50">
                   <h4 className="mb-2 font-semibold">Question:</h4>
-                  <p className="text-gray-800">{selectedQuestion.questions}</p>
+                  <p className="text-gray-800">{getDisplayText(selectedQuestion.questions)}</p>
                 </div>
               </div>
 
@@ -458,27 +672,19 @@ export function BlockedQuestions({ gradientClass }: { gradientClass: string }) {
                 <div className="p-4 rounded-lg bg-blue-50">
                   <h4 className="mb-2 font-semibold">Options:</h4>
                   <div className="space-y-2">
-                    {typeof selectedQuestion.options === 'object' && selectedQuestion.options !== null ? (
-                      Object.entries(selectedQuestion.options).map(([key, value]) => {
-                        const correctAnswers = Array.isArray(selectedQuestion.answer) ? selectedQuestion.answer : [selectedQuestion.answer];
-                        const isCorrect = correctAnswers.includes(key);
-                        return (
-                          <div key={key} className={`flex items-center gap-2 p-2 rounded ${
-                            isCorrect ? 'bg-green-100 border border-green-300' : 'bg-white border border-gray-200'
-                          }`}>
-                            <span className="font-medium text-gray-700">{key})</span>
-                            <span className={isCorrect ? 'font-semibold text-green-700' : 'text-gray-700'}>
-                              {String(value)}
-                            </span>
-                            {isCorrect && (
-                              <Badge variant="outline" className="text-xs text-green-700 bg-green-100 border-green-300">✓ Correct</Badge>
-                            )}
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="text-sm text-gray-600">{String(selectedQuestion.options)}</div>
-                    )}
+                    {getOptionEntries(selectedQuestion.options, selectedQuestion.answer).map((option) => (
+                      <div key={option.key} className={`flex items-center gap-2 p-2 rounded ${
+                        option.isCorrect ? 'bg-green-100 border border-green-300' : 'bg-white border border-gray-200'
+                      }`}>
+                        <span className="font-medium text-gray-700">{option.key})</span>
+                        <span className={option.isCorrect ? 'font-semibold text-green-700' : 'text-gray-700'}>
+                          {option.text}
+                        </span>
+                        {option.isCorrect && (
+                          <Badge variant="outline" className="text-xs text-green-700 bg-green-100 border-green-300">✓ Correct</Badge>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -488,7 +694,7 @@ export function BlockedQuestions({ gradientClass }: { gradientClass: string }) {
                 <div className="p-4 rounded-lg bg-green-50">
                   <h4 className="mb-2 font-semibold">Answer:</h4>
                   <p className="text-gray-800">
-                    {Array.isArray(selectedQuestion.answer) ? selectedQuestion.answer.join(', ') : selectedQuestion.answer}
+                    {getDisplayText(selectedQuestion.answer)}
                   </p>
                 </div>
               )}
@@ -612,16 +818,45 @@ export function BlockedQuestions({ gradientClass }: { gradientClass: string }) {
               </div>
 
               {editFormData.type === 'option' && (
-                <div className="space-y-2">
-                  <Label htmlFor="edit-options">Options (JSON format)</Label>
-                  <textarea
-                    id="edit-options"
-                    value={editFormData.options}
-                    onChange={(e) => setEditFormData({...editFormData, options: e.target.value})}
-                    placeholder='{"A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D"}'
-                    rows={4}
-                    className="w-full p-3 font-mono text-sm border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <Label>Options</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addEditOptionRow}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Option
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {editOptionRows.map((option, index) => (
+                      <div key={`${option.key}-${index}`} className="flex items-center gap-2">
+                        <div className="flex h-9 w-10 shrink-0 items-center justify-center rounded-md border border-gray-300 bg-gray-50 text-sm font-semibold text-gray-700">
+                          {option.key}
+                        </div>
+                        <Input
+                          value={option.text}
+                          onChange={(e) => updateEditOptionRow(index, e.target.value)}
+                          placeholder={`Option ${option.key}`}
+                          required
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeEditOptionRow(index)}
+                          className="h-9 w-9 p-0 text-red-600 hover:bg-red-50 hover:text-red-700"
+                          disabled={editOptionRows.length <= 1}
+                          aria-label={`Remove option ${option.key}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 

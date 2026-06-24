@@ -50,6 +50,7 @@ export interface StudentAdmissionDetailReport {
     department_shortname: string;
     registration_semester: string;
     ssc: number;
+    academic_type?: "HSC" | "DIPLOMA";
     hsc: number;
     diploma: number;
   };
@@ -126,7 +127,15 @@ export function formatReportNumber(value: number | string | null | undefined) {
 }
 
 export function getStudentAcademicText(report: StudentAdmissionDetailReport) {
-  if (report.student.diploma && report.student.diploma > 0) {
+  const academicSource =
+    report.final_result.academic_source === "DIPLOMA" ||
+    report.final_result.academic_source === "HSC"
+      ? report.final_result.academic_source
+      : report.student.academic_type === "DIPLOMA"
+        ? "DIPLOMA"
+        : "HSC";
+
+  if (academicSource === "DIPLOMA") {
     return `${formatReportNumber(report.student.diploma)} (Diploma)`;
   }
 
@@ -212,11 +221,10 @@ export function buildCalculationEquationLines(report: StudentAdmissionDetailRepo
 
   const academicLabel = getFinalAcademicSourceLabel(report);
   const academicWeight =
-    report.final_result.academic_source === "DIPLOMA"
-      ? distribution.diploma
-      : report.final_result.academic_source === "HSC"
-        ? distribution.hsc
-        : 0;
+    report.final_result.academic_source === "DIPLOMA" ||
+    report.final_result.academic_source === "HSC"
+      ? distribution.hsc
+      : 0;
   const academicDivisor = getAcademicDivisor(report);
   const writtenTotalMarks = getWrittenTotalMarks(report);
   const vivaTotalMarks = getVivaTotalMarks(report);

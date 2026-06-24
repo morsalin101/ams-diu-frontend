@@ -279,8 +279,8 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">
+          <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-red-500" />
+          <h3 className="mb-2 text-lg font-semibold text-gray-800">
             Access Denied
           </h3>
           <p className="text-gray-600">
@@ -292,9 +292,9 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
   }
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
+    <div className="p-4 space-y-6 sm:p-6">
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -306,7 +306,7 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
                   {rubrics.length}
                 </p>
               </div>
-              <Award className="h-8 w-8 text-blue-500" />
+              <Award className="w-8 h-8 text-blue-500" />
             </div>
           </CardContent>
         </Card>
@@ -320,7 +320,7 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
                   {new Set(rubrics.map(r => r.department)).size}
                 </p>
               </div>
-              <Building2 className="h-8 w-8 text-green-500" />
+              <Building2 className="w-8 h-8 text-green-500" />
             </div>
           </CardContent>
         </Card>
@@ -336,7 +336,7 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
                   {filteredRubrics.length}
                 </p>
               </div>
-              <Search className="h-8 w-8 text-purple-500" />
+              <Search className="w-8 h-8 text-purple-500" />
             </div>
           </CardContent>
         </Card>
@@ -349,17 +349,14 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
             <Filter className="w-5 h-5 text-blue-600" />
             Filters & Search
           </CardTitle>
-          <CardDescription>
-            Filter viva rubrics by department or search for specific rubrics.
-          </CardDescription>
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-end">
+          <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:items-end">
             <div className="relative flex-1">
               <Label htmlFor="viva-search" className="block mb-2">
                 Search
               </Label>
-              <Search className="absolute left-3 top-8 transform -translate-y-0 text-gray-400 h-4 w-4" />
+              <Search className="absolute w-4 h-4 text-gray-400 transform left-3 top-8 -translate-y-0" />
               <Input
                 id="viva-search"
                 placeholder="Search rubrics or departments..."
@@ -406,7 +403,7 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
 
               {canWrite() && (
                 <Button onClick={handleCreateDialog} size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus className="w-4 h-4 mr-2" />
                   Add Rubrics
                 </Button>
               )}
@@ -419,7 +416,7 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
       {isLoading && (
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+            <Loader2 className="w-8 h-8 mx-auto mb-4 text-blue-600 animate-spin" />
             <p className="text-gray-600">Loading viva rubrics...</p>
           </div>
         </div>
@@ -431,8 +428,8 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
           {filteredRubrics.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center">
-                <Award className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                <Award className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                <h3 className="mb-2 text-lg font-semibold text-gray-800">
                   No Rubrics Found
                 </h3>
                 <p className="text-gray-600">
@@ -449,28 +446,28 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
                 className="transition-shadow hover:shadow-md"
               >
                 <CardContent className="p-6">
-                  <div className="flex flex-col lg:flex-row gap-4">
+                  <div className="flex flex-col gap-4 lg:flex-row">
                     {/* Rubric Content */}
                     <div className="flex-1 space-y-3">
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge
                           variant="outline"
-                          className="bg-blue-50 text-blue-700 border-blue-200"
+                          className="text-blue-700 border-blue-200 bg-blue-50"
                         >
-                          <Building2 className="h-3 w-3 mr-1" />
+                          <Building2 className="w-3 h-3 mr-1" />
                           {rubric.department_shortname}
                         </Badge>
                         <Badge
                           variant="outline"
-                          className="bg-green-50 text-green-700 border-green-200"
+                          className="text-green-700 border-green-200 bg-green-50"
                         >
-                          <Award className="h-3 w-3 mr-1" />
+                          <Award className="w-3 h-3 mr-1" />
                           {rubric.marks} marks
                         </Badge>
                       </div>
 
                       <div>
-                        <h3 className="font-medium text-gray-900 mb-1">
+                        <h3 className="mb-1 font-medium text-gray-900">
                           {rubric.rubrics}
                         </h3>
                         <p className="text-sm text-gray-600">
@@ -481,23 +478,23 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
 
                     {/* Actions */}
                     {canWrite() && (
-                      <div className="flex lg:flex-col gap-2">
+                      <div className="flex gap-2 lg:flex-col">
                         <Button
                           onClick={() => openEditDialog(rubric)}
                           variant="outline"
                           size="sm"
-                          className="flex-1 lg:flex-none text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                          className="flex-1 text-blue-600 lg:flex-none hover:text-blue-700 hover:bg-blue-50"
                         >
-                          <Edit className="h-4 w-4 mr-2" />
+                          <Edit className="w-4 h-4 mr-2" />
                           Edit
                         </Button>
                         <Button
                           onClick={() => handleDelete(rubric.id)}
                           variant="outline"
                           size="sm"
-                          className="flex-1 lg:flex-none text-red-600 hover:text-red-700 hover:bg-red-50"
+                          className="flex-1 text-red-600 lg:flex-none hover:text-red-700 hover:bg-red-50"
                         >
-                          <Trash2 className="h-4 w-4 mr-2" />
+                          <Trash2 className="w-4 h-4 mr-2" />
                           Delete
                         </Button>
                       </div>
@@ -577,11 +574,11 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
                 variant="outline"
                 onClick={() => setShowCreateDialog(false)}
               >
-                <X className="h-4 w-4 mr-2" />
+                <X className="w-4 h-4 mr-2" />
                 Cancel
               </Button>
               <Button type="submit">
-                <Save className="h-4 w-4 mr-2" />
+                <Save className="w-4 h-4 mr-2" />
                 Create Rubrics
               </Button>
             </div>
@@ -656,11 +653,11 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
                 variant="outline"
                 onClick={() => setShowEditDialog(false)}
               >
-                <X className="h-4 w-4 mr-2" />
+                <X className="w-4 h-4 mr-2" />
                 Cancel
               </Button>
               <Button type="submit">
-                <Save className="h-4 w-4 mr-2" />
+                <Save className="w-4 h-4 mr-2" />
                 Update Rubrics
               </Button>
             </div>

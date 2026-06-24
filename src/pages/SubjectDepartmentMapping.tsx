@@ -189,7 +189,7 @@ const SubjectDepartmentMapping: React.FC = () => {
         </Button>
         {canWrite() && (
           <Button onClick={() => setIsDialogOpen(true)} className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF]">
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="w-4 h-4 mr-2" />
             Create Mapping
           </Button>
         )}
@@ -202,14 +202,11 @@ const SubjectDepartmentMapping: React.FC = () => {
             <span>Department-Subject Mappings</span>
             <Badge variant="outline">{mappings.length} mappings</Badge>
           </CardTitle>
-          <CardDescription>
-            Current mappings between departments and subjects
-          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+              <div className="w-6 h-6 border-2 border-gray-300 rounded-full border-t-blue-500 animate-spin"></div>
               <span className="ml-2">Loading mappings...</span>
             </div>
           ) : mappings.length > 0 ? (
@@ -220,7 +217,7 @@ const SubjectDepartmentMapping: React.FC = () => {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-3">
                         <div className="p-2 bg-blue-100 rounded-lg">
-                          <Building className="h-4 w-4 text-blue-600" />
+                          <Building className="w-4 h-4 text-blue-600" />
                         </div>
                         <div>
                           <h3 className="font-medium text-gray-900">{mapping.department_name}</h3>
@@ -228,13 +225,13 @@ const SubjectDepartmentMapping: React.FC = () => {
                         </div>
                       </div>
                       <div className="ml-11">
-                        <p className="text-sm font-medium text-gray-700 mb-2">Mapped Subjects:</p>
+                        <p className="mb-2 text-sm font-medium text-gray-700">Mapped Subjects:</p>
                         <div className="flex flex-wrap gap-2">
                           {mapping.subject_ids.map((subjectId) => {
                             const subject = subjects.find(s => s.id === subjectId);
                             return subject ? (
                               <Badge key={subjectId} variant="secondary" className="flex items-center gap-1">
-                                <BookOpen className="h-3 w-3" />
+                                <BookOpen className="w-3 h-3" />
                                 {subject.subject_name}
                               </Badge>
                             ) : null;
@@ -252,7 +249,7 @@ const SubjectDepartmentMapping: React.FC = () => {
                         onClick={() => handleDeleteMapping(mapping.id, mapping.department_name)}
                         className="text-red-600 hover:text-red-700"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="w-4 h-4" />
                       </Button>
                     )}
                   </div>
@@ -260,15 +257,15 @@ const SubjectDepartmentMapping: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">
-              <Layers className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+            <div className="py-8 text-center text-gray-500">
+              <Layers className="w-12 h-12 mx-auto mb-4 text-gray-300" />
               <p className="text-lg font-medium">No mappings found</p>
               <p className="text-sm">
                 {canWrite() ? 'Create your first department-subject mapping to get started' : 'No mappings are available yet'}
               </p>
               {canWrite() && (
                 <Button onClick={() => setIsDialogOpen(true)} className="mt-4 bg-gradient-to-r from-[#2E3094] to-[#4C51BF]">
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus className="w-4 h-4 mr-2" />
                   Create Mapping
                 </Button>
               )}
@@ -300,7 +297,7 @@ const SubjectDepartmentMapping: React.FC = () => {
                     return (
                       <SelectItem key={department.id} value={department.id.toString()}>
                         <div className="flex items-center gap-2">
-                          <Building className="h-4 w-4" />
+                          <Building className="w-4 h-4" />
                           <span>{department.department_name}</span>
                           {existingMapping && (
                             <Badge variant="outline" className="text-xs">
@@ -318,8 +315,8 @@ const SubjectDepartmentMapping: React.FC = () => {
             {/* Subject Selection */}
             <div>
               <Label className="text-base font-medium">Subjects</Label>
-              <p className="text-sm text-gray-500 mb-3">Select subjects to map to this department</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-60 overflow-y-auto border rounded-lg p-3">
+              <p className="mb-3 text-sm text-gray-500">Select subjects to map to this department</p>
+              <div className="grid grid-cols-1 gap-3 p-3 overflow-y-auto border rounded-lg md:grid-cols-2 max-h-60">
                 {subjects.map((subject) => (
                   <div key={subject.id} className="flex items-center space-x-2">
                     <Checkbox
@@ -331,15 +328,15 @@ const SubjectDepartmentMapping: React.FC = () => {
                     />
                     <label
                       htmlFor={`subject-${subject.id}`}
-                      className="text-sm flex items-center gap-2 cursor-pointer hover:text-blue-600"
+                      className="flex items-center gap-2 text-sm cursor-pointer hover:text-blue-600"
                     >
-                      <BookOpen className="h-3 w-3" />
+                      <BookOpen className="w-3 h-3" />
                       {subject.subject_name}
                     </label>
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-gray-400 mt-2">
+              <p className="mt-2 text-xs text-gray-400">
                 {selectedSubjects.length} subject{selectedSubjects.length !== 1 ? 's' : ''} selected
               </p>
             </div>

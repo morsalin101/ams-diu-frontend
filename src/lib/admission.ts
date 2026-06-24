@@ -36,6 +36,7 @@ export interface AdmissionResult {
   student_f_id: string;
   student_registration_semester: string;
   student_ssc: number;
+  student_academic_type?: "HSC" | "DIPLOMA";
   student_hsc: number;
   student_diploma: number;
   configuration: number | null;
@@ -79,8 +80,20 @@ export const PRETTY_STATUS_LABELS = RESULT_STATUS_LABELS;
 
 export { formatSemesterLabel } from "./semester";
 
+function getAcademicSource(result: AdmissionResult): "HSC" | "DIPLOMA" {
+  if (result.academic_source === "DIPLOMA" || result.academic_source === "HSC") {
+    return result.academic_source;
+  }
+
+  if (result.student_academic_type === "DIPLOMA") {
+    return "DIPLOMA";
+  }
+
+  return "HSC";
+}
+
 export function getAcademicDisplayValue(result: AdmissionResult) {
-  if (result.student_diploma && result.student_diploma > 0) {
+  if (getAcademicSource(result) === "DIPLOMA") {
     return result.student_diploma;
   }
 
@@ -88,7 +101,7 @@ export function getAcademicDisplayValue(result: AdmissionResult) {
 }
 
 export function getAcademicDisplayLabel(result: AdmissionResult) {
-  if (result.student_diploma && result.student_diploma > 0) {
+  if (getAcademicSource(result) === "DIPLOMA") {
     return "Diploma";
   }
 

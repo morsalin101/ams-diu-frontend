@@ -170,7 +170,7 @@ const SubjectManagement: React.FC = () => {
         </Button>
         {canWrite() && (
           <Button onClick={openCreateDialog} className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF]">
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="w-4 h-4 mr-2" />
             Add Subject
           </Button>
         )}
@@ -183,24 +183,21 @@ const SubjectManagement: React.FC = () => {
             <span>All Subjects</span>
             <Badge variant="outline">{subjects.length} subjects</Badge>
           </CardTitle>
-          <CardDescription>
-            List of all subjects in the system
-          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+              <div className="w-6 h-6 border-2 border-gray-300 rounded-full border-t-blue-500 animate-spin"></div>
               <span className="ml-2">Loading subjects...</span>
             </div>
           ) : subjects.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               {subjects.map((subject) => (
                 <Card key={subject.id} className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-green-100 rounded-lg">
-                        <BookOpen className="h-4 w-4 text-green-600" />
+                        <BookOpen className="w-4 h-4 text-green-600" />
                       </div>
                       <div>
                         <h3 className="font-medium text-gray-900">{subject.subject_name}</h3>
@@ -215,7 +212,7 @@ const SubjectManagement: React.FC = () => {
                             variant="ghost"
                             onClick={() => openEditDialog(subject)}
                           >
-                            <Edit className="h-3 w-3" />
+                            <Edit className="w-3 h-3" />
                           </Button>
                         )}
                         {canDelete() && (
@@ -225,7 +222,7 @@ const SubjectManagement: React.FC = () => {
                             onClick={() => handleDeleteSubject(subject.id, subject.subject_name)}
                             className="text-red-600 hover:text-red-700"
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Trash2 className="w-3 h-3" />
                           </Button>
                         )}
                       </div>
@@ -235,15 +232,15 @@ const SubjectManagement: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">
-              <BookOpen className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+            <div className="py-8 text-center text-gray-500">
+              <BookOpen className="w-12 h-12 mx-auto mb-4 text-gray-300" />
               <p className="text-lg font-medium">No subjects found</p>
               <p className="text-sm">
                 {canWrite() ? 'Create your first subject to get started' : 'No subjects are available yet'}
               </p>
               {canWrite() && (
                 <Button onClick={openCreateDialog} className="mt-4 bg-gradient-to-r from-[#2E3094] to-[#4C51BF]">
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus className="w-4 h-4 mr-2" />
                   Add Subject
                 </Button>
               )}

@@ -12,6 +12,8 @@ import { buildAcademicSemesterOptions } from '../lib/semester';
 import PaginationControls, { DEFAULT_PAGINATION, paginationFromDrf } from '../components/PaginationControls';
 import toast from 'react-hot-toast';
 
+type AcademicType = 'HSC' | 'DIPLOMA';
+
 interface Student {
   id: number;
   username: string;
@@ -21,10 +23,45 @@ interface Student {
   department_shortname?: string;
   registration_semester: string;
   ssc?: number;
+  academic_type?: AcademicType;
   hsc?: number;
   diploma?: number;
   created_at: string;
 }
+
+const createEmptyFormData = () => ({
+  username: '',
+  password: '',
+  f_id: '',
+  full_name: '',
+  email: '',
+  department_shortname: '',
+  registration_semester: '',
+  ssc: '',
+  academic_type: 'HSC' as AcademicType,
+  hsc: '',
+  diploma: ''
+});
+
+const getStudentAcademicType = (student: Student): AcademicType => {
+  if (student.academic_type === 'DIPLOMA') {
+    return 'DIPLOMA';
+  }
+
+  return student.diploma && student.diploma > 0 ? 'DIPLOMA' : 'HSC';
+};
+
+const getStudentAcademicLabel = (student: Student) =>
+  getStudentAcademicType(student) === 'DIPLOMA' ? 'Diploma' : 'HSC';
+
+const getStudentAcademicValue = (student: Student) =>
+  getStudentAcademicType(student) === 'DIPLOMA' ? student.diploma : student.hsc;
+
+const buildStudentPayload = (formData: ReturnType<typeof createEmptyFormData>) => ({
+  ...formData,
+  hsc: formData.academic_type === 'HSC' ? formData.hsc : '0',
+  diploma: formData.academic_type === 'DIPLOMA' ? formData.diploma : '0',
+});
 
 interface StudentsProps {
   gradientClass: string;
@@ -52,20 +89,27 @@ export function Students({ gradientClass }: StudentsProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Form data
-  const [formData, setFormData] = useState({
-    username: '',
-    password: '',
-    f_id: '',
-    full_name: '',
-    email: '',
-    department_shortname: '',
-    registration_semester: '',
-    ssc: '',
-    hsc: '',
-    diploma: ''
-  });
+  const [formData, setFormData] = useState(createEmptyFormData());
 
   const semesterOptions = buildAcademicSemesterOptions();
+
+  const handleAcademicTypeChange = (value: string) => {
+    const academicType = value as AcademicType;
+    setFormData(prev => ({
+      ...prev,
+      academic_type: academicType,
+      hsc: academicType === 'HSC' ? prev.hsc : '',
+      diploma: academicType === 'DIPLOMA' ? prev.diploma : ''
+    }));
+  };
+
+  const handleAcademicScoreChange = (value: string) => {
+    setFormData(prev =>
+      prev.academic_type === 'DIPLOMA'
+        ? { ...prev, diploma: value }
+        : { ...prev, hsc: value }
+    );
+  };
 
   useEffect(() => {
     loadStudents();
@@ -130,29 +174,19 @@ export function Students({ gradientClass }: StudentsProps) {
   };
 
   const handleAddStudent = async () => {
-    if (!formData.username || !formData.password || !formData.f_id || !formData.full_name || !formData.email || !formData.department_shortname || !formData.registration_semester || !formData.ssc || !formData.hsc || !formData.diploma) {
+    const academicScore = formData.academic_type === 'DIPLOMA' ? formData.diploma : formData.hsc;
+    if (!formData.username || !formData.password || !formData.f_id || !formData.full_name || !formData.email || !formData.department_shortname || !formData.registration_semester || !formData.ssc || !academicScore) {
       toast.error('Please fill in all required fields');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await studentsAPI.createStudent(formData);
+      await studentsAPI.createStudent(buildStudentPayload(formData));
       toast.success('Student added successfully!');
       
       // Reset form and close dialog
-      setFormData({
-        username: '',
-        password: '',
-        f_id: '',
-        full_name: '',
-        email: '',
-        department_shortname: '',
-        registration_semester: '',
-        ssc: '',
-        hsc: '',
-        diploma: ''
-      });
+      setFormData(createEmptyFormData());
       setShowAddDialog(false);
       setPage(1);
       setReloadKey(prev => prev + 1);
@@ -165,7 +199,8 @@ export function Students({ gradientClass }: StudentsProps) {
   };
 
   const handleEditStudent = async () => {
-    if (!editingStudent || !formData.username || !formData.f_id || !formData.full_name || !formData.email || !formData.department_shortname || !formData.registration_semester) {
+    const academicScore = formData.academic_type === 'DIPLOMA' ? formData.diploma : formData.hsc;
+    if (!editingStudent || !formData.username || !formData.f_id || !formData.full_name || !formData.email || !formData.department_shortname || !formData.registration_semester || !formData.ssc || !academicScore) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -173,9 +208,10 @@ export function Students({ gradientClass }: StudentsProps) {
     setIsSubmitting(true);
     try {
       // Don't send password if it's empty (optional for updates)
-      const updateData = formData.password 
-        ? formData 
-        : { ...formData, password: undefined };
+      const studentPayload = buildStudentPayload(formData);
+      const updateData = studentPayload.password
+        ? studentPayload
+        : { ...studentPayload, password: undefined };
         
       const response = await studentsAPI.updateStudent(editingStudent.id, updateData);
       const updatedStudent = response?.data || response;
@@ -186,18 +222,7 @@ export function Students({ gradientClass }: StudentsProps) {
       toast.success('Student updated successfully!');
       
       // Reset form and close dialog
-      setFormData({
-        username: '',
-        password: '',
-        f_id: '',
-        full_name: '',
-        email: '',
-        department_shortname: '',
-        registration_semester: '',
-        ssc: '',
-        hsc: '',
-        diploma: ''
-      });
+      setFormData(createEmptyFormData());
       setEditingStudent(null);
       setShowEditDialog(false);
       setReloadKey(prev => prev + 1);
@@ -224,6 +249,7 @@ export function Students({ gradientClass }: StudentsProps) {
   };
 
   const openEditDialog = (student: Student) => {
+    const academicType = getStudentAcademicType(student);
     setEditingStudent(student);
     setFormData({
       username: student.username || '',
@@ -234,6 +260,7 @@ export function Students({ gradientClass }: StudentsProps) {
       department_shortname: student.department_shortname || '',
       registration_semester: student.registration_semester || '',
       ssc: student.ssc ? student.ssc.toString() : '',
+      academic_type: academicType,
       hsc: student.hsc ? student.hsc.toString() : '',
       diploma: student.diploma ? student.diploma.toString() : ''
     });
@@ -417,41 +444,48 @@ export function Students({ gradientClass }: StudentsProps) {
                         placeholder="Enter password"
                       />
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                       <div className="space-y-2">
-                        <Label htmlFor="ssc">SSC Score *</Label>
+                        <Label htmlFor="ssc">SSC GPA *</Label>
                         <Input
                           id="ssc"
                           type="number"
                           value={formData.ssc}
                           onChange={(e) => setFormData(prev => ({ ...prev, ssc: e.target.value }))}
-                          placeholder="85"
+                          placeholder="5.00"
                           min="0"
-                          max="100"
+                          max="5"
+                          step="0.01"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="hsc">HSC Score *</Label>
-                        <Input
-                          id="hsc"
-                          type="number"
-                          value={formData.hsc}
-                          onChange={(e) => setFormData(prev => ({ ...prev, hsc: e.target.value }))}
-                          placeholder="90"
-                          min="0"
-                          max="100"
-                        />
+                        <Label htmlFor="academic_type">Academic Type *</Label>
+                        <Select
+                          value={formData.academic_type}
+                          onValueChange={handleAcademicTypeChange}
+                        >
+                          <SelectTrigger id="academic_type">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="HSC">HSC</SelectItem>
+                            <SelectItem value="DIPLOMA">Diploma</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="diploma">Diploma Score *</Label>
+                        <Label htmlFor="academic_score">
+                          {formData.academic_type === 'DIPLOMA' ? 'Diploma CGPA *' : 'HSC GPA *'}
+                        </Label>
                         <Input
-                          id="diploma"
+                          id="academic_score"
                           type="number"
-                          value={formData.diploma}
-                          onChange={(e) => setFormData(prev => ({ ...prev, diploma: e.target.value }))}
-                          placeholder="88"
+                          value={formData.academic_type === 'DIPLOMA' ? formData.diploma : formData.hsc}
+                          onChange={(e) => handleAcademicScoreChange(e.target.value)}
+                          placeholder={formData.academic_type === 'DIPLOMA' ? '4.00' : '5.00'}
                           min="0"
-                          max="100"
+                          max={formData.academic_type === 'DIPLOMA' ? '4' : '5'}
+                          step="0.01"
                         />
                       </div>
                     </div>
@@ -595,8 +629,7 @@ export function Students({ gradientClass }: StudentsProps) {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       <div className="space-y-1">
                         <div>SSC: <span className="font-medium">{student.ssc ?? 'N/A'}</span></div>
-                        <div>HSC: <span className="font-medium">{student.hsc ?? 'N/A'}</span></div>
-                        <div>Diploma: <span className="font-medium">{student.diploma ?? 'N/A'}</span></div>
+                        <div>{getStudentAcademicLabel(student)}: <span className="font-medium">{getStudentAcademicValue(student) ?? 'N/A'}</span></div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -737,41 +770,48 @@ export function Students({ gradientClass }: StudentsProps) {
                 placeholder="Leave blank to keep current password"
               />
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div className="space-y-2">
-                <Label htmlFor="edit_ssc">SSC Score *</Label>
+                <Label htmlFor="edit_ssc">SSC GPA *</Label>
                 <Input
                   id="edit_ssc"
                   type="number"
                   value={formData.ssc}
                   onChange={(e) => setFormData(prev => ({ ...prev, ssc: e.target.value }))}
-                  placeholder="85"
+                  placeholder="5.00"
                   min="0"
-                  max="100"
+                  max="5"
+                  step="0.01"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit_hsc">HSC Score *</Label>
-                <Input
-                  id="edit_hsc"
-                  type="number"
-                  value={formData.hsc}
-                  onChange={(e) => setFormData(prev => ({ ...prev, hsc: e.target.value }))}
-                  placeholder="90"
-                  min="0"
-                  max="100"
-                />
+                <Label htmlFor="edit_academic_type">Academic Type *</Label>
+                <Select
+                  value={formData.academic_type}
+                  onValueChange={handleAcademicTypeChange}
+                >
+                  <SelectTrigger id="edit_academic_type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="HSC">HSC</SelectItem>
+                    <SelectItem value="DIPLOMA">Diploma</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit_diploma">Diploma Score *</Label>
+                <Label htmlFor="edit_academic_score">
+                  {formData.academic_type === 'DIPLOMA' ? 'Diploma CGPA *' : 'HSC GPA *'}
+                </Label>
                 <Input
-                  id="edit_diploma"
+                  id="edit_academic_score"
                   type="number"
-                  value={formData.diploma}
-                  onChange={(e) => setFormData(prev => ({ ...prev, diploma: e.target.value }))}
-                  placeholder="88"
+                  value={formData.academic_type === 'DIPLOMA' ? formData.diploma : formData.hsc}
+                  onChange={(e) => handleAcademicScoreChange(e.target.value)}
+                  placeholder={formData.academic_type === 'DIPLOMA' ? '4.00' : '5.00'}
                   min="0"
-                  max="100"
+                  max={formData.academic_type === 'DIPLOMA' ? '4' : '5'}
+                  step="0.01"
                 />
               </div>
             </div>
@@ -856,18 +896,16 @@ export function Students({ gradientClass }: StudentsProps) {
               {/* Academic Information */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-gray-800">Academic Scores</h3>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="bg-blue-50 p-3 rounded-lg">
-                    <Label className="text-sm font-medium text-blue-700">SSC Score</Label>
+                    <Label className="text-sm font-medium text-blue-700">SSC GPA</Label>
                     <p className="text-2xl font-bold text-blue-600">{viewingStudent.ssc ?? 'N/A'}</p>
                   </div>
                   <div className="bg-green-50 p-3 rounded-lg">
-                    <Label className="text-sm font-medium text-green-700">HSC Score</Label>
-                    <p className="text-2xl font-bold text-green-600">{viewingStudent.hsc ?? 'N/A'}</p>
-                  </div>
-                  <div className="bg-purple-50 p-3 rounded-lg">
-                    <Label className="text-sm font-medium text-purple-700">Diploma Score</Label>
-                    <p className="text-2xl font-bold text-purple-600">{viewingStudent.diploma ?? 'N/A'}</p>
+                    <Label className="text-sm font-medium text-green-700">
+                      {getStudentAcademicLabel(viewingStudent)} {getStudentAcademicType(viewingStudent) === 'DIPLOMA' ? 'CGPA' : 'GPA'}
+                    </Label>
+                    <p className="text-2xl font-bold text-green-600">{getStudentAcademicValue(viewingStudent) ?? 'N/A'}</p>
                   </div>
                 </div>
               </div>
