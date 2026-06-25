@@ -456,27 +456,59 @@ export function BlockedQuestions({ gradientClass }: { gradientClass: string }) {
   }
 
   return (
-    <div className="p-4 space-y-6 sm:p-6">
-      <div className="flex flex-wrap items-center gap-3 text-sm text-slate-700">
-        <Badge variant="outline" className="gap-2">
-          <FileText className="w-4 h-4" />
-          {filteredQuestions.length} questions
-        </Badge>
-        <Badge variant="outline" className="gap-2">
-          <CheckCircle className="w-4 h-4 text-emerald-600" />
-          {filteredQuestions.filter(q => q.issue_solved).length} resolved
-        </Badge>
+    <div className="px-4 pt-1 pb-4 space-y-6 sm:px-6 sm:pt-1 sm:pb-6">
+      {/* Stats */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Questions</p>
+                <p className="text-2xl font-bold text-blue-600">{filteredQuestions.length}</p>
+              </div>
+              <FileText className="w-8 h-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Resolved</p>
+                <p className="text-2xl font-bold text-emerald-600">
+                  {filteredQuestions.filter(q => q.issue_solved).length}
+                </p>
+              </div>
+              <CheckCircle className="w-8 h-8 text-emerald-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Subjects</p>
+                <p className="text-2xl font-bold text-purple-600">
+                  {new Set(filteredQuestions.map(q => q.subject)).size}
+                </p>
+              </div>
+              <BookOpen className="w-8 h-8 text-purple-500" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}
-      <Card className="border-2 border-gray-200">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="w-5 h-5" />
+      <Card className="gap-0 border-2 border-gray-200">
+        <CardHeader className="py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-800">
+            <Search className="w-5 h-5 text-blue-600" />
             Filters & Search
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 pt-2 pb-3 sm:px-5">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-2">
               <Label htmlFor="search">Search Questions</Label>
@@ -562,7 +594,7 @@ export function BlockedQuestions({ gradientClass }: { gradientClass: string }) {
         <div className="space-y-4">
           {filteredQuestions.map((question) => (
             <Card key={question.id} className="border-2 border-red-100 bg-red-50/30">
-              <CardContent className="p-6">
+              <CardContent className="p-4 sm:p-6">
                 <div className="flex flex-col gap-4 lg:flex-row">
                   {/* Question Content */}
                   <div className="flex-1">

@@ -6,6 +6,7 @@ import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip';
 import { FileText, Eye, Edit, Search, Filter, Calendar, Building, Users, Clock, Loader2, RefreshCw, Trash2, X } from 'lucide-react';
 import { QuestionManager, Question } from '../components/QuestionManager';
 import { QuestionPaperView } from '../components/QuestionPaperView';
@@ -250,24 +251,24 @@ export function AllQuestions({ gradientClass: _gradientClass }: AllQuestionsProp
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex justify-end">
-        <Link to="/create-questions">
-          <Button className={regularButtonClass}>+Create Questions</Button>
+      <div className="flex justify-stretch sm:justify-end">
+        <Link to="/create-questions" className="w-full sm:w-auto">
+          <Button className={cn('w-full sm:w-auto', regularButtonClass)}>+Create Questions</Button>
         </Link>
       </div>
 
       {/* Filters and Search */}
-      <Card className="border-2 border-gray-200">
+      <Card className="gap-0 border-2 border-gray-200">
         <CardHeader className="py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
           <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-800">
             <Filter className="w-5 h-5 text-blue-600" />
             Filters & Search
           </CardTitle>
         </CardHeader>
-        <CardContent className="px-4 py-2 sm:px-5 sm:py-3">
-          <div className="flex flex-col items-end gap-4 sm:flex-row">
+        <CardContent className="px-4 pt-3 pb-4 sm:px-5">
+          <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-2 xl:grid-cols-[minmax(15rem,1.4fr)_repeat(3,minmax(9rem,1fr))_auto]">
             {/* Search */}
-            <div className="flex-1 space-y-2">
+            <div className="min-w-0 space-y-2 md:col-span-2 xl:col-span-1">
               <label className="text-sm font-medium text-gray-700">Search</label>
               <div className="relative">
                 <Search className="absolute w-4 h-4 text-gray-400 transform -translate-y-1/2 left-3 top-1/2" />
@@ -286,7 +287,7 @@ export function AllQuestions({ gradientClass: _gradientClass }: AllQuestionsProp
             </div>
 
             {/* Department Filter */}
-            <div className="w-full space-y-2 sm:w-48">
+            <div className="min-w-0 space-y-2">
               <label className="text-sm font-medium text-gray-700">Department</label>
               <Select value={draftDepartmentFilter} onValueChange={setDraftDepartmentFilter}>
                 <SelectTrigger>
@@ -302,7 +303,7 @@ export function AllQuestions({ gradientClass: _gradientClass }: AllQuestionsProp
             </div>
 
             {/* Semester Filter */}
-            <div className="w-full space-y-2 sm:w-48">
+            <div className="min-w-0 space-y-2">
               <label className="text-sm font-medium text-gray-700">Semester</label>
               <Select value={draftSemesterFilter} onValueChange={setDraftSemesterFilter}>
                 <SelectTrigger>
@@ -318,7 +319,7 @@ export function AllQuestions({ gradientClass: _gradientClass }: AllQuestionsProp
             </div>
 
             {/* Date Filter */}
-            <div className="w-full space-y-2 sm:w-48">
+            <div className="min-w-0 space-y-2">
               <label className="text-sm font-medium text-gray-700">Date Filter</label>
               <Select value={draftDateFilter} onValueChange={setDraftDateFilter}>
                 <SelectTrigger>
@@ -330,50 +331,55 @@ export function AllQuestions({ gradientClass: _gradientClass }: AllQuestionsProp
                 </SelectContent>
               </Select>
             </div>
+            <div className="grid grid-cols-[1fr_1fr_auto] gap-2 md:col-span-2 xl:col-span-1 xl:flex">
+              <Button
+                onClick={handleSearch}
+                disabled={isLoading}
+                className="w-full bg-[#2E3094] text-white hover:bg-[#252778] xl:w-auto"
+              >
+                <Search className="w-4 h-4" />
+                Search
+              </Button>
 
-            <Button
-              onClick={handleSearch}
-              disabled={isLoading}
-              className={cn('w-full sm:w-auto', regularButtonClass)}
-            >
-              <Search className="w-4 h-4 mr-2" />
-              Search
-            </Button>
+              <Button
+                onClick={handleClearFilters}
+                disabled={
+                  isLoading ||
+                  (!draftSearch &&
+                    !appliedSearch &&
+                    draftDepartmentFilter === 'all' &&
+                    appliedDepartmentFilter === 'all' &&
+                    draftSemesterFilter === 'all' &&
+                    appliedSemesterFilter === 'all' &&
+                    draftDateFilter === 'all' &&
+                    appliedDateFilter === 'all')
+                }
+                variant="outline"
+                className="w-full text-gray-600 xl:w-auto"
+              >
+                <X className="w-4 h-4" />
+                Clear
+              </Button>
 
-            <Button
-              onClick={handleClearFilters}
-              disabled={
-                isLoading ||
-                (!draftSearch &&
-                  !appliedSearch &&
-                  draftDepartmentFilter === 'all' &&
-                  appliedDepartmentFilter === 'all' &&
-                  draftSemesterFilter === 'all' &&
-                  appliedSemesterFilter === 'all' &&
-                  draftDateFilter === 'all' &&
-                  appliedDateFilter === 'all')
-              }
-              variant="outline"
-              className="w-full sm:w-auto"
-            >
-              <X className="w-4 h-4 mr-2" />
-              Clear
-            </Button>
-
-            {/* Refresh Button */}
-            <Button
-              onClick={() => setReloadKey((current) => current + 1)}
-              disabled={isLoading}
-              variant="outline"
-              className="w-full sm:w-auto"
-            >
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4 mr-2" />
-              )}
-              Refresh
-            </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={() => setReloadKey((current) => current + 1)}
+                    disabled={isLoading}
+                    variant="outline"
+                    size="icon"
+                    aria-label="Refresh question sets"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent sideOffset={6}>Refresh question sets</TooltipContent>
+              </Tooltip>
+            </div>
           </div>
         </CardContent>
       </Card>

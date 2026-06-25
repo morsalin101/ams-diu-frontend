@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '../components/ui/card';
@@ -453,7 +452,7 @@ export function Results({ gradientClass }: ResultsProps) {
       <Card className="border-2 border-gray-200">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Search className="w-5 h-5" />
+            <Search className="w-5 h-5 text-blue-600" />
             Search & Filter Results
           </CardTitle>
         </CardHeader>
@@ -589,10 +588,6 @@ export function Results({ gradientClass }: ResultsProps) {
             <Trophy className="w-5 h-5" />
             Student Exam Results
           </CardTitle>
-          <CardDescription>
-            View and manage student exam results with viva assessment
-            capabilities
-          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -912,7 +907,7 @@ export function Results({ gradientClass }: ResultsProps) {
                                 </Badge>
                               </div>
 
-                              <div className="grid grid-cols-4 gap-1.5 text-center">
+                              <div className="grid grid-cols-2 gap-1.5 text-center sm:grid-cols-4">
                                 <div className="rounded-lg bg-white px-1.5 py-2 shadow-sm">
                                   <div className="text-sm font-bold leading-none text-slate-900">
                                     {subject.total_questions}

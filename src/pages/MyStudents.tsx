@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Users, User, Calendar, Building, Search, RefreshCw, FileText, X } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip';
+import { Users, User, Calendar, Building, Search, RefreshCw, FileText, X, Filter } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { studentAssignmentAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -129,14 +130,7 @@ const MyStudents: React.FC = () => {
   const stats = getStats();
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-end">
-        <Button variant="outline" onClick={loadMyStudents} disabled={isLoading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-      </div>
-
+    <div className="space-y-4 sm:space-y-6">
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
@@ -183,58 +177,74 @@ const MyStudents: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Filter Students</CardTitle>
-          <CardDescription>Search and filter your assigned students</CardDescription>
+      <Card className="gap-0 border-2 border-gray-200">
+        <CardHeader className="py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-800">
+            <Filter className="w-5 h-5 text-blue-600" />
+            Filter Students
+          </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search by name, username, or F-ID..."
-                value={draftSearch}
-                onChange={(e) => setDraftSearch(e.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    handleSearch();
-                  }
-                }}
-                className="pl-10"
-              />
+        <CardContent className="px-4 pt-3 pb-4 sm:px-5">
+          <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-2 xl:grid-cols-[minmax(18rem,1.4fr)_minmax(11rem,1fr)_minmax(11rem,1fr)_auto]">
+            <div className="min-w-0 space-y-2 md:col-span-2 xl:col-span-1">
+              <label className="text-sm font-medium text-gray-700">Search</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Input
+                  placeholder="Search by name, username, or F-ID..."
+                  value={draftSearch}
+                  onChange={(e) => setDraftSearch(e.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      handleSearch();
+                    }
+                  }}
+                  className="pl-10"
+                />
+              </div>
             </div>
 
-            <Select value={draftFilterDepartment} onValueChange={setDraftFilterDepartment}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Departments" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Departments</SelectItem>
-                {getDepartments().map((dept) => (
-                  <SelectItem key={dept} value={dept}>
-                    {dept}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="min-w-0 space-y-2">
+              <label className="text-sm font-medium text-gray-700">Department</label>
+              <Select value={draftFilterDepartment} onValueChange={setDraftFilterDepartment}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Departments" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Departments</SelectItem>
+                  {getDepartments().map((dept) => (
+                    <SelectItem key={dept} value={dept}>
+                      {dept}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-            <Select value={draftFilterSemester} onValueChange={setDraftFilterSemester}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Semesters" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Semesters</SelectItem>
-                {getSemesters().map((sem) => (
-                  <SelectItem key={sem} value={sem}>
-                    {sem}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <div className="flex gap-2 md:col-span-3">
-              <Button onClick={handleSearch} disabled={isLoading || !user?.id}>
-                <Search className="h-4 w-4 mr-2" />
+            <div className="min-w-0 space-y-2">
+              <label className="text-sm font-medium text-gray-700">Semester</label>
+              <Select value={draftFilterSemester} onValueChange={setDraftFilterSemester}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Semesters" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Semesters</SelectItem>
+                  {getSemesters().map((sem) => (
+                    <SelectItem key={sem} value={sem}>
+                      {sem}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-[1fr_1fr_auto] gap-2 md:col-span-2 xl:col-span-1 xl:flex">
+              <Button
+                onClick={handleSearch}
+                disabled={isLoading || !user?.id}
+                className="w-full bg-[#2E3094] text-white hover:bg-[#252778] xl:w-auto"
+              >
+                <Search className="h-4 w-4" />
                 Search
               </Button>
               <Button
@@ -249,10 +259,26 @@ const MyStudents: React.FC = () => {
                     draftFilterSemester === 'all' &&
                     appliedFilterSemester === 'all')
                 }
+                className="w-full text-gray-600 xl:w-auto"
               >
-                <X className="h-4 w-4 mr-2" />
+                <X className="h-4 w-4" />
                 Clear
               </Button>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={loadMyStudents}
+                    disabled={isLoading || !user?.id}
+                    aria-label="Refresh assigned students"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent sideOffset={6}>Refresh assigned students</TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </CardContent>
@@ -262,12 +288,12 @@ const MyStudents: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>Assigned Students</span>
+            <span className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-blue-600" />
+              Assigned Students
+            </span>
             <Badge variant="outline">{pagination.count} students</Badge>
           </CardTitle>
-          <CardDescription>
-            List of all students assigned to you
-          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (

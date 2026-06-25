@@ -199,7 +199,10 @@ const SubjectDepartmentMapping: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>Department-Subject Mappings</span>
+            <span className="flex items-center gap-2">
+              <Layers className="w-5 h-5 text-blue-600" />
+              Department-Subject Mappings
+            </span>
             <Badge variant="outline">{mappings.length} mappings</Badge>
           </CardTitle>
         </CardHeader>

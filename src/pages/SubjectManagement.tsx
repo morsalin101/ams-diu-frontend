@@ -180,7 +180,10 @@ const SubjectManagement: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>All Subjects</span>
+            <span className="flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-blue-600" />
+              All Subjects
+            </span>
             <Badge variant="outline">{subjects.length} subjects</Badge>
           </CardTitle>
         </CardHeader>

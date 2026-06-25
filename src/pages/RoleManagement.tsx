@@ -1,5 +1,5 @@
   import { useState, useEffect } from 'react';
-  import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+  import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
   import { Button } from '../components/ui/button';
   import { Input } from '../components/ui/input';
   import { Label } from '../components/ui/label';
@@ -139,9 +139,6 @@
                   <Shield className="h-5 w-5 text-blue-600" />
                   System Roles
                 </CardTitle>
-                <CardDescription>
-                  Manage and configure user roles in the system
-                </CardDescription>
               </div>
               <div className="flex gap-2 w-full sm:w-auto">
                 <Button onClick={loadRoles} variant="outline" size="sm" disabled={isLoading}>

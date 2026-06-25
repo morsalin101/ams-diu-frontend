@@ -210,14 +210,14 @@ export function RoleMenuManagement() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-blue-100 rounded-lg">
+      <div className="flex items-start gap-3">
+        <div className="shrink-0 rounded-lg bg-blue-100 p-2">
           <Settings className="w-6 h-6 text-blue-600" />
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Role Menu Management</h1>
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Role Menu Management</h1>
           <p className="text-gray-600">Assign and manage menu access for different roles</p>
         </div>
       </div>
@@ -258,7 +258,7 @@ export function RoleMenuManagement() {
 
       {/* Menu Management */}
       {selectedRole && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
           {/* Available Menus */}
           <Card>
             <CardHeader>
@@ -280,10 +280,10 @@ export function RoleMenuManagement() {
                       assigned ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <Menu className="w-4 h-4" />
-                        <span className="font-medium">{menu.title}</span>
+                    <div className="mb-3 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <Menu className="h-4 w-4 shrink-0" />
+                        <span className="min-w-0 break-words font-medium">{menu.title}</span>
                         {assigned && <Badge className="text-xs bg-green-100 text-green-800">Assigned</Badge>}
                       </div>
                       {assigned ? (
@@ -291,6 +291,7 @@ export function RoleMenuManagement() {
                           size="sm"
                           variant="destructive"
                           onClick={() => handleRemoveMenu(menu.id)}
+                          className="w-full xl:w-auto"
                         >
                           <Trash2 className="w-3 h-3 mr-1" />
                           Remove
@@ -305,7 +306,7 @@ export function RoleMenuManagement() {
                     </div>
 
                     {assigned && (
-                      <div className="flex items-center gap-4 text-sm">
+                      <div className="flex flex-col gap-2 text-sm sm:flex-row sm:flex-wrap sm:items-center">
                         <span className="text-gray-600">Permissions:</span>
                         {Object.entries(permissions).map(([permission, enabled]) => (
                           <div
@@ -347,8 +348,8 @@ export function RoleMenuManagement() {
                 <div className="space-y-3">
                   {roleMenus.menus.map((roleMenu) => (
                     <div key={roleMenu.menu_id} className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium">{roleMenu.menu_title}</span>
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <span className="min-w-0 break-words font-medium">{roleMenu.menu_title}</span>
                         <Button
                           size="sm"
                           variant="ghost"
@@ -357,7 +358,7 @@ export function RoleMenuManagement() {
                           <Trash2 className="w-3 h-3" />
                         </Button>
                       </div>
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex flex-wrap items-center gap-2">
                         {Object.entries(roleMenu.permissions).map(([permission, enabled]) => (
                           enabled && (
                             <Badge key={permission} variant="secondary" className="text-xs">
@@ -416,7 +417,7 @@ function MenuAssignForm({ menuId, onAssign, isAssigning }: MenuAssignFormProps) 
 
   if (!showForm) {
     return (
-      <Button size="sm" onClick={() => setShowForm(true)}>
+      <Button size="sm" onClick={() => setShowForm(true)} className="w-full xl:w-auto">
         <Plus className="w-3 h-3 mr-1" />
         Assign
       </Button>
@@ -424,7 +425,7 @@ function MenuAssignForm({ menuId, onAssign, isAssigning }: MenuAssignFormProps) 
   }
 
   return (
-    <div className="space-y-3 p-3 border rounded-lg bg-white">
+    <div className="w-full min-w-0 space-y-3 rounded-lg border bg-white p-3 xl:w-auto">
       <div className="text-sm font-medium">Select Permissions:</div>
       <div className="space-y-2">
         {Object.entries(permissions).map(([permission, checked]) => (
@@ -444,11 +445,11 @@ function MenuAssignForm({ menuId, onAssign, isAssigning }: MenuAssignFormProps) 
           </div>
         ))}
       </div>
-      <div className="flex gap-2">
-        <Button size="sm" onClick={handleAssign} disabled={isAssigning}>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <Button size="sm" onClick={handleAssign} disabled={isAssigning} className="w-full">
           {isAssigning ? 'Assigning...' : 'Assign'}
         </Button>
-        <Button size="sm" variant="outline" onClick={() => setShowForm(false)}>
+        <Button size="sm" variant="outline" onClick={() => setShowForm(false)} className="w-full">
           Cancel
         </Button>
       </div>
