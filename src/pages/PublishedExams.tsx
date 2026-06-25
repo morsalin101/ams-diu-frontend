@@ -324,16 +324,16 @@ export function PublishedExams({ gradientClass }: PublishedExamsProps) {
       </div>
 
       {/* Filters */}
-      <Card className="border-2 border-gray-200">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <Card className="gap-0 border-2 border-gray-200">
+        <CardHeader className="py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-800">
             <Search className="h-5 w-5 text-blue-600" />
             Filters & Search
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="space-y-2">
+        <CardContent className="px-4 pt-2 pb-3 sm:px-5">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(16rem,1fr)_14rem_14rem_auto]">
+            <div className="min-w-0 space-y-2 md:col-span-2 xl:col-span-1">
               <Label htmlFor="search">Search Exams</Label>
               <Input
                 id="search"
@@ -348,7 +348,7 @@ export function PublishedExams({ gradientClass }: PublishedExamsProps) {
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="semester">Semester</Label>
               <Select value={semesterFilter} onValueChange={setSemesterFilter}>
                 <SelectTrigger>
@@ -363,7 +363,7 @@ export function PublishedExams({ gradientClass }: PublishedExamsProps) {
               </Select>
             </div>
 
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="department">Department</Label>
               <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
                 <SelectTrigger>
@@ -379,12 +379,12 @@ export function PublishedExams({ gradientClass }: PublishedExamsProps) {
             </div>
 
             <div className="space-y-2">
-              <Label>&nbsp;</Label>
-              <div className="flex gap-2">
+              <Label className="hidden xl:block">&nbsp;</Label>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto] xl:flex">
                 <Button 
                   onClick={handleSearch}
                   variant="outline"
-                  className="flex-1"
+                  className="w-full xl:flex-1"
                   disabled={isLoading}
                 >
                   <Search className="h-4 w-4 mr-2" />
@@ -393,7 +393,7 @@ export function PublishedExams({ gradientClass }: PublishedExamsProps) {
                 <Button
                   onClick={handleClearSearch}
                   variant="outline"
-                  className="flex-1"
+                  className="w-full xl:flex-1"
                   disabled={
                     isLoading ||
                     (!searchTerm &&
@@ -412,6 +412,7 @@ export function PublishedExams({ gradientClass }: PublishedExamsProps) {
                   variant="outline"
                   disabled={isLoading}
                   aria-label="Refresh published exams"
+                  className="w-full sm:w-10"
                 >
                   {isLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -447,29 +448,29 @@ export function PublishedExams({ gradientClass }: PublishedExamsProps) {
           </Card>
         ) : (
           filteredExams.map((exam) => (
-            <Card key={exam.id} className="border-2 border-gray-200 hover:border-gray-300 transition-colors">
+            <Card key={exam.id} className="border-2 border-gray-200 transition-colors hover:border-gray-300">
               <CardContent className="p-4 sm:p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <FileCheck className="h-5 w-5 text-gray-500" />
-                      <span className="font-semibold text-lg">Exam #{exam.exam}</span>
+                <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <FileCheck className="h-5 w-5 shrink-0 text-gray-500" />
+                      <span className="min-w-0 text-base font-semibold sm:text-lg">Exam #{exam.exam}</span>
                     </div>
                     <Badge 
                       variant={exam.is_published ? "default" : "secondary"}
-                      className={exam.is_published ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}
+                      className={exam.is_published ? "w-fit bg-green-100 text-green-800" : "w-fit bg-gray-100 text-gray-800"}
                     >
                       {exam.is_published ? 'Published' : 'Unpublished'}
                     </Badge>
                   </div>
                   
-                  <div className="flex gap-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:justify-end">
                     <Button
                       onClick={() => togglePublicationStatus(exam.exam)}
                       disabled={isToggling === exam.exam}
                       variant={exam.is_published ? "destructive" : "default"}
                       size="sm"
-                      className={exam.is_published ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}
+                      className={exam.is_published ? "w-full bg-red-600 hover:bg-red-700 lg:w-auto" : "w-full bg-green-600 hover:bg-green-700 lg:w-auto"}
                     >
                       {isToggling === exam.exam ? (
                         <Loader2 className="h-4 w-4 animate-spin mr-1" />
@@ -487,7 +488,7 @@ export function PublishedExams({ gradientClass }: PublishedExamsProps) {
                       disabled={preparingExamId === exam.exam}
                       variant="outline"
                       size="sm"
-                      className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                      className="w-full text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 lg:w-auto"
                     >
                       {preparingExamId === exam.exam ? (
                         <Loader2 className="h-4 w-4 animate-spin mr-1" />
@@ -500,22 +501,22 @@ export function PublishedExams({ gradientClass }: PublishedExamsProps) {
                 </div>
 
                 {/* Exam Details */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                  <div className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm text-gray-600">{exam.exam_details.department}</span>
+                <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Building2 className="h-4 w-4 shrink-0 text-gray-500" />
+                    <span className="min-w-0 break-words text-sm text-gray-600">{exam.exam_details.department}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm text-gray-600">{formatSemesterLabel(exam.exam_details.semester)}</span>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Calendar className="h-4 w-4 shrink-0 text-gray-500" />
+                    <span className="min-w-0 break-words text-sm text-gray-600">{formatSemesterLabel(exam.exam_details.semester)}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="h-4 w-4 text-gray-500" />
+                  <div className="flex min-w-0 items-center gap-2">
+                    <BookOpen className="h-4 w-4 shrink-0 text-gray-500" />
                     <span className="text-sm text-gray-600">{exam.exam_details.total_questions} questions</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm text-gray-600">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Calendar className="h-4 w-4 shrink-0 text-gray-500" />
+                    <span className="min-w-0 break-words text-sm text-gray-600">
                       Created: {formatDate(exam.created_at)}
                     </span>
                   </div>
@@ -524,19 +525,19 @@ export function PublishedExams({ gradientClass }: PublishedExamsProps) {
                 {/* Publication Status */}
                 <div className="space-y-2">
                   <h4 className="text-sm font-medium text-gray-700 mb-2">Publication Details:</h4>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                     <Badge
                       variant="outline"
-                      className={exam.is_published ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-50 text-gray-700 border-gray-200"}
+                      className={exam.is_published ? "w-fit bg-green-50 text-green-700 border-green-200" : "w-fit bg-gray-50 text-gray-700 border-gray-200"}
                     >
                       Status: {exam.is_published ? 'Published' : 'Unpublished'}
                     </Badge>
                     {exam.published_at && (
-                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                      <Badge variant="outline" className="w-fit bg-blue-50 text-blue-700 border-blue-200">
                         Published: {formatDate(exam.published_at)}
                       </Badge>
                     )}
-                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                    <Badge variant="outline" className="w-fit bg-purple-50 text-purple-700 border-purple-200">
                       Last Updated: {formatDate(exam.updated_at)}
                     </Badge>
                   </div>

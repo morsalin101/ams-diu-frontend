@@ -293,9 +293,9 @@ export function Students({ gradientClass }: StudentsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="px-4 pt-2 pb-4 sm:px-6 sm:pt-3 sm:pb-6">
-          <div className="flex flex-col sm:flex-row gap-4 items-end">
+          <div className="flex flex-col items-stretch gap-4 xl:flex-row xl:items-end">
             {/* Search and Filter */}
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid min-w-0 flex-1 grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Search Students</label>
                 <div className="relative">
@@ -328,12 +328,12 @@ export function Students({ gradientClass }: StudentsProps) {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-2 w-full sm:w-auto">
+            <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:w-auto xl:flex">
               <Button
                 type="button"
                 onClick={handleSearch}
                 disabled={isLoading}
-                className="flex-1 sm:flex-none"
+                className="w-full xl:w-auto"
               >
                 <Search className="h-4 w-4 mr-2" />
                 Search
@@ -343,19 +343,19 @@ export function Students({ gradientClass }: StudentsProps) {
                 onClick={handleClearSearch}
                 disabled={isLoading && !appliedSearch && appliedDateFilter === 'all'}
                 variant="outline"
-                className="flex-1 sm:flex-none"
+                className="w-full xl:w-auto"
               >
                 <X className="h-4 w-4 mr-2" />
                 Clear
               </Button>
               <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
                 <DialogTrigger asChild>
-                  <Button className="flex-1 sm:flex-none bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
+                  <Button className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 xl:w-auto">
                     <UserPlus className="h-4 w-4 mr-2" />
                     Add Student
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-md">
+                <DialogContent className="max-h-[92vh] w-[min(96vw,28rem)] !max-w-[min(96vw,28rem)] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Add New Student</DialogTitle>
                     <DialogDescription>
@@ -363,7 +363,7 @@ export function Students({ gradientClass }: StudentsProps) {
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
                         <Label htmlFor="username">Username *</Label>
                         <Input
@@ -392,7 +392,7 @@ export function Students({ gradientClass }: StudentsProps) {
                         placeholder="John Doe"
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
                         <Label htmlFor="email">Email *</Label>
                         <Input
@@ -486,7 +486,7 @@ export function Students({ gradientClass }: StudentsProps) {
                         />
                       </div>
                     </div>
-                    <div className="flex gap-2 pt-4">
+                    <div className="grid grid-cols-1 gap-2 pt-4 sm:grid-cols-2">
                       <Button
                         variant="outline"
                         onClick={() => setShowAddDialog(false)}
@@ -521,7 +521,7 @@ export function Students({ gradientClass }: StudentsProps) {
                 onClick={loadStudents}
                 disabled={isLoading}
                 variant="outline"
-                className="flex-1 sm:flex-none"
+                className="w-full xl:w-auto"
               >
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -681,7 +681,7 @@ export function Students({ gradientClass }: StudentsProps) {
 
       {/* Edit Student Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-h-[92vh] w-[min(96vw,28rem)] !max-w-[min(96vw,28rem)] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Student</DialogTitle>
             <DialogDescription>
@@ -689,7 +689,7 @@ export function Students({ gradientClass }: StudentsProps) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="edit_username">Username *</Label>
                 <Input
@@ -718,7 +718,7 @@ export function Students({ gradientClass }: StudentsProps) {
                 placeholder="John Doe"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="edit_email">Email *</Label>
                 <Input
@@ -812,7 +812,7 @@ export function Students({ gradientClass }: StudentsProps) {
                 />
               </div>
             </div>
-            <div className="flex gap-2 pt-4">
+            <div className="grid grid-cols-1 gap-2 pt-4 sm:grid-cols-2">
               <Button
                 variant="outline"
                 onClick={() => setShowEditDialog(false)}
@@ -845,7 +845,7 @@ export function Students({ gradientClass }: StudentsProps) {
 
       {/* View Student Dialog */}
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-h-[92vh] w-[min(96vw,42rem)] !max-w-[min(96vw,42rem)] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Student Details</DialogTitle>
             <DialogDescription>
@@ -857,18 +857,18 @@ export function Students({ gradientClass }: StudentsProps) {
               {/* Basic Information */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-gray-800">Basic Information</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-1">
                     <Label className="text-sm font-medium text-gray-600">Full Name</Label>
-                    <p className="text-sm font-medium text-gray-900">{viewingStudent.full_name}</p>
+                    <p className="break-words text-sm font-medium text-gray-900">{viewingStudent.full_name}</p>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-sm font-medium text-gray-600">Student ID</Label>
-                    <p className="text-sm font-medium text-gray-900">{viewingStudent.f_id}</p>
+                    <p className="break-words text-sm font-medium text-gray-900">{viewingStudent.f_id}</p>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-sm font-medium text-gray-600">Username</Label>
-                    <p className="text-sm font-medium text-gray-900">@{viewingStudent.username}</p>
+                    <p className="break-words text-sm font-medium text-gray-900">@{viewingStudent.username}</p>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-sm font-medium text-gray-600">Department</Label>
@@ -886,7 +886,7 @@ export function Students({ gradientClass }: StudentsProps) {
                 <h3 className="text-lg font-semibold text-gray-800">Contact Information</h3>
                 <div className="space-y-1">
                   <Label className="text-sm font-medium text-gray-600">Email Address</Label>
-                  <p className="text-sm font-medium text-gray-900">{viewingStudent.email}</p>
+                  <p className="break-words text-sm font-medium text-gray-900">{viewingStudent.email}</p>
                 </div>
               </div>
 
@@ -910,14 +910,14 @@ export function Students({ gradientClass }: StudentsProps) {
               {/* System Information */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-gray-800">System Information</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-1">
                     <Label className="text-sm font-medium text-gray-600">Student Database ID</Label>
-                    <p className="text-sm font-medium text-gray-900">#{viewingStudent.id}</p>
+                    <p className="break-words text-sm font-medium text-gray-900">#{viewingStudent.id}</p>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-sm font-medium text-gray-600">Registration Date</Label>
-                    <p className="text-sm font-medium text-gray-900">{formatDate(viewingStudent.created_at)}</p>
+                    <p className="break-words text-sm font-medium text-gray-900">{formatDate(viewingStudent.created_at)}</p>
                   </div>
                 </div>
               </div>

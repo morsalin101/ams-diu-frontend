@@ -363,14 +363,14 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
       </div>
 
       {/* Filters & Search */}
-      <Card className="border-2 border-gray-200">
-        <CardHeader className="pb-2 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+      <Card className="gap-0 border-2 border-gray-200">
+        <CardHeader className="py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
           <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-800">
             <Filter className="w-5 h-5 text-blue-600" />
             Filters & Search
           </CardTitle>
         </CardHeader>
-        <CardContent className="px-3 pt-2 pb-3 sm:px-4 sm:pt-2 sm:pb-4">
+        <CardContent className="px-4 pt-2 pb-3 sm:px-5">
           <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-end">
             <div className="relative flex-1">
               <Label htmlFor="marks-search" className="block mb-1">

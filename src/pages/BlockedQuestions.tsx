@@ -501,14 +501,14 @@ export function BlockedQuestions({ gradientClass }: { gradientClass: string }) {
       </div>
 
       {/* Filters */}
-      <Card className="border-2 border-gray-200">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <Card className="gap-0 border-2 border-gray-200">
+        <CardHeader className="py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-800">
             <Search className="w-5 h-5 text-blue-600" />
             Filters & Search
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 pt-2 pb-3 sm:px-5">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-2">
               <Label htmlFor="search">Search Questions</Label>

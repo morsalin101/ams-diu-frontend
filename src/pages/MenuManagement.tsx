@@ -206,8 +206,8 @@ export function MenuManagement() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex justify-end">
-        <Button onClick={openCreateDialog} className="bg-blue-600 hover:bg-blue-700">
+      <div className="flex justify-stretch sm:justify-end">
+        <Button onClick={openCreateDialog} className="w-full bg-blue-600 hover:bg-blue-700 sm:w-auto">
           <Plus className="w-4 h-4 mr-2" />
           Create Menu
         </Button>
@@ -221,7 +221,7 @@ export function MenuManagement() {
             System Menus
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 sm:px-6">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
@@ -242,36 +242,36 @@ export function MenuManagement() {
                       menu.is_active ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-300'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                        <div className="flex shrink-0 items-center gap-2">
                           <span className="text-sm text-gray-500">#{menu.order_index}</span>
                           <div className={`w-2 h-2 rounded-full ${menu.is_active ? 'bg-green-500' : 'bg-gray-400'}`}></div>
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-medium text-gray-900">{menu.title}</h3>
-                            <Badge variant="outline" className="text-xs">
+                        <div className="min-w-0">
+                          <div className="mb-1 flex flex-wrap items-center gap-2">
+                            <h3 className="min-w-0 break-words font-medium text-gray-900">{menu.title}</h3>
+                            <Badge variant="outline" className="w-fit text-xs">
                               {getIconLabel(menu.icon)}
                             </Badge>
                             {!menu.is_active && (
-                              <Badge variant="secondary" className="text-xs">
+                              <Badge variant="secondary" className="w-fit text-xs">
                                 Inactive
                               </Badge>
                             )}
                           </div>
-                          <div className="flex items-center gap-4 text-sm text-gray-600">
-                            <span>Link: {menu.link}</span>
-                            <span>Parent: {getParentMenuName(menu.parent_id)}</span>
+                          <div className="flex flex-col gap-1 text-sm text-gray-600 sm:flex-row sm:flex-wrap sm:gap-x-4">
+                            <span className="min-w-0 break-words">Link: {menu.link}</span>
+                            <span className="min-w-0 break-words">Parent: {getParentMenuName(menu.parent_id)}</span>
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center lg:justify-end">
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => toggleMenuStatus(menu)}
-                          className="text-gray-600"
+                          className="w-full text-gray-600 sm:w-auto"
                         >
                           {menu.is_active ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </Button>
@@ -279,7 +279,7 @@ export function MenuManagement() {
                           size="sm"
                           variant="ghost"
                           onClick={() => openEditDialog(menu)}
-                          className="text-blue-600 hover:text-blue-700"
+                          className="w-full text-blue-600 hover:text-blue-700 sm:w-auto"
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
@@ -287,7 +287,7 @@ export function MenuManagement() {
                           size="sm"
                           variant="ghost"
                           onClick={() => handleDelete(menu)}
-                          className="text-red-600 hover:text-red-700"
+                          className="w-full text-red-600 hover:text-red-700 sm:w-auto"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -302,7 +302,7 @@ export function MenuManagement() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto z-50 bg-white border shadow-lg">
+        <DialogContent className="z-50 max-h-[92vh] w-[min(96vw,31.25rem)] !max-w-[min(96vw,31.25rem)] overflow-y-auto border bg-white shadow-lg">
           <DialogHeader>
             <DialogTitle>{editingMenu ? 'Edit Menu' : 'Create New Menu'}</DialogTitle>
             <DialogDescription>
@@ -350,12 +350,13 @@ export function MenuManagement() {
               </div>
 
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
             <Button
               type="button"
               variant="outline"
               onClick={() => setIsDialogOpen(false)}
               disabled={isSubmitting}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
@@ -363,6 +364,7 @@ export function MenuManagement() {
               type="button" 
               onClick={handleSubmit} 
               disabled={isSubmitting}
+              className="w-full sm:w-auto"
             >
               {isSubmitting ? 'Saving...' : editingMenu ? 'Update Menu' : 'Create Menu'}
             </Button>

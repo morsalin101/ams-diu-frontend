@@ -226,19 +226,19 @@ const ThresholdManagement: React.FC = () => {
   }, {} as Record<string, ThresholdMapping[]>);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Sliders className="w-8 h-8 text-blue-600" />
-          <h1 className="text-2xl font-bold text-gray-800">Student Acceptance Criteria</h1>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <Sliders className="h-7 w-7 shrink-0 text-blue-600 sm:h-8 sm:w-8" />
+          <h1 className="min-w-0 text-xl font-bold text-gray-800 sm:text-2xl">Student Acceptance Criteria</h1>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => loadThresholds()} disabled={isLoading}>
+        <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-2">
+          <Button variant="outline" onClick={() => loadThresholds()} disabled={isLoading} className="w-full">
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button onClick={handleOpenDialog} className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF]">
+          <Button onClick={handleOpenDialog} className="w-full bg-gradient-to-r from-[#2E3094] to-[#4C51BF]">
             <Plus className="w-4 h-4 mr-2" />
             Set Thresholds
           </Button>
@@ -254,8 +254,8 @@ const ThresholdManagement: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-end gap-4">
-            <div className="flex-1 space-y-2">
+          <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:items-end">
+            <div className="min-w-0 flex-1 space-y-2">
               <Label htmlFor="filter-semester">Select Semester</Label>
               <Select value={filterSemester} onValueChange={setFilterSemester}>
                 <SelectTrigger id="filter-semester">
@@ -272,7 +272,7 @@ const ThresholdManagement: React.FC = () => {
               </Select>
             </div>
             {filterSemester && filterSemester !== 'all' && (
-              <Button variant="outline" onClick={() => setFilterSemester('all')}>
+              <Button variant="outline" onClick={() => setFilterSemester('all')} className="w-full sm:w-auto">
                 Clear Filter
               </Button>
             )}
@@ -283,12 +283,12 @@ const ThresholdManagement: React.FC = () => {
       {/* Thresholds List */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2">
+          <CardTitle className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span className="flex min-w-0 items-center gap-2">
               <Sliders className="w-5 h-5 text-blue-600" />
-              Department Threshold & Seat Limit
+              <span className="min-w-0">Department Threshold & Seat Limit</span>
             </span>
-            <Badge variant="outline">{thresholds.length} thresholds</Badge>
+            <Badge variant="outline" className="w-fit">{thresholds.length} thresholds</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -301,16 +301,16 @@ const ThresholdManagement: React.FC = () => {
             <div className="space-y-6">
               {/* Group by semester */}
               {Object.entries(groupedThresholds).map(([semester, semesterThresholds]) => (
-                <div key={semester} className="p-4 border rounded-lg bg-gray-50">
-                  <div className="flex items-center gap-2 mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">{semester}</h3>
-                    <Badge variant="secondary">{semesterThresholds.length} departments</Badge>
+                <div key={semester} className="p-3 border rounded-lg bg-gray-50 sm:p-4">
+                  <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <h3 className="text-base font-semibold text-gray-900 sm:text-lg">{semester}</h3>
+                    <Badge variant="secondary" className="w-fit">{semesterThresholds.length} departments</Badge>
                   </div>
 
                   {/* Individual threshold rows */}
                   <div className="space-y-3">
                     {semesterThresholds.map((threshold) => (
-                      <Card key={threshold.id} className="p-4 bg-white border-l-4 border-l-blue-500">
+                      <Card key={threshold.id} className="p-3 bg-white border-l-4 border-l-blue-500 sm:p-4">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                           {/* Threshold Content */}
                           <div className="flex-1 min-w-0 space-y-3">
@@ -322,23 +322,23 @@ const ThresholdManagement: React.FC = () => {
                                 Created: {new Date(threshold.created_at).toLocaleDateString()}
                               </p>
                             </div>
-                            <div className="flex flex-wrap items-center gap-3">
-                              <Badge variant="outline" className="px-3 py-1.5 text-sm font-semibold text-orange-800 border-2 border-orange-200 bg-orange-50 shadow-sm">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+                              <Badge variant="outline" className="w-fit px-3 py-1.5 text-sm font-semibold text-orange-800 border-2 border-orange-200 bg-orange-50 shadow-sm">
                                 Min Marks: {threshold.min_threshold_mark}
                               </Badge>
-                              <Badge variant="outline" className="px-3 py-1.5 text-sm font-semibold text-green-800 border-2 border-green-200 bg-green-50 shadow-sm">
+                              <Badge variant="outline" className="w-fit px-3 py-1.5 text-sm font-semibold text-green-800 border-2 border-green-200 bg-green-50 shadow-sm">
                                 Seats: {threshold.seat_limit}
                               </Badge>
                             </div>
                           </div>
 
                           {/* Actions */}
-                          <div className="flex gap-2 lg:justify-end">
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:justify-end">
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => handleEditThreshold(threshold)}
-                              className="flex-1 lg:flex-none"
+                              className="w-full lg:w-auto"
                             >
                               <Edit className="w-4 h-4 mr-2" />
                               Edit
@@ -347,7 +347,7 @@ const ThresholdManagement: React.FC = () => {
                               size="sm"
                               variant="outline"
                               onClick={() => handleDeleteThreshold(threshold.id, threshold.department_name)}
-                              className="flex-1 text-red-600 lg:flex-none hover:text-red-700"
+                              className="w-full text-red-600 lg:w-auto hover:text-red-700"
                             >
                               <Trash2 className="w-4 h-4 mr-2" />
                               Delete
@@ -376,8 +376,8 @@ const ThresholdManagement: React.FC = () => {
 
       {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="flex max-h-[min(90vh,760px)] w-[min(96vw,44rem)] !max-w-[min(96vw,44rem)] flex-col overflow-hidden p-0">
-          <DialogHeader className="px-6 py-5 pr-12 border-b shrink-0">
+        <DialogContent className="flex max-h-[min(92vh,760px)] w-[min(96vw,44rem)] !max-w-[min(96vw,44rem)] flex-col overflow-hidden p-0">
+          <DialogHeader className="px-4 py-4 pr-10 border-b shrink-0 sm:px-6 sm:py-5 sm:pr-12">
             <DialogTitle>
               {editingThresholdId ? 'Edit Department Threshold' : 'Set Department Thresholds'}
             </DialogTitle>
@@ -388,7 +388,7 @@ const ThresholdManagement: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 min-h-0 px-6 py-5 overflow-x-hidden overflow-y-auto">
+          <div className="flex-1 min-h-0 px-4 py-4 overflow-x-hidden overflow-y-auto sm:px-6 sm:py-5">
             <div className="flex flex-col gap-5">
               {/* Semester Selection */}
               <div className="grid gap-2 md:max-w-md">
@@ -412,7 +412,7 @@ const ThresholdManagement: React.FC = () => {
 
               {/* Department Mappings */}
               <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <Label>Department Thresholds</Label>
                   {/* Add Department disabled on purpose: one threshold row per semester dialog */}
                   {/*
