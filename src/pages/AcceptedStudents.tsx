@@ -931,7 +931,6 @@ export function AcceptedStudents() {
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-
                   </div>
                 </div>
               </CardTitle>

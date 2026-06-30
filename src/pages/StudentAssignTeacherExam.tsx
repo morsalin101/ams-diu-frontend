@@ -435,9 +435,9 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
       {/* Actions and Filters */}
       <Card>
         <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-            <div className="flex flex-col sm:flex-row gap-4 flex-1">
-              <div className="flex-1 min-w-0">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4 justify-between items-stretch sm:items-center">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4 flex-1">
+              <div className="flex-1 min-w-[220px]">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
@@ -523,7 +523,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
               </Button>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {canWrite() && (
                 <>
                   <Button 
