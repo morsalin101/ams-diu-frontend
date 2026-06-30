@@ -444,7 +444,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
         <CardContent className="p-6">
           <div className="flex flex-col items-stretch justify-between gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <div className="flex flex-col flex-1 gap-2 sm:flex-row sm:flex-wrap">
-              <div className="flex-1 min-w-[160px]">
+              <div className="flex-1 min-w-[150px] sm:max-w-[240px]">
                 <div className="relative">
                   <Search className="absolute w-4 h-4 text-gray-400 transform -translate-y-1/2 left-3 top-1/2" />
                   <Input
@@ -476,7 +476,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
               </Select>
 
               <Select value={draftFilterRegistrationSemester} onValueChange={setDraftFilterRegistrationSemester}>
-                <SelectTrigger className="w-full sm:w-44">
+                <SelectTrigger className="w-full sm:w-48">
                   <SelectValue placeholder="Registered semester" />
                 </SelectTrigger>
                 <SelectContent>
