@@ -4,9 +4,9 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Checkbox } from './ui/checkbox';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { UserPlus, Search, Loader2 } from 'lucide-react';
+import { UserPlus, Search, Loader2, Users, FileText } from 'lucide-react';
 
 interface Student {
   id: number;
@@ -170,19 +170,24 @@ export function StudentAssignmentDialog({
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
         }}
       >
-        <DialogHeader className="flex-shrink-0 pb-3 sm:pb-4 border-b pr-8">
-          <DialogTitle className="text-xl sm:text-2xl font-bold">Assign Students to Teacher and Exam</DialogTitle>
-          <DialogDescription className="text-sm sm:text-base">
-            Select students and assign them to a teacher and exam schedule. Use the search to find specific students quickly.
-          </DialogDescription>
+        <DialogHeader className="flex-shrink-0 pr-8">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-sm">
+              <UserPlus className="h-5 w-5" />
+            </span>
+            <DialogTitle className="text-xl sm:text-2xl font-bold text-gray-800">Assign Students to Teacher and Exam</DialogTitle>
+          </div>
         </DialogHeader>
-        
+
         <div className="flex-1 min-h-0 overflow-hidden">
-          <div className="grid grid-cols-1 xl:grid-cols-[minmax(620px,1.35fr)_minmax(360px,0.65fr)] gap-4 xl:gap-6 h-full min-h-0 pt-4 sm:pt-6 overflow-y-auto xl:overflow-hidden">
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(620px,1.35fr)_minmax(360px,0.65fr)] gap-4 xl:gap-6 h-full min-h-0 pt-2 overflow-y-auto xl:overflow-hidden">
             {/* Student Selection Panel */}
             <div className="space-y-4 sm:space-y-5 flex flex-col h-full min-h-[420px] xl:min-h-0">
               <div className="flex-shrink-0">
-                <div className="text-lg sm:text-xl font-semibold text-gray-800 mb-3">Select Students</div>
+                <div className="flex items-center gap-2 pb-2">
+                  <Users className="h-5 w-5 text-blue-600" />
+                  <div className="text-base sm:text-lg font-semibold text-gray-800">Select Students</div>
+                </div>
                 
                 {/* Student Search */}
                 <div className="grid grid-cols-1 sm:grid-cols-[minmax(260px,1fr)_220px_auto] gap-3 mb-4">
@@ -322,7 +327,10 @@ export function StudentAssignmentDialog({
 
             {/* Assignment Details Panel */}
             <div className="space-y-4 sm:space-y-5 flex flex-col h-full min-h-[320px] xl:min-h-0 xl:overflow-y-auto pr-1">
-              <div className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">Assignment Details</div>
+              <div className="flex items-center gap-2 pb-2">
+                <FileText className="h-5 w-5 text-blue-600" />
+                <div className="text-base sm:text-lg font-semibold text-gray-800">Assignment Details</div>
+              </div>
               
               <div className="flex-1 space-y-5">
                 {/* Teacher Selection */}

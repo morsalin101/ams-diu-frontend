@@ -6,8 +6,8 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Checkbox } from './ui/checkbox';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
-import { UserPlus, Search, Loader2, Clock, MapPin } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { UserPlus, Search, Loader2, Clock, MapPin, Users, FileText } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { vivaAssignmentAPI } from '../services/api';
 import toast from 'react-hot-toast';
@@ -213,19 +213,24 @@ export function VivaAssignmentDialog({
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
         }}
       >
-        <DialogHeader className="flex-shrink-0 pb-3 sm:pb-4 border-b pr-8">
-          <DialogTitle className="text-xl sm:text-2xl font-bold">Create Viva Assignments</DialogTitle>
-          <DialogDescription className="text-sm sm:text-base">
-            Assign multiple students to a teacher for viva examination with specific time and room details.
-          </DialogDescription>
+        <DialogHeader className="flex-shrink-0 pr-8">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-sm">
+              <UserPlus className="h-5 w-5" />
+            </span>
+            <DialogTitle className="text-xl sm:text-2xl font-bold text-gray-800">Create Viva Assignments</DialogTitle>
+          </div>
         </DialogHeader>
-        
+
         <div className="flex-1 min-h-0 overflow-hidden">
-          <div className="grid grid-cols-1 xl:grid-cols-[minmax(620px,1.25fr)_minmax(360px,0.75fr)] gap-4 xl:gap-6 h-full min-h-0 pt-4 sm:pt-6 overflow-y-auto xl:overflow-hidden">
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(620px,1.25fr)_minmax(360px,0.75fr)] gap-4 xl:gap-6 h-full min-h-0 pt-2 overflow-y-auto xl:overflow-hidden">
             {/* Student Selection Panel */}
             <div className="space-y-4 flex flex-col h-full min-h-[420px] xl:min-h-0">
               <div className="flex-shrink-0">
-                <Label className="text-lg font-semibold text-gray-800 mb-3 block">Select Students</Label>
+                <div className="flex items-center gap-2 pb-2">
+                  <Users className="h-5 w-5 text-blue-600" />
+                  <Label className="text-base sm:text-lg font-semibold text-gray-800">Select Students</Label>
+                </div>
                 
                 {/* Student Search */}
                 <div className="grid grid-cols-1 sm:grid-cols-[minmax(260px,1fr)_auto] gap-3 mb-3">
@@ -348,7 +353,10 @@ export function VivaAssignmentDialog({
             <div className="space-y-5 flex flex-col h-full min-h-[360px] xl:min-h-0 overflow-hidden">
               <div className="flex-1 min-h-0 overflow-y-auto pr-3 space-y-5">
                 <div className="flex-shrink-0">
-                  <Label className="text-lg font-semibold text-gray-800 block">Assignment Details</Label>
+                  <div className="flex items-center gap-2 pb-2">
+                    <FileText className="h-5 w-5 text-blue-600" />
+                    <Label className="text-base sm:text-lg font-semibold text-gray-800">Assignment Details</Label>
+                  </div>
                 </div>
               
                 {/* Form Fields Container */}
@@ -416,29 +424,37 @@ export function VivaAssignmentDialog({
                 {/* Time and Room */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label htmlFor="time" className="font-medium text-sm flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5" />
+                    <Label htmlFor="time" className="font-medium text-sm flex items-center gap-1.5 text-gray-700">
+                      <Clock className="h-3.5 w-3.5 text-blue-600" />
                       Time *
                     </Label>
-                    <Input
-                      type="time"
-                      value={assignmentForm.time}
-                      onChange={(e) => setAssignmentForm({ ...assignmentForm, time: e.target.value })}
-                      className="h-10 text-sm"
-                    />
+                    <div className="relative">
+                      <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                      <Input
+                        id="time"
+                        type="time"
+                        value={assignmentForm.time}
+                        onChange={(e) => setAssignmentForm({ ...assignmentForm, time: e.target.value })}
+                        className="h-10 text-sm pl-9 pr-3 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-colors"
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="room" className="font-medium text-sm flex items-center gap-1">
-                      <MapPin className="h-3.5 w-3.5" />
+                    <Label htmlFor="room" className="font-medium text-sm flex items-center gap-1.5 text-gray-700">
+                      <MapPin className="h-3.5 w-3.5 text-blue-600" />
                       Room *
                     </Label>
-                    <Input
-                      value={assignmentForm.room}
-                      onChange={(e) => setAssignmentForm({ ...assignmentForm, room: e.target.value })}
-                      placeholder="e.g., 301"
-                      className="h-10 text-sm"
-                    />
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                      <Input
+                        id="room"
+                        value={assignmentForm.room}
+                        onChange={(e) => setAssignmentForm({ ...assignmentForm, room: e.target.value })}
+                        placeholder="e.g., 301"
+                        className="h-10 text-sm pl-9 pr-3 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-colors"
+                      />
+                    </div>
                   </div>
                 </div>
 

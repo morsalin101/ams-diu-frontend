@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Alert, AlertDescription } from '../components/ui/alert';
@@ -263,7 +263,7 @@ export function MenuAccessManagement() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Role Selection */}
       {!canWrite() && !canDelete() && (
         <Alert>
@@ -280,7 +280,6 @@ export function MenuAccessManagement() {
             <Shield className="w-5 h-5" />
             Select Role
           </CardTitle>
-          <CardDescription>Choose a role to manage its menu access permissions</CardDescription>
         </CardHeader>
         <CardContent>
           <Select
@@ -309,24 +308,23 @@ export function MenuAccessManagement() {
 
       {/* Menu Access Management */}
       {selectedRole && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
           {/* Available Menus */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
                   <CardTitle className="flex items-center gap-2">
                     <Menu className="w-5 h-5" />
                     System Menus
                   </CardTitle>
-                  <CardDescription>Manage menu access for the selected role</CardDescription>
                 </div>
                 <Button 
                   variant="outline" 
                   size="sm" 
                   onClick={loadAllMenus}
                   disabled={isLoading}
-                  className="flex items-center gap-2"
+                  className="w-full sm:w-auto"
                 >
                   <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
                   Refresh Menus
@@ -354,15 +352,15 @@ export function MenuAccessManagement() {
                         assigned ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <Menu className="w-4 h-4" />
-                          <span className="font-medium">{menu.label}</span>
-                          <Badge variant="outline" className="text-xs">
+                      <div className="mb-3 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <Menu className="h-4 w-4 shrink-0" />
+                          <span className="min-w-0 break-words font-medium">{menu.label}</span>
+                          <Badge variant="outline" className="max-w-full break-all text-xs">
                             {menu.link}
                           </Badge>
                           {assigned && (
-                            <Badge className="text-xs bg-green-100 text-green-800">
+                            <Badge className="w-fit bg-green-100 text-green-800 text-xs">
                               Access Granted
                             </Badge>
                           )}
@@ -373,6 +371,7 @@ export function MenuAccessManagement() {
                               size="sm"
                               variant="destructive"
                               onClick={() => handleRemoveMenu(menu.id)}
+                              className="w-full xl:w-auto"
                             >
                               <Trash2 className="w-3 h-3 mr-1" />
                               Remove Access
@@ -390,7 +389,7 @@ export function MenuAccessManagement() {
                       </div>
 
                       {assigned && (
-                        <div className="flex items-center gap-4 text-sm">
+                        <div className="flex flex-col gap-2 text-sm sm:flex-row sm:flex-wrap sm:items-center">
                           <span className="text-gray-600">Permissions:</span>
                           {Object.entries(permissions).map(([permission, enabled]) => (
                             <div
@@ -416,7 +415,7 @@ export function MenuAccessManagement() {
                     variant="outline" 
                     size="sm" 
                     onClick={loadAllMenus}
-                    className="mt-2"
+                    className="mt-2 w-full sm:w-auto"
                   >
                     <RefreshCw className="w-4 h-4 mr-2" />
                     Retry Loading
@@ -433,9 +432,6 @@ export function MenuAccessManagement() {
                 <Key className="w-5 h-5" />
                 Access Summary
               </CardTitle>
-              <CardDescription>
-                Menu access permissions for {roles.find(r => r.id === selectedRole)?.role_name}
-              </CardDescription>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -447,8 +443,8 @@ export function MenuAccessManagement() {
                 <div className="space-y-3">
                   {roleMenus.menus.map((roleMenu) => (
                     <div key={roleMenu.menu_id} className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium">{roleMenu.menu_title}</span>
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <span className="min-w-0 break-words font-medium">{roleMenu.menu_title}</span>
                         {canDelete() && (
                           <Button
                             size="sm"
@@ -460,7 +456,7 @@ export function MenuAccessManagement() {
                           </Button>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex flex-wrap items-center gap-2">
                         {Object.entries(roleMenu.permissions).map(([permission, enabled]) => (
                           enabled && (
                             <Badge key={permission} variant="secondary" className="text-xs">
@@ -539,7 +535,7 @@ function MenuAccessForm({ menuId, onAssign, isAssigning }: MenuAccessFormProps) 
 
   if (!showForm) {
     return (
-      <Button size="sm" onClick={() => setShowForm(true)} className="bg-green-600 hover:bg-green-700">
+      <Button size="sm" onClick={() => setShowForm(true)} className="w-full bg-green-600 hover:bg-green-700 xl:w-auto">
         <Plus className="w-3 h-3 mr-1" />
         Grant Access
       </Button>
@@ -547,7 +543,7 @@ function MenuAccessForm({ menuId, onAssign, isAssigning }: MenuAccessFormProps) 
   }
 
   return (
-    <div className="space-y-3 p-3 border rounded-lg bg-white shadow-sm min-w-[250px]">
+    <div className="w-full min-w-0 space-y-3 rounded-lg border bg-white p-3 shadow-sm sm:min-w-[250px] xl:w-auto">
       <div className="text-sm font-medium text-gray-900">Select Permissions:</div>
       <div className="space-y-2">
         {Object.entries(permissions).map(([permission, checked]) => (
@@ -572,12 +568,12 @@ function MenuAccessForm({ menuId, onAssign, isAssigning }: MenuAccessFormProps) 
           Please select at least one permission
         </div>
       )}
-      <div className="flex gap-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <Button 
           size="sm" 
           onClick={handleAssign} 
           disabled={isAssigning || !hasAtLeastOnePermission}
-          className="bg-green-600 hover:bg-green-700"
+          className="w-full bg-green-600 hover:bg-green-700"
         >
           {isAssigning ? 'Granting...' : 'Grant Access'}
         </Button>
@@ -588,6 +584,7 @@ function MenuAccessForm({ menuId, onAssign, isAssigning }: MenuAccessFormProps) 
             setShowForm(false);
             setPermissions({ read: true, write: false, edit: false, delete: false });
           }}
+          className="w-full"
         >
           Cancel
         </Button>

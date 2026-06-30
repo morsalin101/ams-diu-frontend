@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { FileText, Search, RefreshCw, User, Building, CheckCircle, XCircle, X } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip';
+import { FileText, Search, RefreshCw, User, Building, CheckCircle, XCircle, X, Filter } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { admissionResultsAPI, examAPI, departmentAPI } from '../services/api';
 import PaginationControls, { DEFAULT_PAGINATION, paginationFromDrf } from '../components/PaginationControls';
@@ -167,91 +168,105 @@ const AllResults: React.FC = () => {
     appliedFilterSelection !== 'all';
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-end">
-        <Button variant="outline" onClick={() => setReloadKey((current) => current + 1)} disabled={isLoading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-      </div>
-
+    <div className="space-y-4 sm:space-y-6">
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Filter Results</CardTitle>
-          <CardDescription>Search and filter admission results</CardDescription>
+      <Card className="gap-0 border-2 border-gray-200">
+        <CardHeader className="py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-800">
+            <Filter className="w-5 h-5 text-blue-600" />
+            Filter Results
+          </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search by name, username, or form ID..."
-                value={draftSearch}
-                onChange={(e) => setDraftSearch(e.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    handleSearch();
-                  }
-                }}
-                className="pl-10"
-              />
+        <CardContent className="px-4 pt-3 pb-4 sm:px-5">
+          <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <div className="min-w-0 space-y-2 md:col-span-2 xl:col-span-1">
+              <label className="text-sm font-medium text-gray-700">Search</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Input
+                  placeholder="Search by name, username, or form ID..."
+                  value={draftSearch}
+                  onChange={(e) => setDraftSearch(e.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      handleSearch();
+                    }
+                  }}
+                  className="pl-10"
+                />
+              </div>
             </div>
 
-            <Select value={draftFilterExamId} onValueChange={setDraftFilterExamId}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Exams" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Exams</SelectItem>
-                {exams.map((exam) => (
-                  <SelectItem key={exam.id} value={exam.id.toString()}>
-                    {exam.department} - {exam.semester}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="min-w-0 space-y-2">
+              <label className="text-sm font-medium text-gray-700">Exam</label>
+              <Select value={draftFilterExamId} onValueChange={setDraftFilterExamId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Exams" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Exams</SelectItem>
+                  {exams.map((exam) => (
+                    <SelectItem key={exam.id} value={exam.id.toString()}>
+                      {exam.department} - {exam.semester}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-            <Select value={draftFilterDepartmentId} onValueChange={setDraftFilterDepartmentId}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Departments" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Departments</SelectItem>
-                {departments.map((dept) => (
-                  <SelectItem key={dept.id} value={dept.id.toString()}>
-                    {dept.department_shortname}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="min-w-0 space-y-2">
+              <label className="text-sm font-medium text-gray-700">Department</label>
+              <Select value={draftFilterDepartmentId} onValueChange={setDraftFilterDepartmentId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Departments" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Departments</SelectItem>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.id.toString()}>
+                      {dept.department_shortname}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-            <Select value={draftFilterStatus} onValueChange={setDraftFilterStatus}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="PENDING">Pending</SelectItem>
-                <SelectItem value="PUBLISHED">Published</SelectItem>
-                <SelectItem value="CANCELLED">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="min-w-0 space-y-2">
+              <label className="text-sm font-medium text-gray-700">Status</label>
+              <Select value={draftFilterStatus} onValueChange={setDraftFilterStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="PENDING">Pending</SelectItem>
+                  <SelectItem value="PUBLISHED">Published</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-            <Select value={draftFilterSelection} onValueChange={setDraftFilterSelection}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Students" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Students</SelectItem>
-                <SelectItem value="true">Selected</SelectItem>
-                <SelectItem value="false">Not Selected</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="min-w-0 space-y-2">
+              <label className="text-sm font-medium text-gray-700">Selection</label>
+              <Select value={draftFilterSelection} onValueChange={setDraftFilterSelection}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Students" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Students</SelectItem>
+                  <SelectItem value="true">Selected</SelectItem>
+                  <SelectItem value="false">Not Selected</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-            <div className="flex gap-2 md:col-span-2 lg:col-span-3">
-              <Button onClick={handleSearch} disabled={isLoading}>
-                <Search className="h-4 w-4 mr-2" />
+            <div className="grid grid-cols-[1fr_1fr_auto] gap-2 md:col-span-2 xl:col-span-1 xl:flex">
+              <Button
+                onClick={handleSearch}
+                disabled={isLoading}
+                className="w-full bg-[#2E3094] text-white hover:bg-[#252778] xl:w-auto"
+              >
+                <Search className="h-4 w-4" />
                 Search
               </Button>
               <Button
@@ -270,10 +285,26 @@ const AllResults: React.FC = () => {
                     draftFilterSelection === 'all' &&
                     appliedFilterSelection === 'all')
                 }
+                className="w-full text-gray-600 xl:w-auto"
               >
-                <X className="h-4 w-4 mr-2" />
+                <X className="h-4 w-4" />
                 Clear
               </Button>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setReloadKey((current) => current + 1)}
+                    disabled={isLoading}
+                    aria-label="Refresh admission results"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent sideOffset={6}>Refresh admission results</TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </CardContent>
@@ -283,7 +314,10 @@ const AllResults: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>Admission Results</span>
+            <span className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-blue-600" />
+              Admission Results
+            </span>
             <Badge variant="outline">{pagination.count} results</Badge>
           </CardTitle>
         </CardHeader>

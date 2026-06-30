@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
@@ -16,6 +16,13 @@ import toast from 'react-hot-toast';
 interface VivaAssignmentManagementProps {
   gradientClass: string;
 }
+
+const sortAssignmentsByLatest = (list: VivaAssignment[]) =>
+  [...list].sort((a, b) => {
+    const aTime = new Date(a.created_at).getTime();
+    const bTime = new Date(b.created_at).getTime();
+    return bTime - aTime;
+  });
 
 interface VivaAssignment {
   id: number;
@@ -143,12 +150,16 @@ export function VivaAssign({ gradientClass }: VivaAssignmentManagementProps) {
         date_filter: appliedFilterDate === 'today' ? 'today' : undefined,
       });
       if (response && response.success && response.assignments) {
-        setAssignments(Array.isArray(response.assignments) ? response.assignments : []);
+        setAssignments(
+          Array.isArray(response.assignments)
+            ? sortAssignmentsByLatest(response.assignments)
+            : []
+        );
         setPagination(paginationFromDrf(response, page));
       } else {
         // Fallback for other response formats
         const data = response.data || response;
-        setAssignments(Array.isArray(data) ? data : []);
+        setAssignments(Array.isArray(data) ? sortAssignmentsByLatest(data) : []);
         setPagination(paginationFromDrf(response, page));
       }
     } catch (error: any) {
@@ -322,7 +333,7 @@ export function VivaAssign({ gradientClass }: VivaAssignmentManagementProps) {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center">
               <Users className="h-8 w-8 text-blue-600" />
               <div className="ml-4">
@@ -334,7 +345,7 @@ export function VivaAssign({ gradientClass }: VivaAssignmentManagementProps) {
         </Card>
 
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center">
               <User className="h-8 w-8 text-green-600" />
               <div className="ml-4">
@@ -348,7 +359,7 @@ export function VivaAssign({ gradientClass }: VivaAssignmentManagementProps) {
         </Card>
 
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center">
               <BookOpen className="h-8 w-8 text-purple-600" />
               <div className="ml-4">
@@ -360,7 +371,7 @@ export function VivaAssign({ gradientClass }: VivaAssignmentManagementProps) {
         </Card>
 
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center">
               <Calendar className="h-8 w-8 text-orange-600" />
               <div className="ml-4">
@@ -374,7 +385,7 @@ export function VivaAssign({ gradientClass }: VivaAssignmentManagementProps) {
 
       {/* Actions and Filters */}
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
             <div className="flex flex-col sm:flex-row gap-4 flex-1">
               <div className="flex-1 min-w-0">
@@ -471,10 +482,10 @@ export function VivaAssign({ gradientClass }: VivaAssignmentManagementProps) {
       {/* Assignments Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Viva Assignments</CardTitle>
-          <CardDescription>
-            Manage student-teacher viva assignments with time and room details
-          </CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-blue-600" />
+            Viva Assignments
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">

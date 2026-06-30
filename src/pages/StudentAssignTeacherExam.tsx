@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -17,6 +17,13 @@ import toast from 'react-hot-toast';
 interface StudentAssignmentManagementProps {
   gradientClass: string;
 }
+
+const sortAssignmentsByLatest = (list: StudentAssignment[]) =>
+  [...list].sort((a, b) => {
+    const aTime = new Date(a.created_at).getTime();
+    const bTime = new Date(b.created_at).getTime();
+    return bTime - aTime;
+  });
 
 interface StudentAssignment {
   id: number;
@@ -178,7 +185,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
         date_filter: appliedFilterDate === 'today' ? 'today' : undefined,
       });
       if (response && (response.success !== false)) {
-        setAssignments(getResponseRows(response));
+        setAssignments(sortAssignmentsByLatest(getResponseRows(response)));
         setPagination(paginationFromDrf(response, page));
         setAssignmentFilterOptions(response.filter_options || {});
       }
@@ -357,8 +364,8 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">Access Denied</h3>
+          <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-red-500" />
+          <h3 className="mb-2 text-lg font-semibold text-gray-800">Access Denied</h3>
           <p className="text-gray-600">You don't have permission to access this page.</p>
         </div>
       </div>
@@ -369,8 +376,8 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">Loading...</h3>
+          <Loader2 className="w-12 h-12 mx-auto mb-4 text-blue-500 animate-spin" />
+          <h3 className="mb-2 text-lg font-semibold text-gray-800">Loading...</h3>
           <p className="text-gray-600">Please wait while we load the data.</p>
         </div>
       </div>
@@ -380,11 +387,11 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center">
-              <Users className="h-8 w-8 text-blue-600" />
+              <Users className="w-8 h-8 text-blue-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Assignments</p>
                 <p className="text-2xl font-bold text-gray-900">{pagination.count}</p>
@@ -394,9 +401,9 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
         </Card>
 
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center">
-              <User className="h-8 w-8 text-green-600" />
+              <User className="w-8 h-8 text-green-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Available Students</p>
                 <p className="text-2xl font-bold text-gray-900">
@@ -408,9 +415,9 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
         </Card>
 
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center">
-              <BookOpen className="h-8 w-8 text-purple-600" />
+              <BookOpen className="w-8 h-8 text-purple-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Teachers</p>
                 <p className="text-2xl font-bold text-gray-900">{teachers.length}</p>
@@ -420,9 +427,9 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
         </Card>
 
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center">
-              <Calendar className="h-8 w-8 text-orange-600" />
+              <Calendar className="w-8 h-8 text-orange-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Schedules</p>
                 <p className="text-2xl font-bold text-gray-900">{schedules.length}</p>
@@ -435,11 +442,11 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
       {/* Actions and Filters */}
       <Card>
         <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4 justify-between items-stretch sm:items-center">
-            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4 flex-1">
+          <div className="flex flex-col items-stretch justify-between gap-4 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="flex flex-col flex-1 gap-4 sm:flex-row sm:flex-wrap">
               <div className="flex-1 min-w-[220px]">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Search className="absolute w-4 h-4 text-gray-400 transform -translate-y-1/2 left-3 top-1/2" />
                   <Input
                     placeholder="Search students, teachers, student ID, or semester..."
                     value={draftSearch}
@@ -498,7 +505,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
                 disabled={isLoading}
                 className="w-full sm:w-auto"
               >
-                <Search className="h-4 w-4 mr-2" />
+                <Search className="w-4 h-4 mr-2" />
                 Search
               </Button>
 
@@ -518,7 +525,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
                 }
                 className="w-full sm:w-auto"
               >
-                <X className="h-4 w-4 mr-2" />
+                <X className="w-4 h-4 mr-2" />
                 Clear
               </Button>
             </div>
@@ -530,7 +537,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
                     onClick={() => setShowAssignDialog(true)}
                     className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#1E2078] hover:to-[#3A3F9A]"
                   >
-                    <UserPlus className="h-4 w-4 mr-2" />
+                    <UserPlus className="w-4 h-4 mr-2" />
                     Assign Students
                   </Button>
                   
@@ -553,7 +560,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
 
               {canDelete() && selectedAssignments.length > 0 && (
                 <Button onClick={handleBulkDelete} variant="destructive" disabled={isLoading}>
-                  <Trash2 className="h-4 w-4 mr-2" />
+                  <Trash2 className="w-4 h-4 mr-2" />
                   Delete Selected ({selectedAssignments.length})
                 </Button>
               )}
@@ -565,10 +572,10 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
       {/* Assignments Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Student Assignments</CardTitle>
-          <CardDescription>
-            Manage student-teacher-exam assignments
-          </CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-blue-600" />
+            Student Assignments
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -600,10 +607,10 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
               <TableBody>
                 {assignments.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
-                      <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-500 font-medium">No assignments found</p>
-                      <p className="text-gray-400 text-sm">
+                    <TableCell colSpan={8} className="py-8 text-center">
+                      <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                      <p className="font-medium text-gray-500">No assignments found</p>
+                      <p className="text-sm text-gray-400">
                         {appliedSearch ||
                         appliedFilterTeacher !== 'all' ||
                         appliedFilterRegistrationSemester !== 'all' ||
@@ -660,7 +667,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
                             className="text-red-600 hover:text-red-700"
                             disabled={isLoading}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="w-4 h-4" />
                           </Button>
                         )}
                       </TableCell>
