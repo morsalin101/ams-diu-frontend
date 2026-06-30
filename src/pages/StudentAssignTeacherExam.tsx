@@ -442,9 +442,9 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
       {/* Actions and Filters */}
       <Card>
         <CardContent className="p-6">
-          <div className="flex flex-col items-stretch justify-between gap-4 sm:flex-row sm:flex-wrap sm:items-center">
-            <div className="flex flex-col flex-1 gap-4 sm:flex-row sm:flex-wrap">
-              <div className="flex-1 min-w-[220px]">
+          <div className="flex flex-col items-stretch justify-between gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="flex flex-col flex-1 gap-2 sm:flex-row sm:flex-wrap">
+              <div className="flex-1 min-w-[160px]">
                 <div className="relative">
                   <Search className="absolute w-4 h-4 text-gray-400 transform -translate-y-1/2 left-3 top-1/2" />
                   <Input
@@ -462,7 +462,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
               </div>
               
               <Select value={draftFilterTeacher} onValueChange={setDraftFilterTeacher}>
-                <SelectTrigger className="w-full sm:w-48">
+                <SelectTrigger className="w-full sm:w-40">
                   <SelectValue placeholder="Filter by teacher" />
                 </SelectTrigger>
                 <SelectContent>
@@ -476,7 +476,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
               </Select>
 
               <Select value={draftFilterRegistrationSemester} onValueChange={setDraftFilterRegistrationSemester}>
-                <SelectTrigger className="w-full sm:w-56">
+                <SelectTrigger className="w-full sm:w-44">
                   <SelectValue placeholder="Registered semester" />
                 </SelectTrigger>
                 <SelectContent>
@@ -490,7 +490,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
               </Select>
 
               <Select value={draftFilterDate} onValueChange={setDraftFilterDate}>
-                <SelectTrigger className="w-full sm:w-48">
+                <SelectTrigger className="w-full sm:w-36">
                   <SelectValue placeholder="Filter by date" />
                 </SelectTrigger>
                 <SelectContent>
