@@ -856,7 +856,6 @@ export function AcceptedStudents() {
                     {selectedSemester && (
                       <Badge variant="secondary">{formatSemesterLabel(selectedSemester)}</Badge>
                     )}
-                    <Badge variant="outline">Faculty of {facultyName}</Badge>
                     <Badge variant="outline">{PRETTY_STATUS_LABELS[TAB_TO_STATUS[activeTab]]}</Badge>
                   </div>
                     {canRevertCurrentTab ? (
