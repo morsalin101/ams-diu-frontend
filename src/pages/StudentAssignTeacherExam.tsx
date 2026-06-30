@@ -442,9 +442,8 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
       {/* Actions and Filters */}
       <Card>
         <CardContent className="p-6">
-          <div className="flex flex-col items-stretch justify-between gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-            <div className="flex flex-col flex-1 gap-2 sm:flex-row sm:flex-wrap">
-              <div className="flex-1 min-w-[150px] sm:max-w-[240px]">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+              <div className="flex-1 min-w-[180px]">
                 <div className="relative">
                   <Search className="absolute w-4 h-4 text-gray-400 transform -translate-y-1/2 left-3 top-1/2" />
                   <Input
@@ -462,7 +461,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
               </div>
               
               <Select value={draftFilterTeacher} onValueChange={setDraftFilterTeacher}>
-                <SelectTrigger className="w-full sm:w-40">
+                <SelectTrigger className="w-full sm:flex-1 sm:min-w-[140px]">
                   <SelectValue placeholder="Filter by teacher" />
                 </SelectTrigger>
                 <SelectContent>
@@ -476,7 +475,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
               </Select>
 
               <Select value={draftFilterRegistrationSemester} onValueChange={setDraftFilterRegistrationSemester}>
-                <SelectTrigger className="w-full sm:w-48">
+                <SelectTrigger className="w-full sm:flex-1 sm:min-w-[150px]">
                   <SelectValue placeholder="Registered semester" />
                 </SelectTrigger>
                 <SelectContent>
@@ -490,7 +489,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
               </Select>
 
               <Select value={draftFilterDate} onValueChange={setDraftFilterDate}>
-                <SelectTrigger className="w-full sm:w-36">
+                <SelectTrigger className="w-full sm:flex-1 sm:min-w-[130px]">
                   <SelectValue placeholder="Filter by date" />
                 </SelectTrigger>
                 <SelectContent>
@@ -528,14 +527,12 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
                 <X className="w-4 h-4 mr-2" />
                 Clear
               </Button>
-            </div>
 
-            <div className="flex flex-wrap gap-2">
               {canWrite() && (
                 <>
-                  <Button 
+                  <Button
                     onClick={() => setShowAssignDialog(true)}
-                    className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#1E2078] hover:to-[#3A3F9A]"
+                    className="w-full sm:w-auto bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#1E2078] hover:to-[#3A3F9A]"
                   >
                     <UserPlus className="w-4 h-4 mr-2" />
                     Assign Students
@@ -559,12 +556,11 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
               )}
 
               {canDelete() && selectedAssignments.length > 0 && (
-                <Button onClick={handleBulkDelete} variant="destructive" disabled={isLoading}>
+                <Button onClick={handleBulkDelete} variant="destructive" disabled={isLoading} className="w-full sm:w-auto">
                   <Trash2 className="w-4 h-4 mr-2" />
                   Delete Selected ({selectedAssignments.length})
                 </Button>
               )}
-            </div>
           </div>
         </CardContent>
       </Card>
