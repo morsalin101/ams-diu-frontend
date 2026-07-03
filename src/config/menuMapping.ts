@@ -17,6 +17,7 @@ export const menuToGroupMapping: Record<string, { group: string; order: number }
   'upload questions(db)': { group: 'QUESTION MANAGEMENT', order: 3 },
   'delete questions(db)': { group: 'QUESTION MANAGEMENT', order: 4 },
   'blocked questions': { group: 'QUESTION MANAGEMENT', order: 5 },
+  'ai question scrapper': { group: 'QUESTION MANAGEMENT', order: 6 },
 
   // EXAM CONTROLS & MAPPING
   'department management': { group: 'EXAM CONTROLS & MAPPING', order: 1 },

@@ -31,6 +31,7 @@ import { VivaAssign } from './pages/VivaAssign';
 import { StudentAssignTeacherExam } from './pages/StudentAssignTeacherExam';
 import LayoutTestPage from './pages/LayoutTestPage';
 import InsertQuestions from './pages/InsertQuestions';
+import AiQuestionScrapper from './pages/AiQuestionScrapper';
 import ThresholdManagement from './pages/ThresholdManagement';
 import MyStudents from './pages/MyStudents';
 import AllResults from './pages/AllResults';
@@ -61,6 +62,7 @@ const componentMap = {
   VivaAssign,
   StudentAssignTeacherExam,
   InsertQuestions,
+  AiQuestionScrapper,
   ThresholdManagement,
   MyStudents,
   AllResults,
@@ -125,6 +127,7 @@ function ProtectedRoutes() {
         <Route path="/published-exams" element={<PublishedExams />} />
         <Route path="/blocked-questions" element={<BlockedQuestions />} />
         <Route path="/insert-questions" element={<InsertQuestions />} />
+        <Route path="/ai-question-scrapper" element={<AiQuestionScrapper />} />
         <Route path="/my-students" element={<MyStudents />} />
         <Route path="/my-schedule" element={<MySchedule />} />
         <Route path="/all-results" element={<AllResults />} />
