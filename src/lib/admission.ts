@@ -53,6 +53,7 @@ export interface AdmissionResult {
   attended_exam: boolean;
   subject_wise_marks: Record<string, unknown>;
   is_selected: boolean;
+  is_admitted: boolean;
   result_status: "SELECTED" | "WAITING" | "REJECTED" | "ABSENT";
   status: "PENDING" | "PUBLISHED" | "CANCELLED";
   threshold_applied: number | null;
@@ -69,8 +70,12 @@ export interface AdmissionResult {
   updated_at: string;
 }
 
-export const RESULT_STATUS_LABELS: Record<AdmissionResult["result_status"], string> = {
+// ACCEPTED is a virtual status: admitted rows (is_admitted) shown as their own tab.
+export type ResultStatusLabelKey = AdmissionResult["result_status"] | "ACCEPTED";
+
+export const RESULT_STATUS_LABELS: Record<ResultStatusLabelKey, string> = {
   SELECTED: "Selected",
+  ACCEPTED: "Accepted",
   WAITING: "Waiting",
   REJECTED: "Not Selected",
   ABSENT: "Absent",

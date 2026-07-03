@@ -18,6 +18,19 @@ interface StudentAssignmentManagementProps {
   gradientClass: string;
 }
 
+interface AssignmentSemesterError {
+  message?: string;
+  error_code?: string;
+  exam_semester?: string;
+  mismatched_students?: Array<{
+    id: number;
+    username: string;
+    f_id: string;
+    full_name: string;
+    registration_semester: string;
+  }>;
+}
+
 const sortAssignmentsByLatest = (list: StudentAssignment[]) =>
   [...list].sort((a, b) => {
     const aTime = new Date(a.created_at).getTime();
@@ -123,6 +136,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
 
   // Form states
   const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [assignmentError, setAssignmentError] = useState<AssignmentSemesterError | null>(null);
   const [assignmentForm, setAssignmentForm] = useState({
     teacher_id: '',
     exam_id: '',
@@ -253,6 +267,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
 
     try {
       setIsLoading(true);
+      setAssignmentError(null);
       const assignmentData = {
         student_ids: selectedStudents,
         teacher_id: parseInt(assignmentForm.teacher_id),
@@ -273,6 +288,9 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
       }
     } catch (error: any) {
       console.error('Error assigning students:', error);
+      if (error?.error_code === 'SEMESTER_MISMATCH') {
+        setAssignmentError(error);
+      }
       toast.error(error.message || 'Failed to assign students');
     } finally {
       setIsLoading(false);
@@ -551,6 +569,8 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
                     onAssign={handleBulkAssign}
                     isLoading={isLoading}
                     filterDate={draftFilterDate}
+                    assignmentError={assignmentError}
+                    onClearAssignmentError={() => setAssignmentError(null)}
                   />
                 </>
               )}

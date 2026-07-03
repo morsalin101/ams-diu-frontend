@@ -63,6 +63,8 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
   const [results, setResults] = useState<AdmissionResult[]>([]);
   const [summary, setSummary] = useState(DEFAULT_SUMMARY);
   const [configuration, setConfiguration] = useState<AdmissionConfiguration | null>(null);
+  const [configurationMissing, setConfigurationMissing] = useState(false);
+  const [unconfiguredExamSemesters, setUnconfiguredExamSemesters] = useState<string[]>([]);
   const [draftMinimumScoreFilter, setDraftMinimumScoreFilter] = useState("");
   const [appliedMinimumScoreFilter, setAppliedMinimumScoreFilter] = useState("");
   const [draftSearch, setDraftSearch] = useState("");
@@ -141,6 +143,8 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
     if (!hasReadAccess || !department?.id || !selectedSemester) {
       setResults([]);
       setConfiguration(null);
+      setConfigurationMissing(false);
+      setUnconfiguredExamSemesters([]);
       setPagination(DEFAULT_PAGINATION);
       setSelectedStudentIds([]);
       return;
@@ -180,6 +184,8 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
         const boardResults = resultResponse?.results || [];
 
         setConfiguration(resolvedConfiguration);
+        setConfigurationMissing(Boolean(resultResponse?.configuration_missing));
+        setUnconfiguredExamSemesters(resultResponse?.unconfigured_exam_semesters || []);
         setSummary({
           ...DEFAULT_SUMMARY,
           ...(resultResponse?.summary || {}),
@@ -196,6 +202,8 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
         toast.error(boardError?.message || "Failed to load examinee board");
         setResults([]);
         setConfiguration(null);
+        setConfigurationMissing(false);
+        setUnconfiguredExamSemesters([]);
         setSummary(DEFAULT_SUMMARY);
         setPagination(DEFAULT_PAGINATION);
       } finally {
@@ -282,6 +290,8 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
       ]);
 
       setConfiguration(configResponse?.configurations?.[0] || null);
+      setConfigurationMissing(Boolean(resultResponse?.configuration_missing));
+      setUnconfiguredExamSemesters(resultResponse?.unconfigured_exam_semesters || []);
       setResults(resultResponse?.results || []);
       setPagination(paginationFromDrf(resultResponse, page));
       setSummary({
@@ -664,7 +674,36 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
         </CardContent>
       </Card>
 
-      {!configuration && selectedSemester && (
+      {configurationMissing && selectedSemester && (
+        <Alert className="border-amber-300 bg-amber-50">
+          <AlertDescription className="flex flex-col gap-3 text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+            <span>
+              Threshold and seat limit are not set for {formatSemesterLabel(selectedSemester)}.
+              Admission results — including ABSENT marks for assigned students who never
+              submitted — cannot be generated until they are configured.
+              {unconfiguredExamSemesters.filter((semester) => semester !== selectedSemester)
+                .length > 0 && (
+                <>
+                  {" "}Other exam semesters without configuration:{" "}
+                  {unconfiguredExamSemesters
+                    .filter((semester) => semester !== selectedSemester)
+                    .map(formatSemesterLabel)
+                    .join(", ")}
+                  .
+                </>
+              )}
+            </span>
+            <a
+              href="/student-acceptance-criteria"
+              className="inline-flex items-center justify-center px-3 text-sm font-medium text-white bg-amber-600 rounded-md h-9 hover:bg-amber-700"
+            >
+              Set Criteria
+            </a>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {!configuration && !configurationMissing && selectedSemester && (
         <Alert className="border-blue-200 bg-blue-50">
           <AlertDescription className="flex flex-col gap-3 text-blue-900 sm:flex-row sm:items-center sm:justify-between">
             <span>

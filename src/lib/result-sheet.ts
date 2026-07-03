@@ -175,13 +175,17 @@ export function buildResultSheetRows(results: AdmissionResult[]): ResultSheetRow
     viva: result.viva_marks_entered === false ? "Not Given" : formatNumber(result.viva_marks),
     writtenViva: formatNumber(result.written_viva_total),
     total: formatNumber(result.weighted_total_marks),
-    remarks: PRETTY_STATUS_LABELS[result.result_status],
+    remarks: result.is_admitted ? PRETTY_STATUS_LABELS.ACCEPTED : PRETTY_STATUS_LABELS[result.result_status],
   }));
 }
 
-export function getResultStatusBadgeClass(status: AdmissionResult["result_status"]) {
+export function getResultStatusBadgeClass(status: AdmissionResult["result_status"] | "ACCEPTED") {
   if (status === "SELECTED") {
     return "border-green-200 bg-green-50 text-green-700";
+  }
+
+  if (status === "ACCEPTED") {
+    return "border-emerald-300 bg-emerald-50 text-emerald-800";
   }
 
   if (status === "WAITING") {

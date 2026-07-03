@@ -60,6 +60,7 @@ import PaginationControls, { DEFAULT_PAGINATION, paginationFromDrf } from "../co
 
 const TAB_TO_STATUS = {
   selected: "SELECTED",
+  accepted: "ACCEPTED",
   rejected: "REJECTED",
   waiting: "WAITING",
   absent: "ABSENT",
@@ -70,6 +71,7 @@ const RESULT_TAB_TRIGGER_CLASS =
 
 const DEFAULT_SUMMARY = {
   SELECTED: 0,
+  ACCEPTED: 0,
   WAITING: 0,
   REJECTED: 0,
   ABSENT: 0,
@@ -101,6 +103,7 @@ export function AcceptedStudents() {
   const [isLoading, setIsLoading] = useState(false);
   const [exportingFormat, setExportingFormat] = useState<ExportFormat | null>(null);
   const [isReverting, setIsReverting] = useState(false);
+  const [isAccepting, setIsAccepting] = useState(false);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [selectedReportExamId, setSelectedReportExamId] = useState<number | null>(null);
   const [selectedReportStudentId, setSelectedReportStudentId] = useState<number | null>(null);
@@ -257,7 +260,10 @@ export function AcceptedStudents() {
     [visibleResults, selectedStudentIdSet],
   );
   const canRevertCurrentTab =
-    !configurationMissing && hasWriteAccess && (activeTab === "selected" || activeTab === "rejected");
+    !configurationMissing &&
+    hasWriteAccess &&
+    (activeTab === "selected" || activeTab === "accepted" || activeTab === "rejected");
+  const canAcceptCurrentTab = !configurationMissing && hasWriteAccess && activeTab === "selected";
   const hasSelectedRows = selectedStudentIds.length > 0;
   const exportResults = useMemo(
     () =>
@@ -629,6 +635,45 @@ export function AcceptedStudents() {
     setSelectedStudentIds([]);
   };
 
+  const handleAcceptAdmission = async () => {
+    if (!canAcceptCurrentTab) {
+      return;
+    }
+
+    if (selectedStudentIds.length === 0) {
+      toast.error("Select at least one candidate to accept.");
+      return;
+    }
+
+    const configurationIds = new Set(
+      selectedTabResults
+        .map((result) => result.configuration)
+        .filter((value): value is number => typeof value === "number"),
+    );
+
+    if (configurationIds.size !== 1) {
+      toast.error("Selected candidates must belong to the same semester board.");
+      return;
+    }
+
+    setIsAccepting(true);
+    try {
+      await admissionResultsAPI.bulkUpdateStatus({
+        action: "SET_ADMITTED",
+        configuration_id: Array.from(configurationIds)[0],
+        student_ids: selectedStudentIds,
+      });
+
+      toast.success("Selected candidates were accepted for admission.");
+      await refreshResults();
+    } catch (acceptError: any) {
+      console.error("Error accepting candidates:", acceptError);
+      toast.error(acceptError?.message || "Failed to accept candidates");
+    } finally {
+      setIsAccepting(false);
+    }
+  };
+
   const handleRevert = async () => {
     if (!canRevertCurrentTab) {
       return;
@@ -698,11 +743,17 @@ export function AcceptedStudents() {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <Card>
           <CardContent className="p-4">
             <p className="text-sm font-medium text-gray-600">Selected</p>
             <p className="text-2xl font-bold text-green-600">{summary.SELECTED}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm font-medium text-gray-600">Accepted</p>
+            <p className="text-2xl font-bold text-emerald-700">{summary.ACCEPTED}</p>
           </CardContent>
         </Card>
         <Card>
@@ -858,6 +909,21 @@ export function AcceptedStudents() {
                     )}
                     <Badge variant="outline">{PRETTY_STATUS_LABELS[TAB_TO_STATUS[activeTab]]}</Badge>
                   </div>
+                    {canAcceptCurrentTab ? (
+                      <Button
+                        size="sm"
+                        onClick={handleAcceptAdmission}
+                        disabled={selectedStudentIds.length === 0 || isAccepting}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        {isAccepting ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="w-4 h-4 mr-2" />
+                        )}
+                        Accept
+                      </Button>
+                    ) : null}
                     {canRevertCurrentTab ? (
                       <Button
                         size="sm"
@@ -946,12 +1012,18 @@ export function AcceptedStudents() {
                   setPage(1);
                 }}
               >
-                <TabsList className="grid w-full h-auto grid-cols-2 gap-2 p-0 bg-transparent md:grid-cols-4">
+                <TabsList className="grid w-full h-auto grid-cols-2 gap-2 p-0 bg-transparent md:grid-cols-5">
                   <TabsTrigger
                     value="selected"
                     className={RESULT_TAB_TRIGGER_CLASS}
                   >
                     Selected ({summary.SELECTED})
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="accepted"
+                    className={RESULT_TAB_TRIGGER_CLASS}
+                  >
+                    Accepted ({summary.ACCEPTED})
                   </TabsTrigger>
                   <TabsTrigger
                     value="rejected"

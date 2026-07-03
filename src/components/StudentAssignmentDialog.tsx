@@ -61,6 +61,19 @@ interface Schedule {
   created_at: string;
 }
 
+interface AssignmentSemesterError {
+  message?: string;
+  error_code?: string;
+  exam_semester?: string;
+  mismatched_students?: Array<{
+    id: number;
+    username: string;
+    f_id: string;
+    full_name: string;
+    registration_semester: string;
+  }>;
+}
+
 interface StudentAssignmentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -78,6 +91,8 @@ interface StudentAssignmentDialogProps {
   onAssign: () => void;
   isLoading: boolean;
   filterDate?: string;
+  assignmentError?: AssignmentSemesterError | null;
+  onClearAssignmentError?: () => void;
 }
 
 export function StudentAssignmentDialog({
@@ -92,7 +107,9 @@ export function StudentAssignmentDialog({
   onAssignmentFormChange,
   onAssign,
   isLoading,
-  filterDate
+  filterDate,
+  assignmentError,
+  onClearAssignmentError
 }: StudentAssignmentDialogProps) {
   const [studentSearchTerm, setStudentSearchTerm] = useState('');
   const [semesterFilter, setSemesterFilter] = useState('all');
@@ -143,10 +160,12 @@ export function StudentAssignmentDialog({
     setStudentSearchTerm('');
     setSemesterFilter('all');
     onSelectedStudentsChange([]);
+    onClearAssignmentError?.();
     onOpenChange(false);
   };
 
   const handleStudentToggle = (studentId: number, checked: boolean) => {
+    onClearAssignmentError?.();
     if (checked) {
       onSelectedStudentsChange([...selectedStudents, studentId]);
     } else {
@@ -155,12 +174,28 @@ export function StudentAssignmentDialog({
   };
 
   const handleSelectAll = (checked: boolean) => {
+    onClearAssignmentError?.();
     if (checked) {
       onSelectedStudentsChange(filteredAvailableStudents.map(student => student.id));
     } else {
       onSelectedStudentsChange([]);
     }
   };
+
+  // Client-side preview of the server-side semester rule: warn before submitting
+  // when selected students are not registered for the chosen schedule's semester.
+  const selectedScheduleSemester = filteredSchedules
+    .find(schedule => schedule.id.toString() === assignmentForm.schedule_id)
+    ?.exam_details?.semester;
+  const normalizeSemester = (value?: string) => (value || '').trim().toLowerCase();
+  const mismatchedSelectedCount = selectedScheduleSemester
+    ? availableStudents.filter(
+        student =>
+          selectedStudents.includes(student.id) &&
+          normalizeSemester(student.registration_semester) !==
+            normalizeSemester(selectedScheduleSemester)
+      ).length
+    : 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -338,7 +373,10 @@ export function StudentAssignmentDialog({
                   <div className="text-base sm:text-lg font-medium">Teacher *</div>
                   <Select
                     value={assignmentForm.teacher_id}
-                    onValueChange={(value) => onAssignmentFormChange({ ...assignmentForm, teacher_id: value })}
+                    onValueChange={(value) => {
+                      onClearAssignmentError?.();
+                      onAssignmentFormChange({ ...assignmentForm, teacher_id: value });
+                    }}
                   >
                     <SelectTrigger className="h-11 sm:h-12 text-sm sm:text-base" aria-label="Teacher">
                       <SelectValue placeholder="Select a teacher" />
@@ -365,7 +403,10 @@ export function StudentAssignmentDialog({
                   <div className="text-base sm:text-lg font-medium">Schedule *</div>
                   <Select
                     value={assignmentForm.schedule_id}
-                    onValueChange={(value) => onAssignmentFormChange({ ...assignmentForm, schedule_id: value })}
+                    onValueChange={(value) => {
+                      onClearAssignmentError?.();
+                      onAssignmentFormChange({ ...assignmentForm, schedule_id: value });
+                    }}
                   >
                     <SelectTrigger className="h-11 sm:h-12 text-sm sm:text-base" aria-label="Schedule">
                       <SelectValue placeholder="Select a schedule" />
@@ -406,6 +447,32 @@ export function StudentAssignmentDialog({
                       <p>• Teacher: {teachers.find(t => t.id.toString() === assignmentForm.teacher_id)?.username}</p>
                       <p>• Schedule: {new Date(filteredSchedules.find(s => s.id.toString() === assignmentForm.schedule_id)?.start_time || '').toLocaleDateString()}</p>
                     </div>
+                    {mismatchedSelectedCount > 0 && (
+                      <p className="mt-2 text-sm font-medium text-amber-700">
+                        ⚠ {mismatchedSelectedCount} selected student{mismatchedSelectedCount !== 1 ? 's are' : ' is'} not
+                        registered for {selectedScheduleSemester}. The assignment will be rejected.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Semester mismatch rejection details from the server */}
+                {assignmentError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <h4 className="font-semibold text-red-800 mb-2">Assignment Rejected</h4>
+                    <p className="text-sm text-red-700 mb-2">
+                      {assignmentError.message ||
+                        `Some students are registered for a different semester than the exam (${assignmentError.exam_semester}).`}
+                    </p>
+                    {(assignmentError.mismatched_students?.length ?? 0) > 0 && (
+                      <ul className="text-sm text-red-700 space-y-1 max-h-32 overflow-y-auto">
+                        {assignmentError.mismatched_students!.map((student) => (
+                          <li key={student.id}>
+                            • {student.full_name} ({student.f_id}) — {student.registration_semester}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 )}
               </div>
