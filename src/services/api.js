@@ -1025,6 +1025,24 @@ export const fileAPI = {
     }
   }
   ,
+  // Extract questions from a single .pdf/.docx using Gemini AI
+  aiScrape: async (file, apiKey, model) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('api_key', apiKey);
+      if (model) formData.append('model', model);
+
+      const response = await api.post('/api/ai-scrape/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 180000 // AI extraction can take a while
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  }
+  ,
   // Insert scrapped questions in bulk
   insertScrappedQuestions: async (payload) => {
     try {
