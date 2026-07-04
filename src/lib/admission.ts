@@ -47,6 +47,7 @@ export interface AdmissionResult {
   mcq_marks: number;
   viva_marks: number;
   viva_marks_entered: boolean;
+  viva_given: boolean;
   written_viva_total: number;
   total_marks: number;
   weighted_total_marks: number;

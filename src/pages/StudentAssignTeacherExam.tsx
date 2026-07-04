@@ -288,7 +288,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
       }
     } catch (error: any) {
       console.error('Error assigning students:', error);
-      if (error?.error_code === 'SEMESTER_MISMATCH') {
+      if (error?.error_code === 'SEMESTER_MISMATCH' || error?.error_code === 'DUPLICATE_SEMESTER_ASSIGNMENT') {
         setAssignmentError(error);
       }
       toast.error(error.message || 'Failed to assign students');

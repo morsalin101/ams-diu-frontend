@@ -1454,6 +1454,18 @@ export const admissionResultsAPI = {
       throw error.response?.data || error.message;
     }
   },
+
+  // Display-only toggle: show viva marks vs "Not Passed" on the results board
+  setVivaStatus: async (resultId, vivaGiven) => {
+    try {
+      const response = await api.patch(`/api/admission/results/${resultId}/viva-status/`, {
+        viva_given: vivaGiven,
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
 };
 
 export default api;
