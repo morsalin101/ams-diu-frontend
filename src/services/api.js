@@ -89,8 +89,25 @@ const parseBlobJsonError = async (error, fallbackMessage) => {
 // Add a request interceptor to include the auth token
 api.interceptors.request.use(
   (config) => {
+    // Skip attaching the auth token to authentication endpoints — otherwise a
+    // stale/expired token in localStorage causes the backend to reject even
+    // the login request itself with `token_not_valid`.
+    const url = config.url || '';
+    const isAuthEndpoint =
+      url.includes('/api/auth/login/') ||
+      url.includes('/api/auth/register/') ||
+      url.includes('/api/auth/refresh/') ||
+      url.includes('/api/auth/password');
+
+    if (isAuthEndpoint) {
+      if (config.headers) {
+        delete config.headers.Authorization;
+      }
+      return config;
+    }
+
     const token = localStorage.getItem('access_token');
-    if (token) {
+    if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
