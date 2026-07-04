@@ -47,6 +47,7 @@ import {
   TableRow,
 } from '../components/ui/table';
 import { usePermissions } from '../hooks/usePermissions';
+import { MathText } from '../components/MathText';
 import { examAPI } from '../services/api';
 
 interface QuestionBankItem {
@@ -802,7 +803,7 @@ export function DeleteQuestions({ gradientClass = '' }: DeleteQuestionsProps) {
                           </TableCell>
                           <TableCell className="max-w-xl">
                             <div className="text-sm text-gray-800 line-clamp-2">
-                              {getQuestionText(question)}
+                              <MathText text={getQuestionText(question)} />
                             </div>
                           </TableCell>
                           <TableCell>{question.subject}</TableCell>
@@ -877,7 +878,7 @@ export function DeleteQuestions({ gradientClass = '' }: DeleteQuestionsProps) {
                         </div>
 
                         <p className="text-sm font-medium text-gray-800 break-words">
-                          {getQuestionText(question)}
+                          <MathText text={getQuestionText(question)} />
                         </p>
 
                         <div className="grid grid-cols-1 gap-2 text-sm text-gray-600 sm:grid-cols-2">
@@ -967,8 +968,7 @@ export function DeleteQuestions({ gradientClass = '' }: DeleteQuestionsProps) {
                   </Label>
                   <div className="p-3 border rounded-md bg-gray-50">
                     <p className="text-sm leading-relaxed text-gray-800 break-words whitespace-pre-wrap">
-                      {getQuestionText(previewQuestion) ||
-                        'No question text available.'}
+                      <MathText text={getQuestionText(previewQuestion) || 'No question text available.'} />
                     </p>
                   </div>
                 </div>
@@ -994,7 +994,7 @@ export function DeleteQuestions({ gradientClass = '' }: DeleteQuestionsProps) {
                                 {option.key}.
                               </span>
                               <span className="flex-1 min-w-0 break-words">
-                                {option.value}
+                                <MathText text={String(option.value ?? '')} />
                               </span>
                               {option.isCorrect ? (
                                 <Badge

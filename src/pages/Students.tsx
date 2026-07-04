@@ -35,13 +35,26 @@ const createEmptyFormData = () => ({
   f_id: '',
   full_name: '',
   email: '',
-  department_shortname: '',
+  department_shortname: 'CSE',
   registration_semester: '',
   ssc: '',
   academic_type: 'HSC' as AcademicType,
   hsc: '',
   diploma: ''
 });
+
+// Default password = student's last name, symbols/spaces stripped.
+const deriveDefaultPassword = (fullName: string) => {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  const lastName = parts.length ? parts[parts.length - 1] : '';
+  return lastName.replace(/[^a-zA-Z0-9]/g, '');
+};
+
+// Placeholder email when none is entered: {lastname}notinserted@mail.com
+const deriveFallbackEmail = (fullName: string) => {
+  const lastName = deriveDefaultPassword(fullName).toLowerCase() || 'student';
+  return `${lastName}notinserted@mail.com`;
+};
 
 const getStudentAcademicType = (student: Student): AcademicType => {
   if (student.academic_type === 'DIPLOMA') {
@@ -59,6 +72,10 @@ const getStudentAcademicValue = (student: Student) =>
 
 const buildStudentPayload = (formData: ReturnType<typeof createEmptyFormData>) => ({
   ...formData,
+  // Applicant ID drives both username and f_id (one identifier for applicants).
+  f_id: formData.f_id || formData.username,
+  // Email is optional; fall back to a generated placeholder.
+  email: formData.email.trim() || deriveFallbackEmail(formData.full_name),
   hsc: formData.academic_type === 'HSC' ? formData.hsc : '0',
   diploma: formData.academic_type === 'DIPLOMA' ? formData.diploma : '0',
 });
@@ -90,6 +107,8 @@ export function Students({ gradientClass }: StudentsProps) {
   
   // Form data
   const [formData, setFormData] = useState(createEmptyFormData());
+  // Password auto-fills from last name until the admin edits it manually.
+  const [passwordAuto, setPasswordAuto] = useState(true);
 
   const semesterOptions = buildAcademicSemesterOptions();
 
@@ -175,7 +194,7 @@ export function Students({ gradientClass }: StudentsProps) {
 
   const handleAddStudent = async () => {
     const academicScore = formData.academic_type === 'DIPLOMA' ? formData.diploma : formData.hsc;
-    if (!formData.username || !formData.password || !formData.f_id || !formData.full_name || !formData.email || !formData.department_shortname || !formData.registration_semester || !formData.ssc || !academicScore) {
+    if (!formData.username || !formData.password || !formData.full_name || !formData.department_shortname || !formData.registration_semester || !formData.ssc || !academicScore) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -200,7 +219,7 @@ export function Students({ gradientClass }: StudentsProps) {
 
   const handleEditStudent = async () => {
     const academicScore = formData.academic_type === 'DIPLOMA' ? formData.diploma : formData.hsc;
-    if (!editingStudent || !formData.username || !formData.f_id || !formData.full_name || !formData.email || !formData.department_shortname || !formData.registration_semester || !formData.ssc || !academicScore) {
+    if (!editingStudent || !formData.username || !formData.full_name || !formData.email || !formData.department_shortname || !formData.registration_semester || !formData.ssc || !academicScore) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -251,6 +270,7 @@ export function Students({ gradientClass }: StudentsProps) {
   const openEditDialog = (student: Student) => {
     const academicType = getStudentAcademicType(student);
     setEditingStudent(student);
+    setPasswordAuto(false); // Editing: keep existing password unless typed.
     setFormData({
       username: student.username || '',
       password: '', // Don't populate password for security
@@ -348,7 +368,16 @@ export function Students({ gradientClass }: StudentsProps) {
                 <X className="h-4 w-4 mr-2" />
                 Clear
               </Button>
-              <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+              <Dialog
+                open={showAddDialog}
+                onOpenChange={(open) => {
+                  if (open) {
+                    setFormData(createEmptyFormData());
+                    setPasswordAuto(true);
+                  }
+                  setShowAddDialog(open);
+                }}
+              >
                 <DialogTrigger asChild>
                   <Button className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 xl:w-auto">
                     <UserPlus className="h-4 w-4 mr-2" />
@@ -363,44 +392,40 @@ export function Students({ gradientClass }: StudentsProps) {
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="username">Username *</Label>
-                        <Input
-                          id="username"
-                          value={formData.username}
-                          onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
-                          placeholder="student123"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="f_id">Student ID *</Label>
-                        <Input
-                          id="f_id"
-                          value={formData.f_id}
-                          onChange={(e) => setFormData(prev => ({ ...prev, f_id: e.target.value }))}
-                          placeholder="FORM001"
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="username">Applicant ID *</Label>
+                      <Input
+                        id="username"
+                        value={formData.username}
+                        onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
+                        placeholder="APP001"
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="full_name">Full Name *</Label>
                       <Input
                         id="full_name"
                         value={formData.full_name}
-                        onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
+                        onChange={(e) => {
+                          const full_name = e.target.value;
+                          setFormData(prev => ({
+                            ...prev,
+                            full_name,
+                            password: passwordAuto ? deriveDefaultPassword(full_name) : prev.password,
+                          }));
+                        }}
                         placeholder="John Doe"
                       />
                     </div>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
-                        <Label htmlFor="email">Email *</Label>
+                        <Label htmlFor="email">Email</Label>
                         <Input
                           id="email"
                           type="email"
                           value={formData.email}
                           onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                          placeholder="student@example.com"
+                          placeholder="Optional — auto-filled if blank"
                         />
                       </div>
                       <div className="space-y-2">
@@ -435,11 +460,15 @@ export function Students({ gradientClass }: StudentsProps) {
                       <Label htmlFor="password">Password *</Label>
                       <Input
                         id="password"
-                        type="password"
+                        type="text"
                         value={formData.password}
-                        onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                        placeholder="Enter password"
+                        onChange={(e) => {
+                          setPasswordAuto(false);
+                          setFormData(prev => ({ ...prev, password: e.target.value }));
+                        }}
+                        placeholder="Auto-filled from last name"
                       />
+                      <p className="text-xs text-gray-500">Defaults to the student's last name. Edit to override.</p>
                     </div>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                       <div className="space-y-2">
@@ -689,25 +718,14 @@ export function Students({ gradientClass }: StudentsProps) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="edit_username">Username *</Label>
-                <Input
-                  id="edit_username"
-                  value={formData.username}
-                  onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
-                  placeholder="student123"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit_f_id">Student ID *</Label>
-                <Input
-                  id="edit_f_id"
-                  value={formData.f_id}
-                  onChange={(e) => setFormData(prev => ({ ...prev, f_id: e.target.value }))}
-                  placeholder="FORM001"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit_username">Applicant ID *</Label>
+              <Input
+                id="edit_username"
+                value={formData.username}
+                onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
+                placeholder="APP001"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit_full_name">Full Name *</Label>

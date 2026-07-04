@@ -13,6 +13,7 @@ import { examAPI, subjectAPI, subjectDepartmentAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { buildAcademicSemesterOptions } from '../lib/semester';
+import { MathText } from '../components/MathText';
 import toast from 'react-hot-toast';
 
 interface CreateQuestionsProps {
@@ -893,7 +894,7 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
                           <div className="space-y-3">
                             <div className="p-3 bg-white border rounded">
                               <p className="font-medium text-gray-800">
-                                {getQuestionDisplayText(question)}
+                                <MathText text={String(getQuestionDisplayText(question) ?? '')} />
                               </p>
                             </div>
                             
@@ -909,7 +910,7 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
                                       {option.key})
                                     </span>
                                     <span className={option.isCorrect ? 'font-semibold text-green-700' : 'text-gray-700'}>
-                                      {option.text}
+                                      <MathText text={String(option.text ?? '')} />
                                     </span>
                                     {option.isCorrect && (
                                       <Badge variant="outline" className="ml-auto text-xs text-green-700 bg-green-100 border-green-300">

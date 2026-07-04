@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Question } from './CreateQuestions';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
+import { MathText } from './MathText';
 import { X } from 'lucide-react';
 import diuLogo from '../assets/diu-logo.png';
 
@@ -185,7 +186,7 @@ export function QuestionPaperView({ questions, examConfig, onClose }: QuestionPa
                         {shouldShowAllQuestions ? question.originalIndex + 1 : `${activeTab.charAt(0)}${index + 1}`}
                       </div>
                       <h4 className="text-base sm:text-lg font-bold text-gray-800 leading-tight">
-                        {question.questions}
+                        <MathText text={String(question.questions ?? '')} />
                       </h4>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3 ml-10 sm:ml-11">
@@ -219,7 +220,7 @@ export function QuestionPaperView({ questions, examConfig, onClose }: QuestionPa
                             {String.fromCharCode(65 + optIndex)}
                           </span>
                         </div>
-                        <span className="text-sm sm:text-base text-gray-800 font-medium leading-relaxed">{option}</span>
+                        <span className="text-sm sm:text-base text-gray-800 font-medium leading-relaxed"><MathText text={String(option ?? '')} /></span>
                       </div>
                     ))}
                   </div>

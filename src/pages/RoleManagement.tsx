@@ -16,10 +16,11 @@
   }
 
   interface RoleManagementProps {
-    gradientClass: string;
+    gradientClass?: string;
   }
 
-  export function RoleManagement({ gradientClass }: RoleManagementProps) {
+  // Fallback so buttons stay visible when the route renders this without a prop.
+  export function RoleManagement({ gradientClass = 'from-[#2E3094] to-[#4C51BF]' }: RoleManagementProps) {
     const [roles, setRoles] = useState<Role[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);

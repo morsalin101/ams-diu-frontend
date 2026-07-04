@@ -25,6 +25,7 @@ interface ThresholdMapping {
   semester: string;
   min_threshold_mark: number;
   seat_limit: number;
+  waiting_student_limit: number;
   created_at: string;
   updated_at: string;
 }
@@ -33,6 +34,7 @@ interface ThresholdFormData {
   department_id: number;
   threshold: number;
   seat_limit: number;
+  waiting_student_limit: number;
 }
 
 const ThresholdManagement: React.FC = () => {
@@ -124,7 +126,7 @@ const ThresholdManagement: React.FC = () => {
 
   const handleOpenDialog = () => {
     setSelectedSemester(null);
-    setMappings([{ department_id: 0, threshold: 0, seat_limit: 5 }]);
+    setMappings([{ department_id: 0, threshold: 0, seat_limit: 5, waiting_student_limit: 0 }]);
     setEditingThresholdId(null);
     setEditingThreshold(null);
     setIsDialogOpen(true);
@@ -137,14 +139,15 @@ const ThresholdManagement: React.FC = () => {
     setMappings([{
       department_id: threshold.department_id,
       threshold: threshold.min_threshold_mark,
-      seat_limit: threshold.seat_limit
+      seat_limit: threshold.seat_limit,
+      waiting_student_limit: threshold.waiting_student_limit ?? 0
     }]);
     setIsDialogOpen(true);
   };
 
   const handleAddMapping = () => {
     // Disabled: keep the dialog focused on one department threshold per semester.
-    setMappings([...mappings, { department_id: 0, threshold: 0, seat_limit: 5 }]);
+    setMappings([...mappings, { department_id: 0, threshold: 0, seat_limit: 5, waiting_student_limit: 0 }]);
   };
 
   const handleRemoveMapping = (index: number) => {
@@ -183,7 +186,8 @@ const ThresholdManagement: React.FC = () => {
         mappings: validMappings.map(m => ({
           department_id: m.department_id,
           threshold: m.threshold,
-          seat_limit: m.seat_limit
+          seat_limit: m.seat_limit,
+          waiting_student_limit: m.waiting_student_limit || 0
         }))
       };
 
@@ -329,6 +333,9 @@ const ThresholdManagement: React.FC = () => {
                               <Badge variant="outline" className="w-fit px-3 py-1.5 text-sm font-semibold text-green-800 border-2 border-green-200 bg-green-50 shadow-sm">
                                 Seats: {threshold.seat_limit}
                               </Badge>
+                              <Badge variant="outline" className="w-fit px-3 py-1.5 text-sm font-semibold text-amber-800 border-2 border-amber-200 bg-amber-50 shadow-sm">
+                                Waiting: {threshold.waiting_student_limit ?? 0}
+                              </Badge>
                             </div>
                           </div>
 
@@ -439,7 +446,7 @@ const ThresholdManagement: React.FC = () => {
                     <Card key={index} className="border-l-4 border-l-blue-400">
                       <CardContent className="p-4">
                         <div className="space-y-3">
-                          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-[minmax(14rem,24rem)_minmax(9rem,12rem)_minmax(9rem,12rem)] lg:items-end lg:justify-start">
+                          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,8rem)_minmax(0,8rem)_minmax(0,8rem)] lg:items-end lg:justify-start">
                             <div className="flex min-w-0 flex-col gap-1.5 md:col-span-2 lg:col-span-1">
                               <Label htmlFor={`dept-${index}`} className="text-xs">Department *</Label>
                               <Select
@@ -486,6 +493,18 @@ const ThresholdManagement: React.FC = () => {
                                 value={mapping.seat_limit || ''}
                                 onChange={(e) => handleMappingChange(index, 'seat_limit', parseInt(e.target.value))}
                                 placeholder="5"
+                                className="h-9"
+                              />
+                            </div>
+                            <div className="flex min-w-0 flex-col gap-1.5">
+                              <Label htmlFor={`waiting-${index}`} className="text-xs">Waiting Limit</Label>
+                              <Input
+                                id={`waiting-${index}`}
+                                type="number"
+                                min="0"
+                                value={mapping.waiting_student_limit || ''}
+                                onChange={(e) => handleMappingChange(index, 'waiting_student_limit', parseInt(e.target.value) || 0)}
+                                placeholder="0"
                                 className="h-9"
                               />
                             </div>

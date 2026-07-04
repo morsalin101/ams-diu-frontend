@@ -9,6 +9,7 @@ import { Badge } from './ui/badge';
 import { Plus, Edit, Eye, Trash2, X, Save, FileText, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { QuestionPaperView } from './QuestionPaperView';
+import { MathText } from './MathText';
 import { examAPI } from '../services/api';
 import toast from 'react-hot-toast';
 
@@ -269,7 +270,7 @@ export function QuestionManager({
                       <Badge variant="outline" className="border-gray-300 text-gray-700 font-medium px-2 sm:px-3 py-1 text-xs sm:text-sm">{question.type}</Badge>
                       <span className="text-xs sm:text-sm text-gray-500 font-medium bg-gray-100 px-2 py-1 rounded">Question #{index + 1}</span>
                     </div>
-                    <p className="font-semibold text-gray-800 text-sm sm:text-base leading-relaxed">{question.questions}</p>
+                    <p className="font-semibold text-gray-800 text-sm sm:text-base leading-relaxed"><MathText text={String(question.questions ?? '')} /></p>
                     {question.type === 'option' && question.options && (
                       <div className="grid grid-cols-1 gap-2 sm:gap-3 mt-3 sm:mt-4">
                         {question.options.map((option, optIndex) => (
@@ -281,7 +282,7 @@ export function QuestionManager({
                                 : 'bg-gray-50 border-gray-200 text-gray-700'
                             }`}
                           >
-                            <span className="font-bold text-xs sm:text-sm">{String.fromCharCode(65 + optIndex)}.</span> {option}
+                            <span className="font-bold text-xs sm:text-sm">{String.fromCharCode(65 + optIndex)}.</span> <MathText text={String(option ?? '')} />
                           </div>
                         ))}
                       </div>
@@ -337,7 +338,7 @@ export function QuestionManager({
                           <div className="space-y-3 sm:space-y-4">
                             <div>
                               <Label className="font-semibold text-sm sm:text-base">Question:</Label>
-                              <p className="mt-1 text-sm sm:text-base">{question.questions}</p>
+                              <p className="mt-1 text-sm sm:text-base"><MathText text={String(question.questions ?? '')} /></p>
                             </div>
                             {question.type === 'option' && question.options && (
                               <div>
@@ -352,7 +353,7 @@ export function QuestionManager({
                                           : 'bg-white border-gray-300'
                                       }`}
                                     >
-                                      <strong>{String.fromCharCode(65 + optIndex)}.</strong> {option}
+                                      <strong>{String.fromCharCode(65 + optIndex)}.</strong> <MathText text={String(option ?? '')} />
                                       {option === question.answer && (
                                         <Badge className="ml-2 text-xs" variant="default">Correct</Badge>
                                       )}
