@@ -1,19 +1,27 @@
 import { useState, useRef, useCallback } from 'react';
 import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Alert, AlertDescription } from '../components/ui/alert';
 import { FileText, UploadCloud, Trash2 } from 'lucide-react';
 import { fileAPI } from '../services/api';
+import {
+  ScrappedQuestionEditor,
+  buildInsertPayload,
+  normalizeIncoming,
+  type EditableQuestion,
+} from '../components/ScrappedQuestionEditor';
 import toast from 'react-hot-toast';
 
 export default function InsertQuestions() {
   const [files, setFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [responseJson, setResponseJson] = useState<any>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
   const [isInserting, setIsInserting] = useState(false);
-  const [insertResponse, setInsertResponse] = useState<any>(null);
+  const [questions, setQuestions] = useState<EditableQuestion[]>([]);
+  const [filename, setFilename] = useState('');
+  const [failedFiles, setFailedFiles] = useState<{ filename: string; message: string }[]>([]);
+  const [insertResult, setInsertResult] = useState<any>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -58,10 +66,36 @@ export default function InsertQuestions() {
 
     try {
       setIsUploading(true);
-      setResponseJson(null);
+      setQuestions([]);
+      setFailedFiles([]);
+      setInsertResult(null);
       const result = await fileAPI.scrapeDocx(files);
-      setResponseJson(result);
-      toast.success('Upload complete — JSON response received');
+
+      // Flatten every successfully scraped file into one editable list.
+      const items: EditableQuestion[] = [];
+      const failures: { filename: string; message: string }[] = [];
+      (result?.results || []).forEach((fileResult: any) => {
+        if (fileResult?.success && Array.isArray(fileResult.data)) {
+          fileResult.data.forEach((item: any) => {
+            items.push(normalizeIncoming(item, items.length));
+          });
+        } else {
+          failures.push({
+            filename: fileResult?.filename || 'unknown file',
+            message: fileResult?.message || 'Extraction failed',
+          });
+        }
+      });
+
+      setQuestions(items);
+      setFailedFiles(failures);
+      setFilename(files.map(f => f.name).join(', '));
+
+      if (items.length === 0) {
+        toast.error('No questions were extracted from the uploaded file(s)');
+      } else {
+        toast.success(`Extracted ${items.length} question(s) — review and edit below`);
+      }
     } catch (err: any) {
       console.error('Upload error', err);
       toast.error(err?.message || 'Upload failed');
@@ -71,18 +105,33 @@ export default function InsertQuestions() {
   };
 
   const handleInsert = async () => {
-    if (!responseJson) {
-      toast.error('No scraped data available to insert. Upload first.');
+    if (questions.length === 0) {
+      toast.error('No scraped questions available to insert. Upload first.');
       return;
     }
 
     try {
       setIsInserting(true);
-      setInsertResponse(null);
-      // send the raw scraped JSON to insert endpoint
-      const res = await fileAPI.insertScrappedQuestions(responseJson);
-      setInsertResponse(res);
-      toast.success('Insert request completed');
+      setInsertResult(null);
+      const res = await fileAPI.insertScrappedQuestions(buildInsertPayload(questions, filename));
+      setInsertResult(res);
+
+      const created = res?.created_count ?? 0;
+      const skipped = res?.skipped_duplicates ?? 0;
+      const invalid = res?.invalid_count ?? 0;
+      if (created > 0) {
+        toast.success(`Inserted ${created} question${created !== 1 ? 's' : ''}` +
+          (skipped ? `, ${skipped} duplicate${skipped !== 1 ? 's' : ''} skipped` : '') +
+          (invalid ? `, ${invalid} invalid` : ''));
+      } else {
+        const firstIssue = res?.invalid?.[0]?.issues?.[0];
+        toast.error(
+          `No questions inserted — ${skipped} duplicate${skipped !== 1 ? 's' : ''}, ${invalid} invalid.` +
+          (firstIssue ? ` First issue: ${firstIssue}` : '') +
+          ' See details below.',
+          { duration: 8000 }
+        );
+      }
     } catch (err: any) {
       console.error('Insert error', err);
       toast.error(err?.message || 'Insert failed');
@@ -92,10 +141,10 @@ export default function InsertQuestions() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"> 
+          <CardTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" /> Insert Questions (.docx)
           </CardTitle>
         </CardHeader>
@@ -153,34 +202,27 @@ export default function InsertQuestions() {
             </div>
           )}
 
-          <div className="mt-6">
-            <Label className="font-medium mb-2">Server response</Label>
-            <div className="bg-black text-white p-3 rounded h-64 overflow-auto text-xs">
-              {responseJson ? (
-                <pre className="whitespace-pre-wrap">{JSON.stringify(responseJson, null, 2)}</pre>
-              ) : (
-                <div className="text-gray-400">Response will appear here after upload</div>
-              )}
-            </div>
-
-            {/* Insert button + insert response */}
-            {responseJson && (
-              <div className="mt-3 flex items-start gap-3">
-                <Button onClick={handleInsert} disabled={isInserting} className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#1E2078] hover:to-[#3A3F9A] text-white">
-                  {isInserting ? 'Inserting...' : 'Insert Questions'}
-                </Button>
-                <div className="flex-1">
-                  {insertResponse && (
-                    <div className="mt-2 bg-white text-sm text-gray-800 p-2 rounded border overflow-auto max-h-40">
-                      <pre className="whitespace-pre-wrap">{JSON.stringify(insertResponse, null, 2)}</pre>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+          {failedFiles.length > 0 && (
+            <Alert className="border-red-200 bg-red-50">
+              <AlertDescription className="text-red-700">
+                {failedFiles.map((f, i) => (
+                  <div key={i}>
+                    <span className="font-semibold">{f.filename}</span>: {f.message}
+                  </div>
+                ))}
+              </AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
+
+      <ScrappedQuestionEditor
+        questions={questions}
+        onQuestionsChange={setQuestions}
+        onInsert={handleInsert}
+        isInserting={isInserting}
+        insertResult={insertResult}
+      />
     </div>
   );
 }
