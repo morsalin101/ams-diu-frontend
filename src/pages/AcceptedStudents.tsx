@@ -50,7 +50,9 @@ import {
 } from "../lib/result-sheet";
 import {
   drawDiuPdfChrome,
+  drawSignatureBlock,
   formatReportDate,
+  getSignatureBlockHeight,
   loadDiuLogoDataUrl,
 } from "../lib/diu-report-pdf";
 import { downloadBlobFile } from "../lib/pdf-download";
@@ -75,6 +77,88 @@ const DEFAULT_SUMMARY = {
   WAITING: 0,
   REJECTED: 0,
   ABSENT: 0,
+};
+
+// Configurable columns for the exported PDF result sheet.
+// To adjust the PDF table:
+//   - Rename a column        → change the `header` value
+//   - Resize a column        → change the `cellWidth` value
+//   - Hide a column          → comment out that one object line
+//   - Reorder columns        → reorder the entries in this array
+//   - Add a new column       → add a new entry; make sure the row object
+//                              has the matching field (see `exportRows`)
+type PdfColumnAlign = "left" | "center" | "right";
+
+type PdfColumn = {
+  key: keyof ReturnType<typeof buildResultSheetRows>[number];
+  header: string;
+  cellWidth: number;
+  align?: PdfColumnAlign;
+};
+
+const RESULT_SHEET_PDF_COLUMNS: PdfColumn[] = [
+  { key: "serial", header: "SL", cellWidth: 24, align: "center" },
+  { key: "applicationSerial", header: "Application Serial", cellWidth: 62 },
+  { key: "studentName", header: "Student Name", cellWidth: 92 },
+  { key: "ssc", header: "SSC Number", cellWidth: 42, align: "center" },
+  { key: "academic", header: "HSC/Diploma Number", cellWidth: 72 },
+  { key: "written", header: "Written", cellWidth: 38, align: "center" },
+  { key: "viva", header: "Viva", cellWidth: 34, align: "center" },
+  // { key: "writtenViva", header: "Written + Viva", cellWidth: 50, align: "center" },  // commented out: hidden column
+  { key: "total", header: "Total", cellWidth: 40, align: "center" },
+  { key: "remarks", header: "Status", cellWidth: 62, align: "center" },
+];
+
+// Build autoTable input from the column config above.
+// Pass `effectiveColumnWidths` (from `scaleColumnWidthsToPage`) to make the
+// table fill the full usable page width and avoid a gap on the right side.
+const buildPdfTableConfig = (
+  columns: PdfColumn[],
+  effectiveColumnWidths?: number[],
+) => {
+  const head: string[][] = [columns.map((column) => column.header)];
+  const columnStyles: Record<
+    number,
+    { cellWidth: number; halign?: PdfColumnAlign }
+  > = {};
+  columns.forEach((column, index) => {
+    const cellWidth = effectiveColumnWidths?.[index] ?? column.cellWidth;
+    columnStyles[index] = { cellWidth };
+    if (column.align) {
+      columnStyles[index].halign = column.align;
+    }
+  });
+  return { head, columnStyles };
+};
+
+/**
+ * Scale the configured column widths so they exactly fill the available page
+ * width. This keeps the right edge of the table flush with the right margin
+ * even if the configured widths don't sum to the page width.
+ *
+ * Any change to a `cellWidth` in `RESULT_SHEET_PDF_COLUMNS` will be scaled
+ * proportionally to the rest, so the table always spans the full width.
+ */
+const scaleColumnWidthsToPage = (
+  columns: PdfColumn[],
+  pageWidth: number,
+  marginX: number,
+): number[] => {
+  const usableWidth = pageWidth - marginX * 2;
+  const baseWidths = columns.map((column) => column.cellWidth);
+  const baseTotal = baseWidths.reduce((sum, width) => sum + width, 0);
+  if (baseTotal <= 0) {
+    return baseWidths;
+  }
+  // Scale each width proportionally and round to integers. Then adjust the
+  // last column so the rounded widths still sum exactly to `usableWidth`.
+  const scaled = baseWidths.map((width) =>
+    Math.round((width / baseTotal) * usableWidth),
+  );
+  const scaledTotal = scaled.reduce((sum, width) => sum + width, 0);
+  const drift = usableWidth - scaledTotal;
+  scaled[scaled.length - 1] += drift;
+  return scaled;
 };
 
 type ExportFormat = "pdf" | "excel";
@@ -326,6 +410,7 @@ export function AcceptedStudents() {
 
       const marginX = 26;
       const tableTop = 190;
+      const bottomMargin = 28;
       const reportDate = formatReportDate();
       const activeStatusLabel = PRETTY_STATUS_LABELS[TAB_TO_STATUS[activeTab]];
 
@@ -340,38 +425,26 @@ export function AcceptedStudents() {
         });
       };
 
+      const pdfTableConfig = buildPdfTableConfig(
+        RESULT_SHEET_PDF_COLUMNS,
+        scaleColumnWidthsToPage(
+          RESULT_SHEET_PDF_COLUMNS,
+          doc.internal.pageSize.getWidth(),
+          marginX,
+        ),
+      );
       autoTable(doc, {
         startY: tableTop,
         margin: {
           top: tableTop,
           left: marginX,
           right: marginX,
-          bottom: 28,
+          bottom: 56,
         },
-        head: [[
-          "SL",
-          "Application Serial",
-          "Student Name",
-          "SSC Number",
-          "HSC/Diploma Number",
-          "Written",
-          "Viva",
-          "Written + Viva",
-          "Total",
-          "Remarks",
-        ]],
-        body: exportRows.map((row) => [
-          row.serial,
-          row.applicationSerial,
-          row.studentName,
-          row.ssc,
-          row.academic,
-          row.written,
-          row.viva,
-          row.writtenViva,
-          row.total,
-          row.remarks,
-        ]),
+        head: pdfTableConfig.head,
+        body: exportRows.map((row) =>
+          RESULT_SHEET_PDF_COLUMNS.map((column) => row[column.key] ?? ""),
+        ),
         theme: "grid",
         styles: {
           font: "helvetica",
@@ -395,22 +468,36 @@ export function AcceptedStudents() {
         alternateRowStyles: {
           fillColor: [248, 250, 252],
         },
-        columnStyles: {
-          0: { cellWidth: 24, halign: "center" },
-          1: { cellWidth: 62 },
-          2: { cellWidth: 92 },
-          3: { cellWidth: 42, halign: "center" },
-          4: { cellWidth: 72 },
-          5: { cellWidth: 38, halign: "center" },
-          6: { cellWidth: 34, halign: "center" },
-          7: { cellWidth: 50, halign: "center" },
-          8: { cellWidth: 40, halign: "center" },
-          9: { cellWidth: 62, halign: "center" },
-        },
+        columnStyles: pdfTableConfig.columnStyles,
         didDrawPage: () => {
           drawHeader();
         },
       });
+
+      // Render the signature block as one indivisible block at the very end.
+      // Compute the remaining vertical space on the current page and decide
+      // whether the block fits here or needs to be moved to a new page.
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const signatureBlockHeight = getSignatureBlockHeight(doc);
+      const tableEndY =
+        (doc as any).lastAutoTable?.finalY ?? tableTop;
+      const signatureTopGap = 36;
+      const requiredSpace = signatureBlockHeight + signatureTopGap;
+      const remainingSpace =
+        pageHeight - bottomMargin - tableEndY;
+
+      if (remainingSpace < requiredSpace) {
+        // Not enough room — push the signature block to a new page.
+        doc.addPage();
+        drawHeader();
+      }
+
+      const signatureStartY =
+        remainingSpace < requiredSpace
+          ? tableTop + signatureTopGap
+          : tableEndY + signatureTopGap;
+
+      drawSignatureBlock(doc, signatureStartY, { marginX });
 
       doc.save(`${getExportBaseName()}.pdf`);
       toast.success("Result sheet PDF exported successfully");
@@ -1088,7 +1175,7 @@ export function AcceptedStudents() {
                               <TableHead>Viva</TableHead>
                               <TableHead>Written + Viva</TableHead>
                               <TableHead>Total</TableHead>
-                              <TableHead>Remarks</TableHead>
+                              <TableHead>Status</TableHead>
                               <TableHead className="text-center">View</TableHead>
                               <TableHead className="text-center">Download</TableHead>
                             </TableRow>
