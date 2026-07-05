@@ -2,7 +2,6 @@ import {
   Award,
   BookOpen,
   Calendar,
-  CheckCircle2,
   ClipboardList,
   FileSearch,
   GraduationCap,
@@ -330,9 +329,9 @@ export function StudentAdmissionReportContent({
                 </p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wide text-slate-500">Total Viva Marks</p>
+                <p className="text-xs uppercase tracking-wide text-slate-500">Viva Result</p>
                 <p className="font-medium text-slate-900">
-                  {formatReportNumber(report.viva.total_marks)}
+                  {report.final_result.viva_given === false ? "Not Passed" : "Passed"}
                 </p>
               </div>
             </div>
@@ -359,18 +358,6 @@ export function StudentAdmissionReportContent({
                 <p className="text-xs uppercase tracking-wide text-slate-500">Written</p>
                 <p className="font-medium text-slate-900">
                   {formatReportNumber(report.final_result.written_marks)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wide text-slate-500">Viva</p>
-                <p className="font-medium text-slate-900">
-                  {formatReportNumber(report.final_result.viva_marks)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wide text-slate-500">Written + Viva</p>
-                <p className="font-medium text-slate-900">
-                  {formatReportNumber(report.final_result.written_viva_total)}
                 </p>
               </div>
               <div>
@@ -402,12 +389,6 @@ export function StudentAdmissionReportContent({
                 <p className="text-xs uppercase tracking-wide text-slate-500">Written Contribution</p>
                 <p className="font-medium text-slate-900">
                   {formatReportNumber(report.final_result.written_contribution)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wide text-slate-500">Viva Contribution</p>
-                <p className="font-medium text-slate-900">
-                  {formatReportNumber(report.final_result.viva_contribution)}
                 </p>
               </div>
             </div>
@@ -452,43 +433,6 @@ export function StudentAdmissionReportContent({
           </CardContent>
         </Card>
       </div>
-
-      <Card className="border-slate-200">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <CheckCircle2 className="h-4 w-4 text-[#2E3094]" />
-            Viva Rubric Breakdown
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {report.viva.rubric_rows.length === 0 ? (
-            <p className="text-sm text-slate-500">No viva rubric data recorded for this student.</p>
-          ) : (
-            <div className="overflow-hidden rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>SL</TableHead>
-                    <TableHead>Criteria</TableHead>
-                    <TableHead>Max Marks</TableHead>
-                    <TableHead>Awarded Marks</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {report.viva.rubric_rows.map((row) => (
-                    <TableRow key={`${row.criteria}-${row.sl}`}>
-                      <TableCell>{row.sl}</TableCell>
-                      <TableCell className="font-medium">{row.criteria}</TableCell>
-                      <TableCell>{formatReportNumber(row.max_marks)}</TableCell>
-                      <TableCell>{formatReportNumber(row.awarded_marks)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       <Card className="border-slate-200">
         <CardHeader>

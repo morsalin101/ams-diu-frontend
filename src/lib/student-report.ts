@@ -92,6 +92,7 @@ export interface StudentAdmissionDetailReport {
   final_result: {
     written_marks: number;
     viva_marks: number;
+    viva_given: boolean;
     written_viva_total: number;
     weighted_total: number;
     threshold?: number | null;
@@ -174,13 +175,6 @@ function getWrittenTotalMarks(report: StudentAdmissionDetailReport) {
   return Number(report.written_summary.total_marks || 0);
 }
 
-function getVivaTotalMarks(report: StudentAdmissionDetailReport) {
-  return report.viva.rubric_rows.reduce(
-    (total, row) => total + Number(row.max_marks || 0),
-    0,
-  );
-}
-
 function buildWeightedComponentEquation({
   label,
   numeratorLabel,
@@ -227,7 +221,6 @@ export function buildCalculationEquationLines(report: StudentAdmissionDetailRepo
       : 0;
   const academicDivisor = getAcademicDivisor(report);
   const writtenTotalMarks = getWrittenTotalMarks(report);
-  const vivaTotalMarks = getVivaTotalMarks(report);
 
   const lines: StudentReportEquationLine[] = [
     {
@@ -270,21 +263,9 @@ export function buildCalculationEquationLines(report: StudentAdmissionDetailRepo
       }),
     },
     {
-      label: "Viva Contribution",
-      equation: buildWeightedComponentEquation({
-        label: "Viva Contribution",
-        numeratorLabel: "Viva Marks",
-        numeratorValue: report.final_result.viva_marks,
-        denominatorLabel: "Total Viva Marks",
-        denominatorValue: vivaTotalMarks,
-        weightLabel: "Viva Weight",
-        weightValue: distribution.viva,
-        contributionValue: report.final_result.viva_contribution,
-      }),
-    },
-    {
+      // ponytail: viva omitted from the equation while viva contribution is 0 (marks hidden).
       label: "Final Weighted Total",
-      equation: `Final Weighted Total = SSC Contribution + ${academicLabel} Contribution + Written Contribution + Viva Contribution = ${formatReportNumber(report.final_result.ssc_contribution)} + ${formatReportNumber(report.final_result.academic_contribution)} + ${formatReportNumber(report.final_result.written_contribution)} + ${formatReportNumber(report.final_result.viva_contribution)} = ${formatReportNumber(report.final_result.weighted_total)}`,
+      equation: `Final Weighted Total = SSC Contribution + ${academicLabel} Contribution + Written Contribution = ${formatReportNumber(report.final_result.ssc_contribution)} + ${formatReportNumber(report.final_result.academic_contribution)} + ${formatReportNumber(report.final_result.written_contribution)} = ${formatReportNumber(report.final_result.weighted_total)}`,
     },
   ];
 
