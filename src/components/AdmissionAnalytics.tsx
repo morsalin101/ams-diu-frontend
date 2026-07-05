@@ -30,8 +30,12 @@ import toast from 'react-hot-toast';
 // Fixed status palette (validated with the dataviz skill). Status colors are
 // never themed and always ship with a text label (the legend), so meaning is
 // never carried by color alone.
+// App theme color (default theme indigo, rgb(46,48,148)). Used for the primary
+// "Selected" outcome and brand accents.
+const THEME_COLOR = '#2E3094';
+
 const STATUS_META = {
-  SELECTED: { label: 'Selected', color: '#0ca30c', icon: CheckCircle2 },
+  SELECTED: { label: 'Selected', color: THEME_COLOR, icon: CheckCircle2 },
   WAITING: { label: 'Waiting', color: '#fab219', icon: Clock },
   REJECTED: { label: 'Rejected', color: '#d03b3b', icon: XCircle },
   ABSENT: { label: 'Absent', color: '#898781', icon: UserX },
@@ -47,12 +51,10 @@ const INK = {
   axis: '#c3c2b7',
 };
 
-// App theme color (matches the default "Default" theme indigo). Used for the
-// brand/neutral series and accents so the dashboard reads as one system; the
-// date-wise chart keeps its status colors since that distinction is the point.
-const THEME_COLOR = '#2E3094';
-const DEPT_TOTAL_COLOR = THEME_COLOR;
-const DEPT_SELECTED_COLOR = '#0ca30c';
+// Department chart: neutral slate for the whole cohort, theme indigo for the
+// selected subset — so the two series stay distinct without reusing green.
+const DEPT_TOTAL_COLOR = '#94a3b8';
+const DEPT_SELECTED_COLOR = THEME_COLOR;
 
 interface DailyRow {
   date: string;
@@ -133,7 +135,7 @@ export function AdmissionAnalytics({ gradientClass }: AdmissionAnalyticsProps) {
           value: stats.totals.total_results,
           description: `${stats.totals.attended} attended`,
           icon: Users,
-          accent: THEME_COLOR,
+          accent: '#64748b',
         },
         {
           title: 'Selected',
