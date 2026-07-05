@@ -788,7 +788,7 @@ export function Results({ gradientClass }: ResultsProps) {
 
           {selectedResult && (
             <div className="grid min-h-0 flex-1 grid-rows-[auto_auto_minmax(88px,auto)_auto] gap-2">
-              <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-sm">
+              <Card className="border-blue-200 shadow-sm bg-gradient-to-r from-blue-50 to-indigo-50">
                 <CardContent className="p-3">
                   <div className="grid grid-cols-1 items-center gap-3 xl:grid-cols-[1fr_auto]">
                     <div className="min-w-0">
@@ -843,7 +843,7 @@ export function Results({ gradientClass }: ResultsProps) {
                       </div>
 
                       <div className="flex min-w-[140px] items-center gap-2 rounded-2xl border border-green-200 bg-green-50 px-3 py-2">
-                        <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600" />
+                        <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
                         <div>
                           <div className="text-lg font-extrabold leading-none text-green-600">
                             {selectedResult.results.correct_answers}
@@ -855,7 +855,7 @@ export function Results({ gradientClass }: ResultsProps) {
                       </div>
 
                       <div className="flex min-w-[140px] items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-2">
-                        <XCircle className="h-5 w-5 shrink-0 text-red-600" />
+                        <XCircle className="w-5 h-5 text-red-600 shrink-0" />
                         <div>
                           <div className="text-lg font-extrabold leading-none text-red-600">
                             {selectedResult.results.wrong_answers}
@@ -891,9 +891,9 @@ export function Results({ gradientClass }: ResultsProps) {
                               key={subject.subject_id}
                               className="rounded-xl border border-slate-200 bg-[#F8FAFC] p-3 shadow-sm transition-colors hover:border-[#2E3094]/25"
                             >
-                              <div className="mb-2 flex items-start justify-between gap-2">
-                                <h4 className="flex min-w-0 items-center gap-2 text-sm font-bold text-slate-800">
-                                  <BookOpen className="h-4 w-4 shrink-0 text-slate-500" />
+                              <div className="flex items-start justify-between gap-2 mb-2">
+                                <h4 className="flex items-center min-w-0 gap-2 text-sm font-bold text-slate-800">
+                                  <BookOpen className="w-4 h-4 shrink-0 text-slate-500" />
                                   <span className="line-clamp-2">
                                     {subject.subject_name}
                                   </span>
@@ -902,7 +902,7 @@ export function Results({ gradientClass }: ResultsProps) {
                                   variant="outline"
                                   className={`${getPerformanceColor(subject.score_percentage)} shrink-0 rounded-lg px-2 py-0.5 text-[11px] font-bold`}
                                 >
-                                  <SubjectIcon className="mr-1 h-3 w-3" />
+                                  <SubjectIcon className="w-3 h-3 mr-1" />
                                   {formatPercentage(subject.score_percentage)}
                                 </Badge>
                               </div>
@@ -955,7 +955,7 @@ export function Results({ gradientClass }: ResultsProps) {
                 </CardContent>
               </Card>
 
-              <Card className="min-h-0 overflow-hidden border-slate-200 shadow-sm flex-shrink-0">
+              <Card className="flex-shrink-0 min-h-0 overflow-hidden shadow-sm border-slate-200">
                 <CardHeader className="px-4 py-2 border-b border-slate-100">
                   <CardTitle className="flex items-center gap-2 text-sm font-semibold text-slate-800">
                     <GraduationCap className="h-4 w-4 text-[#2E3094]" />
@@ -964,7 +964,7 @@ export function Results({ gradientClass }: ResultsProps) {
                 </CardHeader>
                 <CardContent className="max-h-[100px] overflow-y-auto p-2">
                   {selectedResult?.viva_marks?.marks > 0 ? (
-                    <div className="rounded-xl border border-green-200 bg-green-50 p-2">
+                    <div className="p-2 border border-green-200 rounded-xl bg-green-50">
                       <div className="flex items-center justify-between gap-3">
                         <h4 className="text-sm font-semibold text-green-800">
                           Viva Completed
@@ -982,7 +982,7 @@ export function Results({ gradientClass }: ResultsProps) {
                           <p className="mb-1 text-xs font-medium text-green-700">
                             Examiner's Remarks:
                           </p>
-                          <p className="rounded-lg border bg-white p-2 text-xs text-green-600 line-clamp-2">
+                          <p className="p-2 text-xs text-green-600 bg-white border rounded-lg line-clamp-2">
                             {selectedResult.viva_marks.remarks}
                           </p>
                         </div>
@@ -999,7 +999,7 @@ export function Results({ gradientClass }: ResultsProps) {
                             ).map(([rubricId, marks]) => (
                               <div
                                 key={rubricId}
-                                className="rounded-lg border bg-white p-2 text-xs"
+                                className="p-2 text-xs bg-white border rounded-lg"
                               >
                                 <span className="font-medium">
                                   Rubric {rubricId}:
@@ -1012,9 +1012,9 @@ export function Results({ gradientClass }: ResultsProps) {
                       )}
                     </div>
                   ) : (
-                    <div className="flex items-center justify-between gap-3 rounded-xl border border-yellow-200 bg-yellow-50 p-2">
+                    <div className="flex items-center justify-between gap-3 p-2 border border-yellow-200 rounded-xl bg-yellow-50">
                       <div className="flex items-center gap-3">
-                        <AlertTriangle className="h-6 w-6 shrink-0 text-yellow-600" />
+                        <AlertTriangle className="w-6 h-6 text-yellow-600 shrink-0" />
                         <p className="text-sm font-medium text-yellow-800">
                           Viva examination has not been completed
                         </p>

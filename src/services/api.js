@@ -384,6 +384,16 @@ export const examAPI = {
     }
   },
 
+  // Update one question-bank item (scraper item shape)
+  updateQuestionBankItem: async (questionId, payload) => {
+    try {
+      const response = await api.patch(`/api/question-bank/${questionId}/update/`, payload);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
   // Permanently delete one question-bank item
   deleteQuestionBankItem: async (questionId) => {
     try {

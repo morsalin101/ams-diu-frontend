@@ -4,6 +4,7 @@ import {
   Eye,
   Filter,
   Loader2,
+  Pencil,
   RefreshCw,
   Search,
   Trash2,
@@ -48,6 +49,10 @@ import {
 } from '../components/ui/table';
 import { usePermissions } from '../hooks/usePermissions';
 import { MathText } from '../components/MathText';
+import {
+  QuestionEditorFields,
+  type EditableQuestion,
+} from '../components/ScrappedQuestionEditor';
 import { examAPI } from '../services/api';
 
 interface QuestionBankItem {
@@ -61,12 +66,6 @@ interface QuestionBankItem {
   marks: number;
   semester: string;
   department_shortname: string;
-}
-
-interface NormalizedOption {
-  key: string;
-  value: string;
-  isCorrect: boolean;
 }
 
 interface DeleteQuestionsProps {
@@ -134,18 +133,112 @@ function stringifyDisplayValue(value: unknown): string {
 }
 
 function getQuestionText(question: QuestionBankItem) {
-  return stringifyDisplayValue(question.questions);
+  return stringifyDisplayValue(parseOptions(question.questions));
 }
 
-function normalizeToken(value: unknown) {
-  return stringifyDisplayValue(value)
-    .replace(/[()[\]]/g, '')
-    .trim()
-    .toLowerCase();
+// Separate language variants for the preview (empty string when absent).
+function getQuestionLanguages(question: QuestionBankItem) {
+  const parsed = parseOptions(question.questions);
+  const record = isRecord(parsed) ? parsed : {};
+  return {
+    bangla: typeof record.bangla === 'string' ? record.bangla.trim() : '',
+    english: typeof record.english === 'string' ? record.english.trim() : '',
+  };
+}
+
+const EDIT_ENG_KEYS = ['A', 'B', 'C', 'D'];
+const EDIT_BANG_KEYS = ['ক', 'খ', 'গ', 'ঘ'];
+const BENGALI_CHARS = /[ঀ-৿]/;
+
+// The question bank holds two generations of data: the current
+// {both, english} structure and flat legacy shapes ({"A": "..."} records,
+// arrays, plain answer lists). Adapt anything into the editor's shape.
+function adaptOptionsForEdit(raw: unknown): {
+  both: Record<string, string>;
+  english: Record<string, string>;
+} {
+  const parsed = parseOptions(raw);
+
+  if (isRecord(parsed) && (isRecord(parsed.both) || isRecord(parsed.english))) {
+    return {
+      both: isRecord(parsed.both) ? (parsed.both as Record<string, string>) : {},
+      english: isRecord(parsed.english) ? (parsed.english as Record<string, string>) : {},
+    };
+  }
+
+  if (Array.isArray(parsed)) {
+    const english: Record<string, string> = {};
+    parsed.slice(0, 4).forEach((value, index) => {
+      english[EDIT_ENG_KEYS[index]] = stringifyDisplayValue(value);
+    });
+    return { both: {}, english };
+  }
+
+  if (isRecord(parsed)) {
+    const keys = Object.keys(parsed);
+    if (keys.some(key => EDIT_BANG_KEYS.includes(key.trim()))) {
+      const both: Record<string, string> = {};
+      keys.forEach(key => {
+        both[key.trim()] = stringifyDisplayValue(parsed[key]);
+      });
+      return { both, english: {} };
+    }
+    const english: Record<string, string> = {};
+    keys.forEach(key => {
+      english[key.trim().toUpperCase()] = stringifyDisplayValue(parsed[key]);
+    });
+    return { both: {}, english };
+  }
+
+  return { both: {}, english: {} };
+}
+
+function adaptAnswerForEdit(
+  raw: unknown,
+  options: { both: Record<string, string>; english: Record<string, string> },
+): { both: string[]; english: string[] } {
+  const parsed = parseOptions(raw);
+
+  if (isRecord(parsed) && ('both' in parsed || 'english' in parsed)) {
+    const toList = (value: unknown) =>
+      Array.isArray(value) ? value.map(item => stringifyDisplayValue(item)).filter(Boolean) : [];
+    return { both: toList(parsed.both), english: toList(parsed.english) };
+  }
+
+  const values = Array.isArray(parsed)
+    ? parsed.map(item => stringifyDisplayValue(item)).filter(Boolean)
+    : stringifyDisplayValue(parsed)
+      ? [stringifyDisplayValue(parsed)]
+      : [];
+
+  const both: string[] = [];
+  const english: string[] = [];
+  values.forEach(value => {
+    const token = value.trim();
+    if (EDIT_BANG_KEYS.includes(token)) {
+      both.push(token);
+      return;
+    }
+    if (EDIT_ENG_KEYS.includes(token.toUpperCase())) {
+      english.push(token.toUpperCase());
+      return;
+    }
+    // Legacy answers sometimes store the option text instead of the key.
+    const englishKey = Object.entries(options.english).find(
+      ([, optionValue]) => optionValue.trim().toLowerCase() === token.toLowerCase(),
+    )?.[0];
+    if (englishKey) english.push(englishKey);
+    const banglaKey = Object.entries(options.both).find(
+      ([, optionValue]) => optionValue.trim().toLowerCase() === token.toLowerCase(),
+    )?.[0];
+    if (banglaKey) both.push(banglaKey);
+  });
+
+  return { both: both.slice(0, 1), english: english.slice(0, 1) };
 }
 
 function getAnswerValues(answer: unknown): string[] {
-  const displayAnswer = pickDisplayValue(answer);
+  const displayAnswer = pickDisplayValue(parseOptions(answer));
 
   if (Array.isArray(displayAnswer)) {
     return displayAnswer
@@ -163,65 +256,33 @@ function getAnswerValues(answer: unknown): string[] {
   return answerText ? [answerText] : [];
 }
 
+// Tolerates both JSON strings and Python-repr strings ({'both': ...}, None,
+// True/False) — same approach as BlockedQuestions, which handles this data.
 function parseOptions(options: unknown): unknown {
   if (typeof options !== 'string') {
     return options;
   }
 
-  try {
-    return JSON.parse(options);
-  } catch {
+  const trimmed = options.trim();
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
     return options;
   }
-}
 
-function getQuestionOptions(question: QuestionBankItem): NormalizedOption[] {
-  const parsedOptions = parseOptions(question.options);
-  const displayOptions = pickDisplayValue(parsedOptions);
-  const answerTokens = new Set(
-    getAnswerValues(question.answer).map(normalizeToken),
-  );
-
-  if (Array.isArray(displayOptions)) {
-    return displayOptions
-      .map((option, index) => ({
-        key: String.fromCharCode(65 + index),
-        value: stringifyDisplayValue(option),
-      }))
-      .filter(option => option.value)
-      .map(option => ({
-        ...option,
-        isCorrect:
-          answerTokens.has(normalizeToken(option.key)) ||
-          answerTokens.has(normalizeToken(option.value)),
-      }));
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    try {
+      return JSON.parse(
+        trimmed
+          .replace(/\bNone\b/g, 'null')
+          .replace(/\bTrue\b/g, 'true')
+          .replace(/\bFalse\b/g, 'false')
+          .replace(/'/g, '"'),
+      );
+    } catch {
+      return options;
+    }
   }
-
-  if (isRecord(displayOptions)) {
-    return Object.entries(displayOptions)
-      .map(([key, value]) => ({
-        key,
-        value: stringifyDisplayValue(value),
-      }))
-      .filter(option => option.value)
-      .map(option => ({
-        ...option,
-        isCorrect:
-          answerTokens.has(normalizeToken(option.key)) ||
-          answerTokens.has(normalizeToken(option.value)),
-      }));
-  }
-
-  const optionsText = stringifyDisplayValue(displayOptions);
-  return optionsText
-    ? [
-        {
-          key: 'Option',
-          value: optionsText,
-          isCorrect: answerTokens.has(normalizeToken(optionsText)),
-        },
-      ]
-    : [];
 }
 
 function compareQuestions(
@@ -248,8 +309,9 @@ function compareQuestions(
 }
 
 export function DeleteQuestions({ gradientClass = '' }: DeleteQuestionsProps) {
-  const { canRead, canDelete } = usePermissions();
+  const { canRead, canWrite, canDelete } = usePermissions();
   const hasReadAccess = canRead();
+  const hasWriteAccess = canWrite();
   const hasDeleteAccess = canDelete();
 
   const [questions, setQuestions] = useState<QuestionBankItem[]>([]);
@@ -268,6 +330,74 @@ export function DeleteQuestions({ gradientClass = '' }: DeleteQuestionsProps) {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [previewQuestion, setPreviewQuestion] =
     useState<QuestionBankItem | null>(null);
+  const [editingQuestion, setEditingQuestion] = useState<QuestionBankItem | null>(null);
+  const [editDraft, setEditDraft] = useState<EditableQuestion | null>(null);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  const openEditDialog = (question: QuestionBankItem) => {
+    let { bangla, english } = getQuestionLanguages(question);
+    if (!bangla && !english) {
+      // Legacy rows store the question as one plain string.
+      const merged = getQuestionText(question);
+      if (BENGALI_CHARS.test(merged)) {
+        bangla = merged;
+      } else {
+        english = merged;
+      }
+    }
+
+    const options = adaptOptionsForEdit(question.options);
+    setEditingQuestion(question);
+    setEditDraft({
+      subject: question.subject ?? '',
+      question_bangla: bangla,
+      question_english: english,
+      options,
+      answer: adaptAnswerForEdit(question.answer, options),
+      semester: question.semester ?? '',
+      department: question.department_shortname ?? 'CSE',
+      qno: question.id,
+    });
+  };
+
+  const closeEditDialog = () => {
+    setEditingQuestion(null);
+    setEditDraft(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingQuestion || !editDraft) return;
+
+    setIsSavingEdit(true);
+    try {
+      const bangla = editDraft.question_bangla.trim();
+      const english = editDraft.question_english.trim();
+      const response = await examAPI.updateQuestionBankItem(editingQuestion.id, {
+        subject: editDraft.subject.trim(),
+        question_bangla: bangla,
+        question_english: english,
+        question_both: english ? `${bangla} (${english})`.trim() : bangla,
+        options: editDraft.options,
+        answer: editDraft.answer,
+        semester: editDraft.semester.trim(),
+        department: (editDraft.department || 'CSE').trim(),
+      });
+
+      if (response?.success === false) {
+        throw response;
+      }
+
+      toast.success('Question updated successfully');
+      closeEditDialog();
+      await loadQuestions();
+    } catch (error: any) {
+      console.error('Error updating question:', error);
+      const issues = Array.isArray(error?.issues) ? ` ${error.issues.join(' ')}` : '';
+      toast.error((error?.message || 'Failed to update question') + issues, { duration: 8000 });
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
 
   const loadQuestions = async () => {
     setIsLoading(true);
@@ -504,9 +634,52 @@ export function DeleteQuestions({ gradientClass = '' }: DeleteQuestionsProps) {
     }
   };
 
-  const previewOptions = previewQuestion
-    ? getQuestionOptions(previewQuestion)
-    : [];
+  const previewOptionSets = previewQuestion
+    ? adaptOptionsForEdit(previewQuestion.options)
+    : { both: {}, english: {} };
+  const previewAdaptedAnswer = previewQuestion
+    ? adaptAnswerForEdit(previewQuestion.answer, previewOptionSets)
+    : { both: [], english: [] };
+  const buildPreviewOptions = (map: Record<string, string>, answerKeys: string[]) =>
+    Object.entries(map)
+      .map(([key, value]) => ({
+        key,
+        value: stringifyDisplayValue(value),
+        isCorrect: answerKeys.includes(key),
+      }))
+      .filter(option => option.value);
+  const previewBanglaOptions = buildPreviewOptions(previewOptionSets.both, previewAdaptedAnswer.both);
+  const previewEnglishOptions = buildPreviewOptions(previewOptionSets.english, previewAdaptedAnswer.english);
+  const renderPreviewOptionSet = (
+    title: string,
+    options: { key: string; value: string; isCorrect: boolean }[],
+  ) => (
+    <div className="space-y-2">
+      <Label className="text-xs font-semibold text-gray-500 uppercase">{title}</Label>
+      {options.map(option => (
+        <div
+          key={`${title}-${option.key}`}
+          className={`rounded-md border p-3 text-sm ${
+            option.isCorrect
+              ? 'border-green-300 bg-green-50 text-green-800'
+              : 'border-gray-200 bg-white text-gray-700'
+          }`}
+        >
+          <div className="flex flex-wrap items-start gap-2">
+            <span className="font-semibold">{option.key}.</span>
+            <span className="flex-1 min-w-0 break-words">
+              <MathText text={String(option.value ?? '')} />
+            </span>
+            {option.isCorrect ? (
+              <Badge variant="outline" className="text-green-700 bg-green-100 border-green-300">
+                Correct
+              </Badge>
+            ) : null}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
   const previewAnswers = previewQuestion
     ? getAnswerValues(previewQuestion.answer)
     : [];
@@ -826,6 +999,17 @@ export function DeleteQuestions({ gradientClass = '' }: DeleteQuestionsProps) {
                             >
                               <Eye className="w-4 h-4" />
                             </Button>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="ml-2 text-emerald-700 border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800"
+                              onClick={() => openEditDialog(question)}
+                              disabled={!hasWriteAccess}
+                              title={`Edit question #${question.id}`}
+                              aria-label={`Edit question ${question.id}`}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
                           </TableCell>
                           <TableCell className="text-right">
                             <Button
@@ -909,6 +1093,16 @@ export function DeleteQuestions({ gradientClass = '' }: DeleteQuestionsProps) {
                           <Button
                             variant="outline"
                             size="sm"
+                            className="text-emerald-700 border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800"
+                            onClick={() => openEditDialog(question)}
+                            disabled={!hasWriteAccess}
+                          >
+                            <Pencil className="w-4 h-4 mr-2" />
+                            Edit
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
                             className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
                             onClick={() => handleDeleteSingle(question)}
                             disabled={!hasDeleteAccess || isDeleting}
@@ -962,52 +1156,60 @@ export function DeleteQuestions({ gradientClass = '' }: DeleteQuestionsProps) {
                   </Badge>
                 </div>
 
-                <div className="space-y-2">
-                  <Label className="font-semibold text-gray-800">
-                    Question
-                  </Label>
-                  <div className="p-3 border rounded-md bg-gray-50">
-                    <p className="text-sm leading-relaxed text-gray-800 break-words whitespace-pre-wrap">
-                      <MathText text={getQuestionText(previewQuestion) || 'No question text available.'} />
-                    </p>
-                  </div>
-                </div>
+                {(() => {
+                  const { bangla, english } = getQuestionLanguages(previewQuestion);
+                  if (!bangla && !english) {
+                    return (
+                      <div className="space-y-2">
+                        <Label className="font-semibold text-gray-800">Question</Label>
+                        <div className="p-3 border rounded-md bg-gray-50">
+                          <p className="text-sm leading-relaxed text-gray-800 break-words whitespace-pre-wrap">
+                            <MathText text={getQuestionText(previewQuestion) || 'No question text available.'} />
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="space-y-3">
+                      {bangla ? (
+                        <div className="space-y-2">
+                          <Label className="font-semibold text-gray-800">Question (Bangla)</Label>
+                          <div className="p-3 border rounded-md bg-gray-50">
+                            <p className="text-sm leading-relaxed text-gray-800 break-words whitespace-pre-wrap">
+                              <MathText text={bangla} />
+                            </p>
+                          </div>
+                        </div>
+                      ) : null}
+                      {english ? (
+                        <div className="space-y-2">
+                          <Label className="font-semibold text-gray-800">Question (English)</Label>
+                          <div className="p-3 border rounded-md bg-gray-50">
+                            <p className="text-sm leading-relaxed text-gray-800 break-words whitespace-pre-wrap">
+                              <MathText text={english} />
+                            </p>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })()}
 
                 {previewQuestion.type === 'option' ? (
-                  <div className="space-y-2">
+                  <div className="space-y-4">
                     <Label className="font-semibold text-gray-800">
                       Options
                     </Label>
-                    {previewOptions.length > 0 ? (
-                      <div className="space-y-2">
-                        {previewOptions.map(option => (
-                          <div
-                            key={`${option.key}-${option.value}`}
-                            className={`rounded-md border p-3 text-sm ${
-                              option.isCorrect
-                                ? 'border-green-300 bg-green-50 text-green-800'
-                                : 'border-gray-200 bg-white text-gray-700'
-                            }`}
-                          >
-                            <div className="flex flex-wrap items-start gap-2">
-                              <span className="font-semibold">
-                                {option.key}.
-                              </span>
-                              <span className="flex-1 min-w-0 break-words">
-                                <MathText text={String(option.value ?? '')} />
-                              </span>
-                              {option.isCorrect ? (
-                                <Badge
-                                  variant="outline"
-                                  className="text-green-700 bg-green-100 border-green-300"
-                                >
-                                  Correct
-                                </Badge>
-                              ) : null}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                    {previewBanglaOptions.length > 0 || previewEnglishOptions.length > 0 ? (
+                      <>
+                        {previewBanglaOptions.length > 0
+                          ? renderPreviewOptionSet('Options (ক / খ / গ / ঘ)', previewBanglaOptions)
+                          : null}
+                        {previewEnglishOptions.length > 0
+                          ? renderPreviewOptionSet('English options (A / B / C / D)', previewEnglishOptions)
+                          : null}
+                      </>
                     ) : (
                       <p className="p-3 text-sm text-gray-600 border rounded-md bg-gray-50">
                         No options available.
@@ -1028,6 +1230,55 @@ export function DeleteQuestions({ gradientClass = '' }: DeleteQuestionsProps) {
                     </p>
                   </div>
                 </div>
+              </div>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(editingQuestion)}
+        onOpenChange={open => {
+          if (!open) {
+            closeEditDialog();
+          }
+        }}
+      >
+        <DialogContent className="max-h-[85vh] max-w-[95vw] overflow-y-auto sm:max-w-3xl">
+          {editingQuestion && editDraft ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Edit Question #{editingQuestion.id}</DialogTitle>
+                <DialogDescription>
+                  Update the question and save. Changes are validated with the
+                  same rules as question inserts.
+                </DialogDescription>
+              </DialogHeader>
+
+              <QuestionEditorFields
+                question={editDraft}
+                radioGroupId={`edit-${editingQuestion.id}`}
+                onChange={setEditDraft}
+              />
+
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <Button variant="outline" onClick={closeEditDialog} disabled={isSavingEdit}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveEdit}
+                  disabled={isSavingEdit}
+                  className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#1E2078] hover:to-[#3A3F9A] text-white"
+                >
+                  {isSavingEdit ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Saving…
+                    </>
+                  ) : (
+                    'Save Changes'
+                  )}
+                </Button>
               </div>
             </>
           ) : null}

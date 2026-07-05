@@ -67,6 +67,137 @@ export function buildInsertPayload(questions: EditableQuestion[], filename: stri
 const brandBtn =
   'bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#1E2078] hover:to-[#3A3F9A] text-white';
 
+// Editable fields for one question (meta, bangla/english text with LaTeX
+// preview, both option sets with answer radios). Shared by the scrapper
+// review list and the question-bank edit dialog.
+export function QuestionEditorFields({
+  question: q,
+  onChange,
+  radioGroupId,
+}: {
+  question: EditableQuestion;
+  onChange: (question: EditableQuestion) => void;
+  radioGroupId: string;
+}) {
+  const update = (patch: Partial<EditableQuestion>) => onChange({ ...q, ...patch });
+
+  const updateOption = (set: 'both' | 'english', key: string, value: string) => {
+    onChange({ ...q, options: { ...q.options, [set]: { ...q.options[set], [key]: value } } });
+  };
+
+  const setAnswer = (set: 'both' | 'english', key: string) => {
+    onChange({ ...q, answer: { ...q.answer, [set]: [key] } });
+  };
+
+  const renderOptionSet = (set: 'both' | 'english') => {
+    const keys = set === 'both' ? BOTH_KEYS : ENG_KEYS;
+    const map = q.options[set];
+    return (
+      <div className="mt-3">
+        <Label className="text-xs font-semibold text-gray-500 uppercase">
+          {set === 'both' ? 'Options (ক / খ / গ / ঘ)' : 'English options (A / B / C / D)'}
+        </Label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-1">
+          {keys.map((k) => {
+            const selected = q.answer[set]?.[0] === k;
+            return (
+              <div
+                key={k}
+                className={`flex items-start gap-2 p-2 rounded border ${
+                  selected ? 'border-green-500 bg-green-50' : 'border-gray-200'
+                }`}
+              >
+                <input
+                  type="radio"
+                  className="mt-2"
+                  name={`answer-${radioGroupId}-${set}`}
+                  checked={selected}
+                  onChange={() => setAnswer(set, k)}
+                  title="Mark as correct answer"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-1">
+                    <span className="font-semibold w-5">{k}.</span>
+                    <Input
+                      value={map[k] ?? ''}
+                      onChange={(e) => updateOption(set, k, e.target.value)}
+                      placeholder={`Option ${k}`}
+                    />
+                  </div>
+                  {(map[k] || '').includes('$') && (
+                    <div className="text-sm text-gray-700 mt-1 pl-6">
+                      <MathText text={map[k]} />
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
+        <div>
+          <Label className="text-xs">Subject</Label>
+          <Input value={q.subject} onChange={(e) => update({ subject: e.target.value })} />
+        </div>
+        <div>
+          <Label className="text-xs">Semester</Label>
+          <Input value={q.semester} onChange={(e) => update({ semester: e.target.value })} />
+        </div>
+        <div>
+          <Label className="text-xs">Department</Label>
+          <Input value={q.department} onChange={(e) => update({ department: e.target.value })} />
+        </div>
+        <div>
+          <Label className="text-xs">Question No.</Label>
+          <Input value={String(q.qno)} onChange={(e) => update({ qno: e.target.value })} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <Label className="text-xs">Question (Bangla)</Label>
+          <Textarea
+            value={q.question_bangla}
+            onChange={(e) => update({ question_bangla: e.target.value })}
+            rows={2}
+          />
+          {q.question_bangla.includes('$') && (
+            <div className="text-sm text-gray-700 mt-1 p-2 bg-gray-50 rounded">
+              <MathText text={q.question_bangla} />
+            </div>
+          )}
+        </div>
+        <div>
+          <Label className="text-xs">Question (English)</Label>
+          <Textarea
+            value={q.question_english}
+            onChange={(e) => update({ question_english: e.target.value })}
+            rows={2}
+          />
+          {q.question_english.includes('$') && (
+            <div className="text-sm text-gray-700 mt-1 p-2 bg-gray-50 rounded">
+              <MathText text={q.question_english} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {renderOptionSet('both')}
+      {renderOptionSet('english')}
+      <p className="text-xs text-gray-400 mt-2">
+        Select the radio next to the correct option. Each option set needs exactly 4
+        filled options and one selected answer.
+      </p>
+    </>
+  );
+}
+
 interface ScrappedQuestionEditorProps {
   questions: EditableQuestion[];
   onQuestionsChange: (questions: EditableQuestion[]) => void;
@@ -91,77 +222,8 @@ export function ScrappedQuestionEditor({
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const updateQuestion = (idx: number, patch: Partial<EditableQuestion>) => {
-    onQuestionsChange(questions.map((q, i) => (i === idx ? { ...q, ...patch } : q)));
-  };
-
-  const updateOption = (idx: number, set: 'both' | 'english', key: string, value: string) => {
-    onQuestionsChange(
-      questions.map((q, i) =>
-        i === idx
-          ? { ...q, options: { ...q.options, [set]: { ...q.options[set], [key]: value } } }
-          : q
-      )
-    );
-  };
-
-  const setAnswer = (idx: number, set: 'both' | 'english', key: string) => {
-    onQuestionsChange(
-      questions.map((q, i) => (i === idx ? { ...q, answer: { ...q.answer, [set]: [key] } } : q))
-    );
-  };
-
   const removeQuestion = (idx: number) => {
     onQuestionsChange(questions.filter((_, i) => i !== idx));
-  };
-
-  const renderOptionSet = (q: EditableQuestion, idx: number, set: 'both' | 'english') => {
-    const keys = set === 'both' ? BOTH_KEYS : ENG_KEYS;
-    const map = q.options[set];
-    return (
-      <div className="mt-3">
-        <Label className="text-xs font-semibold text-gray-500 uppercase">
-          {set === 'both' ? 'Options (ক / খ / গ / ঘ)' : 'English options (A / B / C / D)'}
-        </Label>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-1">
-          {keys.map((k) => {
-            const selected = q.answer[set]?.[0] === k;
-            return (
-              <div
-                key={k}
-                className={`flex items-start gap-2 p-2 rounded border ${
-                  selected ? 'border-green-500 bg-green-50' : 'border-gray-200'
-                }`}
-              >
-                <input
-                  type="radio"
-                  className="mt-2"
-                  name={`answer-${idx}-${set}`}
-                  checked={selected}
-                  onChange={() => setAnswer(idx, set, k)}
-                  title="Mark as correct answer"
-                />
-                <div className="flex-1">
-                  <div className="flex items-center gap-1">
-                    <span className="font-semibold w-5">{k}.</span>
-                    <Input
-                      value={map[k] ?? ''}
-                      onChange={(e) => updateOption(idx, set, k, e.target.value)}
-                      placeholder={`Option ${k}`}
-                    />
-                  </div>
-                  {(map[k] || '').includes('$') && (
-                    <div className="text-sm text-gray-700 mt-1 pl-6">
-                      <MathText text={map[k]} />
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
   };
 
   return (
@@ -186,73 +248,13 @@ export function ScrappedQuestionEditor({
                     <Trash2 className="h-4 w-4 mr-1" /> Remove
                   </Button>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
-                  <div>
-                    <Label className="text-xs">Subject</Label>
-                    <Input
-                      value={q.subject}
-                      onChange={(e) => updateQuestion(idx, { subject: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Semester</Label>
-                    <Input
-                      value={q.semester}
-                      onChange={(e) => updateQuestion(idx, { semester: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Department</Label>
-                    <Input
-                      value={q.department}
-                      onChange={(e) => updateQuestion(idx, { department: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Question No.</Label>
-                    <Input
-                      value={String(q.qno)}
-                      onChange={(e) => updateQuestion(idx, { qno: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs">Question (Bangla)</Label>
-                    <Textarea
-                      value={q.question_bangla}
-                      onChange={(e) => updateQuestion(idx, { question_bangla: e.target.value })}
-                      rows={2}
-                    />
-                    {q.question_bangla.includes('$') && (
-                      <div className="text-sm text-gray-700 mt-1 p-2 bg-gray-50 rounded">
-                        <MathText text={q.question_bangla} />
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <Label className="text-xs">Question (English)</Label>
-                    <Textarea
-                      value={q.question_english}
-                      onChange={(e) => updateQuestion(idx, { question_english: e.target.value })}
-                      rows={2}
-                    />
-                    {q.question_english.includes('$') && (
-                      <div className="text-sm text-gray-700 mt-1 p-2 bg-gray-50 rounded">
-                        <MathText text={q.question_english} />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {renderOptionSet(q, idx, 'both')}
-                {renderOptionSet(q, idx, 'english')}
-                <p className="text-xs text-gray-400 mt-2">
-                  Select the radio next to the correct option. Each option set needs exactly 4
-                  filled options and one selected answer.
-                </p>
+                <QuestionEditorFields
+                  question={q}
+                  radioGroupId={String(idx)}
+                  onChange={(next) =>
+                    onQuestionsChange(questions.map((item, i) => (i === idx ? next : item)))
+                  }
+                />
               </div>
             ))}
           </CardContent>
