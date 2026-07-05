@@ -15,6 +15,7 @@ import {
   Save,
   X,
   AlertTriangle,
+  ArrowLeft,
 } from 'lucide-react';
 import { vivaMarksAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -67,17 +68,29 @@ export function VivaModal({
     rubrics_marks: {},
     remarks: '',
   });
+  // Raw text for each rubric input so partial/decimal entries (e.g. "3." or
+  // "3.5") type smoothly without being coerced back to an integer.
+  const [rubricInputs, setRubricInputs] = useState<{ [key: string]: string }>({});
 
   // Load rubrics when modal opens
   useEffect(() => {
     if (open && studentResult && user?.department_details?.id) {
       loadRubrics();
       // Reset form
+      const existingRubricMarks = studentResult.viva_marks?.rubrics_marks || {};
       setVivaMarks({
         marks: studentResult.viva_marks?.marks || 0,
-        rubrics_marks: studentResult.viva_marks?.rubrics_marks || {},
+        rubrics_marks: existingRubricMarks,
         remarks: studentResult.viva_marks?.remarks || '',
       });
+      setRubricInputs(
+        Object.fromEntries(
+          Object.entries(existingRubricMarks).map(([key, value]) => [
+            key,
+            String(value),
+          ]),
+        ),
+      );
       setSaveFeedback(null);
     }
   }, [open, studentResult, user?.department_details?.id]);
@@ -121,20 +134,29 @@ export function VivaModal({
     }
   };
 
-  const handleRubricMarksChange = (rubricId: number, marks: number) => {
+  const handleRubricMarksChange = (rubricId: number, rawValue: string) => {
+    // Accept only a valid decimal-in-progress: digits with at most one dot.
+    // This lets teachers type either integers or floats (e.g. "4" or "3.5").
+    if (rawValue !== '' && !/^\d*\.?\d*$/.test(rawValue)) {
+      return;
+    }
+
     const rubric = rubrics.find(r => r.id === rubricId);
-    if (rubric && marks > rubric.marks) {
+    const numeric = rawValue === '' ? 0 : parseFloat(rawValue);
+
+    if (rubric && !Number.isNaN(numeric) && numeric > rubric.marks) {
       toast.error(
         `Marks cannot exceed maximum of ${rubric.marks} for ${rubric.rubrics}`,
       );
       return;
     }
 
+    setRubricInputs(prev => ({ ...prev, [rubricId]: rawValue }));
     setVivaMarks(prev => ({
       ...prev,
       rubrics_marks: {
         ...prev.rubrics_marks,
-        [rubricId]: marks || 0,
+        [rubricId]: Number.isNaN(numeric) ? 0 : numeric,
       },
     }));
   };
@@ -216,7 +238,197 @@ export function VivaModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-[95vw] sm:w-[94vw] sm:max-w-[94vw] xl:max-w-[1400px] max-h-[94vh] sm:max-h-[92vh] md:max-h-[92vh] lg:max-h-[92vh] overflow-hidden flex flex-col">
+      <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 overflow-hidden rounded-none p-0 md:h-auto md:max-h-[92vh] md:w-[94vw] md:max-w-[94vw] md:gap-1.5 md:rounded-lg md:p-6 xl:max-w-[1400px]">
+        {/* Mobile layout */}
+        <div className="flex h-full min-h-0 flex-col md:hidden">
+          <header className="flex h-16 flex-shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4">
+            <div className="flex min-w-0 items-center gap-2">
+              <button
+                onClick={() => onOpenChange(false)}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#2E3094] hover:bg-slate-100 active:scale-90"
+                aria-label="Back"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+              <div className="min-w-0">
+                <h1 className="truncate text-base font-bold leading-tight text-[#2E3094]">
+                  {studentResult.student_name}
+                </h1>
+                <p className="truncate text-xs text-slate-500">
+                  {isVivaCompleted ? 'Update' : 'Give'} Viva Marks •{' '}
+                  {studentResult.exam_details.semester}
+                </p>
+              </div>
+            </div>
+            {isVivaCompleted ? (
+              <span className="flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-600">
+                <Award className="h-3.5 w-3.5" />
+                Completed
+              </span>
+            ) : (
+              <span className="flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-600">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Pending
+              </span>
+            )}
+          </header>
+
+          <main className="min-h-0 flex-1 space-y-6 overflow-y-auto bg-slate-50 px-4 py-6">
+            {/* Summary */}
+            <section className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  Written Score
+                </span>
+                <div className="mt-2">
+                  <span className="text-3xl font-extrabold text-[#2E3094]">
+                    {studentResult.results.score_percentage.toFixed(1)}%
+                  </span>
+                  <div className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5">
+                    <span className="text-[11px] font-medium text-slate-600">
+                      {studentResult.results.correct_answers} /{' '}
+                      {studentResult.exam_details.total_questions} Correct
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="relative flex flex-col justify-between overflow-hidden rounded-2xl bg-[#2E3094] p-4 shadow-md">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-white/70">
+                  Current Viva
+                </span>
+                <div className="mt-2">
+                  <span className="text-3xl font-extrabold text-white">
+                    {vivaMarks.marks}
+                  </span>
+                  <span className="text-base font-semibold text-white/60">
+                    {' '}
+                    / {totalMaxMarks}
+                  </span>
+                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/20">
+                    <div
+                      className="h-full bg-[#FFB59D] transition-all duration-500"
+                      style={{
+                        width: `${totalMaxMarks > 0 ? Math.min((vivaMarks.marks / totalMaxMarks) * 100, 100) : 0}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Rubrics */}
+            <section className="space-y-4">
+              <h2 className="flex items-center gap-2 text-base font-bold text-slate-800">
+                <ClipboardList className="h-5 w-5 text-[#2E3094]" />
+                Assessment Rubrics
+              </h2>
+
+              {loadingRubrics ? (
+                <div className="flex min-h-[160px] flex-col items-center justify-center text-slate-400">
+                  <Loader2 className="mb-3 h-7 w-7 animate-spin text-[#2E3094]" />
+                  <p className="text-sm">Loading assessment rubrics...</p>
+                </div>
+              ) : rubrics.length === 0 ? (
+                <div className="flex min-h-[160px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white text-center text-slate-400">
+                  <AlertTriangle className="mb-3 h-8 w-8 text-amber-400" />
+                  <p className="text-sm font-medium text-slate-600">
+                    No rubrics available
+                  </p>
+                  <p className="text-xs">
+                    Please configure rubrics for this department.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {rubrics.map(rubric => (
+                    <div
+                      key={rubric.id}
+                      className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="text-sm font-semibold leading-snug text-slate-900">
+                            {rubric.rubrics}
+                          </h3>
+                          <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wider text-slate-500">
+                            {rubric.department_shortname} Module
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1.5">
+                          <Input
+                            type="text"
+                            inputMode="decimal"
+                            value={rubricInputs[rubric.id] ?? ''}
+                            onChange={e =>
+                              handleRubricMarksChange(rubric.id, e.target.value)
+                            }
+                            placeholder="0"
+                            className="h-11 w-16 border-slate-300 text-center text-lg font-bold text-[#2E3094] focus-visible:ring-[#2E3094]"
+                          />
+                          <span className="text-sm font-semibold text-slate-400">
+                            / {rubric.marks}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* Remarks */}
+            <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-slate-500" />
+                <h2 className="text-base font-bold text-slate-800">
+                  Overall Remarks
+                </h2>
+                <span className="ml-auto text-xs text-slate-400">(Optional)</span>
+              </div>
+              <Textarea
+                rows={4}
+                value={vivaMarks.remarks}
+                onChange={e =>
+                  setVivaMarks(prev => ({ ...prev, remarks: e.target.value }))
+                }
+                placeholder="Record observations, student strengths, and areas for improvement..."
+                className="resize-none rounded-xl border-slate-200 bg-slate-50 text-sm"
+              />
+            </section>
+          </main>
+
+          {/* Footer actions */}
+          <div className="flex flex-shrink-0 items-center gap-3 border-t border-slate-200 bg-white p-4">
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isLoading}
+              className="h-12 flex-1 rounded-xl font-semibold text-slate-600"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveVivaMarks}
+              disabled={isLoading || rubrics.length === 0}
+              className="h-12 flex-[2] rounded-xl bg-[#2E3094] font-semibold text-white hover:bg-[#1E2078]"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  {isVivaCompleted ? 'Update Marks' : 'Save Marks'}
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {/* Desktop layout */}
+        <div className="hidden min-h-0 flex-1 flex-col overflow-hidden md:flex">
         <DialogHeader className="flex-shrink-0 pb-2 border-b border-slate-200/80 mt-1">
           <DialogTitle className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -461,14 +673,13 @@ export function VivaModal({
                           <div className="flex items-center justify-end w-32 shrink-0">
                             <div className="relative">
                               <Input
-                                type="number"
-                                min="0"
-                                max={rubric.marks}
-                                value={vivaMarks.rubrics_marks[rubric.id] || ''}
+                                type="text"
+                                inputMode="decimal"
+                                value={rubricInputs[rubric.id] ?? ''}
                                 onChange={e =>
                                   handleRubricMarksChange(
                                     rubric.id,
-                                    parseInt(e.target.value) || 0,
+                                    e.target.value,
                                   )
                                 }
                                 className="w-20 pr-8 text-right font-semibold text-lg border-gray-300 focus-visible:ring-blue-500 h-11"
@@ -528,6 +739,7 @@ export function VivaModal({
               )}
             </Button>
           )}
+        </div>
         </div>
       </DialogContent>
     </Dialog>

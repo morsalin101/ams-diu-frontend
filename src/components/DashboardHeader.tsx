@@ -1,12 +1,11 @@
 import { useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Bell, Settings, User } from 'lucide-react';
+import { Bell, Menu, Settings, User } from 'lucide-react';
 import { Button } from './ui/button';
 
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
-import { MobileMenu } from './MobileMenu';
-import { SidebarTrigger } from './ui/sidebar';
+import { useSidebar } from './ui/sidebar';
 import { useMenu } from '../contexts/MenuContext';
 
 interface DashboardHeaderProps {}
@@ -64,6 +63,7 @@ const titleFromPath = (pathname: string) => {
 export function DashboardHeader({}: DashboardHeaderProps) {
   const location = useLocation();
   const { menuItems } = useMenu();
+  const { toggleSidebar } = useSidebar();
 
   const pageTitle = useMemo(() => {
     const pathname = location.pathname;
@@ -82,7 +82,14 @@ export function DashboardHeader({}: DashboardHeaderProps) {
     <header className="flex h-[76px] sm:h-[88px] items-center gap-2 sm:gap-4 border-b border-white/10 bg-gradient-to-r from-[#0D1B4C] to-[#1E3A8A] px-4 sm:px-8 text-white shadow-md">
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-3 sm:gap-5 flex-1 min-w-0">
-          <SidebarTrigger className="md:hidden text-white hover:bg-white/15 hover:text-white" />
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            aria-label="Open navigation menu"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-white transition-colors hover:bg-white/20 active:scale-95 md:hidden"
+          >
+            <Menu className="h-6 w-6" strokeWidth={2.25} />
+          </button>
           <h1 className="truncate py-0.5 text-xl font-semibold leading-[1.3] text-white sm:text-[26px]">
             {pageTitle}
           </h1>
@@ -108,11 +115,6 @@ export function DashboardHeader({}: DashboardHeaderProps) {
               </AvatarFallback>
             </Avatar>
             <span className="hidden text-sm font-semibold text-white sm:block md:text-base">Admin User</span>
-          </div>
-
-          {/* Mobile Menu */}
-          <div className="md:hidden">
-            <MobileMenu />
           </div>
         </div>
       </div>

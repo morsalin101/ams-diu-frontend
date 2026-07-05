@@ -45,6 +45,7 @@ import {
   Trophy,
   GraduationCap,
   X,
+  ArrowLeft,
 } from 'lucide-react';
 import {
   Dialog,
@@ -151,6 +152,16 @@ export function Results({ gradientClass }: ResultsProps) {
     }
   }, [user?.id, currentPage, appliedSearch, appliedSemesterFilter, reloadKey]);
 
+  // Debounced auto-search so the search box applies without a button press.
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      const next = draftSearch.trim();
+      setAppliedSearch((prev) => (prev === next ? prev : next));
+      setCurrentPage(1);
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [draftSearch]);
+
   // Filter results based on search and filters
   useEffect(() => {
     let filtered = examResults;
@@ -254,6 +265,17 @@ export function Results({ gradientClass }: ResultsProps) {
     setReloadKey((current) => current + 1);
   };
 
+  // Auto-applying filters (used by the mobile layout, which has no Search button).
+  const handlePerformanceFilterChange = (value: string) => {
+    setDraftPerformanceFilter(value);
+    setAppliedPerformanceFilter(value);
+  };
+
+  const handleVivaStatusFilterChange = (value: string) => {
+    setDraftVivaStatusFilter(value);
+    setAppliedVivaStatusFilter(value);
+  };
+
   const handleClearSearch = () => {
     setDraftSearch('');
     setAppliedSearch('');
@@ -286,6 +308,13 @@ export function Results({ gradientClass }: ResultsProps) {
 
   const formatPercentage = (percentage: number) => {
     return `${percentage.toFixed(1)}%`;
+  };
+
+  const getInitials = (name?: string | null) => {
+    const parts = (name || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return '—';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
   const getPerformanceColor = (percentage: number) => {
@@ -391,7 +420,26 @@ export function Results({ gradientClass }: ResultsProps) {
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
+      {/* Mobile + tablet: single Total Students card */}
+      <div className="lg:hidden">
+        <div
+          className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4"
+          style={{ boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)' }}
+        >
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#E0E1FF] text-[#2E3094]">
+              <Users className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-500">Total Students</p>
+              <h2 className="text-2xl font-bold text-slate-900">{totalStudents}</h2>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop: full stats grid */}
+      <div className="hidden gap-4 lg:grid lg:grid-cols-5">
         <Card className="border-2 border-blue-200 bg-blue-50/50">
           <CardContent className="p-4 text-center">
             <Users className="w-6 h-6 mx-auto mb-2 text-blue-600" />
@@ -448,8 +496,86 @@ export function Results({ gradientClass }: ResultsProps) {
         </Card>
       </div>
 
-      {/* Filters */}
-      <Card className="border-2 border-gray-200">
+      {/* Mobile + tablet: search + auto-applying filters (no search button) */}
+      <div className="space-y-3 lg:hidden">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            className="rounded-xl border-slate-200 bg-slate-50 pl-10"
+            placeholder="Search student name or ID..."
+            value={draftSearch}
+            onChange={(e) => setDraftSearch(e.target.value)}
+          />
+        </div>
+
+        <Select
+          value={draftSemesterFilter}
+          onValueChange={handleSemesterFilterChange}
+        >
+          <SelectTrigger className="rounded-xl">
+            <SelectValue placeholder="All Semesters" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Semesters</SelectItem>
+            {uniqueSemesters.map((semester) => (
+              <SelectItem key={semester} value={semester}>
+                {formatSemesterLabel(semester)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <div className="grid grid-cols-2 gap-2">
+          <Select
+            value={draftPerformanceFilter}
+            onValueChange={handlePerformanceFilterChange}
+          >
+            <SelectTrigger className="rounded-xl">
+              <SelectValue placeholder="Performance" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Performance</SelectItem>
+              <SelectItem value="excellent">Excellent (90%+)</SelectItem>
+              <SelectItem value="good">Good (80-89%)</SelectItem>
+              <SelectItem value="average">Average (60-79%)</SelectItem>
+              <SelectItem value="below-average">Below Average (40-59%)</SelectItem>
+              <SelectItem value="poor">Poor (&lt;40%)</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={draftVivaStatusFilter}
+            onValueChange={handleVivaStatusFilterChange}
+          >
+            <SelectTrigger className="rounded-xl">
+              <SelectValue placeholder="Viva Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Viva Status</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {(draftSearch ||
+          draftSemesterFilter !== 'all' ||
+          draftPerformanceFilter !== 'all' ||
+          draftVivaStatusFilter !== 'all') && (
+          <Button
+            onClick={handleClearSearch}
+            variant="outline"
+            disabled={isLoading}
+            className="w-full rounded-xl border-slate-200 text-slate-600"
+          >
+            <X className="mr-1 h-4 w-4" />
+            Clear filters
+          </Button>
+        )}
+      </div>
+
+      {/* Filters (desktop) */}
+      <Card className="hidden border-2 border-gray-200 lg:block">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Search className="w-5 h-5 text-blue-600" />
@@ -457,8 +583,8 @@ export function Results({ gradientClass }: ResultsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
-            <div className="space-y-2">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
+            <div className="space-y-2 lg:flex-1 lg:min-w-0">
               <Label htmlFor="search">Search Students</Label>
               <Input
                 id="search"
@@ -473,7 +599,7 @@ export function Results({ gradientClass }: ResultsProps) {
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 lg:flex-1 lg:min-w-0">
               <Label htmlFor="semester">Semester</Label>
               <Select
                 value={draftSemesterFilter}
@@ -493,7 +619,7 @@ export function Results({ gradientClass }: ResultsProps) {
               </Select>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 lg:flex-1 lg:min-w-0">
               <Label htmlFor="performance">Performance</Label>
               <Select
                 value={draftPerformanceFilter}
@@ -515,7 +641,7 @@ export function Results({ gradientClass }: ResultsProps) {
               </Select>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 lg:flex-1 lg:min-w-0">
               <Label htmlFor="viva-status">Viva Status</Label>
               <Select
                 value={draftVivaStatusFilter}
@@ -532,50 +658,46 @@ export function Results({ gradientClass }: ResultsProps) {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>&nbsp;</Label>
-              <div className="flex gap-2">
-                <Button
-                  onClick={handleSearch}
-                  variant="outline"
-                  className="flex-1"
-                  disabled={isLoading}
-                >
-                  <Search className="w-4 h-4 mr-2" />
-                  Search
-                </Button>
-                <Button
-                  onClick={handleClearSearch}
-                  variant="outline"
-                  className="flex-1"
-                  disabled={
-                    isLoading ||
-                    (!draftSearch &&
-                      !appliedSearch &&
-                      draftSemesterFilter === 'all' &&
-                      appliedSemesterFilter === 'all' &&
-                      draftVivaStatusFilter === 'all' &&
-                      appliedVivaStatusFilter === 'all' &&
-                      draftPerformanceFilter === 'all' &&
-                      appliedPerformanceFilter === 'all')
-                  }
-                >
-                  <X className="w-4 h-4 mr-2" />
-                  Clear
-                </Button>
-                <Button
-                  onClick={() => setReloadKey((current) => current + 1)}
-                  variant="outline"
-                  disabled={isLoading}
-                  aria-label="Refresh results"
-                >
-                  {isLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="w-4 h-4" />
-                  )}
-                </Button>
-              </div>
+            <div className="flex items-end gap-2 lg:shrink-0">
+              <Button
+                onClick={handleSearch}
+                className="flex-1 bg-[#2E3094] text-white hover:bg-[#1E2078] lg:flex-none"
+                disabled={isLoading}
+              >
+                <Search className="w-4 h-4 mr-2" />
+                Search
+              </Button>
+              <Button
+                onClick={handleClearSearch}
+                variant="outline"
+                className="flex-1 lg:flex-none"
+                disabled={
+                  isLoading ||
+                  (!draftSearch &&
+                    !appliedSearch &&
+                    draftSemesterFilter === 'all' &&
+                    appliedSemesterFilter === 'all' &&
+                    draftVivaStatusFilter === 'all' &&
+                    appliedVivaStatusFilter === 'all' &&
+                    draftPerformanceFilter === 'all' &&
+                    appliedPerformanceFilter === 'all')
+                }
+              >
+                <X className="w-4 h-4 mr-2" />
+                Clear
+              </Button>
+              <Button
+                onClick={() => setReloadKey((current) => current + 1)}
+                variant="outline"
+                disabled={isLoading}
+                aria-label="Refresh results"
+              >
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4" />
+                )}
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -608,7 +730,82 @@ export function Results({ gradientClass }: ResultsProps) {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+              {/* Card view (mobile + tablet) */}
+              <div className="space-y-3 md:space-y-4 lg:hidden">
+                {filteredResults.map(result => {
+                  const isVivaCompleted = result.viva_marks?.marks > 0;
+
+                  return (
+                    <div
+                      key={`m-${result.student_id}-${result.exam_id}`}
+                      className="space-y-4 overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 md:p-5"
+                      style={{ boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)' }}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#E0E1FF] text-sm font-bold text-[#2E3094] md:h-12 md:w-12 md:text-base">
+                            {getInitials(result.student_name)}
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="truncate text-base font-semibold text-slate-900 md:text-lg">
+                              {result.student_name}
+                            </h4>
+                            <p className="truncate text-xs text-slate-500 md:text-sm">
+                              ID: {result.student_f_id}
+                            </p>
+                            <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-500 md:text-sm">
+                              <Building2 className="h-3.5 w-3.5 shrink-0 md:h-4 md:w-4" />
+                              <span className="truncate">
+                                {getDisplayDepartment(
+                                  result.exam_details.department,
+                                )}
+                              </span>
+                            </p>
+                          </div>
+                        </div>
+                        {isVivaCompleted ? (
+                          <span className="flex shrink-0 items-center gap-1 rounded-full bg-green-100 px-2.5 py-1 text-[10px] font-semibold text-green-700 md:text-xs">
+                            <CheckCircle2 className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                            Graded
+                          </span>
+                        ) : (
+                          <span className="flex shrink-0 items-center gap-1 rounded-full bg-orange-100 px-2.5 py-1 text-[10px] font-semibold text-orange-700 md:text-xs">
+                            <AlertTriangle className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                            Pending
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => openVivaModal(result)}
+                          className={`flex-1 min-w-0 whitespace-nowrap px-1.5 text-xs md:h-11 md:text-sm ${
+                            isVivaCompleted
+                              ? 'bg-white text-[#2E3094] border border-[#2E3094]/30 hover:bg-[#2E3094]/5'
+                              : 'bg-[#2E3094] text-white hover:bg-[#252877]'
+                          }`}
+                          variant={isVivaCompleted ? 'outline' : 'default'}
+                        >
+                          <GraduationCap className="mr-1 h-4 w-4 shrink-0" />
+                          {isVivaCompleted ? 'Update Viva' : 'Give Viva Marks'}
+                        </Button>
+                        <Button
+                          onClick={() => openResultDialog(result)}
+                          variant="outline"
+                          className="flex-1 min-w-0 whitespace-nowrap px-1.5 text-xs text-slate-600 md:h-11 md:text-sm"
+                        >
+                          <Eye className="mr-1 h-4 w-4 shrink-0" />
+                          View Results
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop table view */}
+              <div className="hidden overflow-x-auto lg:block">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -755,13 +952,15 @@ export function Results({ gradientClass }: ResultsProps) {
                   })}
                 </TableBody>
               </Table>
+              </div>
+
               <PaginationControls
                 pagination={pagination}
                 onPageChange={setCurrentPage}
                 isLoading={isLoading}
                 itemLabel="results"
               />
-            </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -769,12 +968,9 @@ export function Results({ gradientClass }: ResultsProps) {
       {/* Result Details Dialog */}
       <Dialog open={showResultDialog} onOpenChange={setShowResultDialog}>
         <DialogContent
-          className="w-[95vw] max-w-[95vw] xl:max-w-[1400px] h-[82vh] max-h-[82vh] overflow-hidden flex flex-col gap-2 p-4"
-          style={{
-            minWidth: '95vw',
-          }}
+          className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 overflow-y-auto rounded-none p-0 md:h-[82vh] md:max-h-[82vh] md:w-[95vw] md:max-w-[95vw] md:gap-2 md:overflow-hidden md:rounded-lg md:p-4 xl:max-w-[1400px]"
         >
-          <DialogHeader className="flex-shrink-0 pb-2 border-b border-slate-200">
+          <DialogHeader className="hidden flex-shrink-0 border-b border-slate-200 pb-2 md:block">
             <DialogTitle className="flex items-center gap-2 text-lg font-extrabold text-slate-800">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2E3094]/10">
                 <BarChart3 className="w-4 h-4 text-[#2E3094]" />
@@ -787,7 +983,203 @@ export function Results({ gradientClass }: ResultsProps) {
           </DialogHeader>
 
           {selectedResult && (
-            <div className="grid min-h-0 flex-1 grid-rows-[auto_auto_minmax(88px,auto)_auto] gap-2">
+            <>
+              {/* Mobile detailed view */}
+              <div className="md:hidden">
+                <div className="bg-white px-5 pb-4 pt-5">
+                  <button
+                    onClick={() => setShowResultDialog(false)}
+                    className="-ml-2 mb-3 rounded-full p-2 text-slate-600 hover:bg-slate-100"
+                    aria-label="Back"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </button>
+                  <h1 className="text-xl font-bold text-[#2E3094]">
+                    Detailed Result Analysis
+                  </h1>
+                  <p className="mt-0.5 text-sm text-slate-500">
+                    Complete performance breakdown for {selectedResult.student_name}
+                  </p>
+                </div>
+
+                <div className="space-y-4 px-5 pb-10 pt-4">
+                  {/* Student identity + high-level stats */}
+                  <div
+                    className="rounded-2xl border border-slate-200 bg-white p-4"
+                    style={{ boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)' }}
+                  >
+                    <div className="mb-4 flex items-center gap-3">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#E0E1FF] text-[#2E3094]">
+                        <User className="h-6 w-6" />
+                      </div>
+                      <div className="min-w-0">
+                        <h2 className="truncate text-lg font-semibold text-slate-900">
+                          {selectedResult.student_name}
+                        </h2>
+                        <p className="text-xs text-slate-500">
+                          Dept:{' '}
+                          {getDisplayDepartment(
+                            selectedResult.exam_details.department,
+                          )}{' '}
+                          | {formatSemesterLabel(selectedResult.exam_details.semester)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      <div
+                        className={`flex flex-col items-center rounded-xl border p-3 ${getPerformanceColor(selectedResult.results.score_percentage)}`}
+                      >
+                        {React.createElement(
+                          getPerformanceBadgeIcon(
+                            selectedResult.results.score_percentage,
+                          ),
+                          { className: 'h-5 w-5 mb-1' },
+                        )}
+                        <span className="text-xl font-bold leading-tight">
+                          {formatPercentage(
+                            selectedResult.results.score_percentage,
+                          )}
+                        </span>
+                        <span className="text-[11px] opacity-70">
+                          {getPerformanceLabel(
+                            selectedResult.results.score_percentage,
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex flex-col items-center rounded-xl border border-green-100 bg-green-50 p-3 text-green-700">
+                        <CheckCircle2 className="mb-1 h-5 w-5" />
+                        <span className="text-xl font-bold leading-tight">
+                          {selectedResult.results.correct_answers}
+                        </span>
+                        <span className="text-[11px] opacity-70">Correct</span>
+                      </div>
+                      <div className="flex flex-col items-center rounded-xl border border-red-100 bg-red-50 p-3 text-red-600">
+                        <XCircle className="mb-1 h-5 w-5" />
+                        <span className="text-xl font-bold leading-tight">
+                          {selectedResult.results.wrong_answers}
+                        </span>
+                        <span className="text-[11px] opacity-70">Wrong</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Subject-wise performance */}
+                  <div className="flex items-center gap-2 px-1">
+                    <BookOpen className="h-4 w-4 text-[#2E3094]" />
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      Subject-wise Performance
+                    </h3>
+                  </div>
+
+                  {selectedResult.subjects?.length ? (
+                    <div className="space-y-3">
+                      {[...selectedResult.subjects]
+                        .sort((a, b) => b.score_percentage - a.score_percentage)
+                        .map((subject) => {
+                          const skipped =
+                            subject.total_questions -
+                            subject.correct_answers -
+                            subject.wrong_answers;
+                          return (
+                            <div
+                              key={subject.subject_id}
+                              className="overflow-hidden rounded-2xl border border-slate-200 bg-white"
+                              style={{
+                                boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)',
+                              }}
+                            >
+                              <div className="flex w-full items-center justify-between border-b border-slate-100 p-4">
+                                <div className="flex min-w-0 items-center gap-2">
+                                  <BookOpen className="h-5 w-5 shrink-0 text-[#2E3094]" />
+                                  <span className="truncate font-semibold text-slate-900">
+                                    {subject.subject_name}
+                                  </span>
+                                </div>
+                                <span
+                                  className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold ${getPerformanceColor(subject.score_percentage)}`}
+                                >
+                                  {formatPercentage(subject.score_percentage)}
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-4 gap-2 p-4">
+                                <div className="rounded-lg bg-slate-50 p-2 text-center">
+                                  <div className="text-lg font-bold text-slate-900">
+                                    {subject.total_questions}
+                                  </div>
+                                  <div className="text-[11px] text-slate-500">
+                                    Total
+                                  </div>
+                                </div>
+                                <div className="rounded-lg border border-green-100 bg-green-50 p-2 text-center text-green-700">
+                                  <div className="text-lg font-bold">
+                                    {subject.correct_answers}
+                                  </div>
+                                  <div className="text-[11px]">Correct</div>
+                                </div>
+                                <div className="rounded-lg border border-red-100 bg-red-50 p-2 text-center text-red-700">
+                                  <div className="text-lg font-bold">
+                                    {subject.wrong_answers}
+                                  </div>
+                                  <div className="text-[11px]">Wrong</div>
+                                </div>
+                                <div className="rounded-lg border border-blue-100 bg-blue-50 p-2 text-center text-blue-700">
+                                  <div className="text-lg font-bold">
+                                    {skipped}
+                                  </div>
+                                  <div className="text-[11px]">Skip</div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
+                      No subject-wise performance data available.
+                    </div>
+                  )}
+
+                  {/* Viva assessment */}
+                  <div className="flex items-center gap-2 px-1">
+                    <GraduationCap className="h-4 w-4 text-[#2E3094]" />
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      Viva Assessment
+                    </h3>
+                  </div>
+                  {selectedResult.viva_marks?.marks > 0 ? (
+                    <div className="flex items-center justify-between rounded-2xl border border-green-200 bg-green-50 p-4">
+                      <span className="text-sm font-semibold text-green-800">
+                        Viva Completed
+                      </span>
+                      <span className="flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">
+                        <Award className="h-3.5 w-3.5" />
+                        {selectedResult.viva_marks.marks} marks
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-4">
+                      <div className="mb-3 flex items-center gap-2 text-sm font-medium text-yellow-800">
+                        <AlertTriangle className="h-5 w-5 shrink-0" />
+                        Viva examination has not been completed
+                      </div>
+                      <Button
+                        onClick={() => {
+                          setShowResultDialog(false);
+                          openVivaModal(selectedResult);
+                        }}
+                        className="w-full bg-[#2E3094] text-white hover:bg-[#252877]"
+                      >
+                        <GraduationCap className="mr-1 h-4 w-4" />
+                        Give Viva Marks
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Desktop detailed view */}
+              <div className="hidden min-h-0 flex-1 grid-rows-[auto_auto_minmax(88px,auto)_auto] gap-2 md:grid">
               <Card className="border-blue-200 shadow-sm bg-gradient-to-r from-blue-50 to-indigo-50">
                 <CardContent className="p-3">
                   <div className="grid grid-cols-1 items-center gap-3 xl:grid-cols-[1fr_auto]">
@@ -1034,7 +1426,8 @@ export function Results({ gradientClass }: ResultsProps) {
                   )}
                 </CardContent>
               </Card>
-            </div>
+              </div>
+            </>
           )}
         </DialogContent>
       </Dialog>
