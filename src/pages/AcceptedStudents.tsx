@@ -186,7 +186,6 @@ export function AcceptedStudents() {
   const [configurationMissing, setConfigurationMissing] = useState(false);
   const [examRecords, setExamRecords] = useState<ExamLookupRecord[]>([]);
   const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
-  const [topCandidateCount, setTopCandidateCount] = useState("");
   // Sort/filter by exam-taken datetime. "latest" is the default (task 1).
   const [sortMode, setSortMode] = useState<
     "latest" | "oldest" | "name_asc" | "name_desc" | "custom"
@@ -410,18 +409,6 @@ export function AcceptedStudents() {
     !selectedSemester ||
     exportRows.length === 0 ||
     Boolean(exportingFormat);
-  const parsedTopCandidateCount = useMemo(() => {
-    if (topCandidateCount.trim() === "") {
-      return null;
-    }
-
-    const countValue = Number(topCandidateCount);
-    if (!Number.isInteger(countValue) || countValue < 0) {
-      return null;
-    }
-
-    return countValue;
-  }, [topCandidateCount]);
   const allSelectedVisible =
     visibleResults.length > 0 &&
     visibleResults.every((result) => selectedStudentIdSet.has(result.student));
@@ -769,32 +756,31 @@ export function AcceptedStudents() {
     );
   };
 
-  const handleSelectToday = () => {
+  const handleResetExportCount = () => {
+    setExportCount("");
+    setAppliedExportCount("");
+    toast.success("Export count reset — exports will include all matching students.");
+  };
+
+  const todayStr = () => {
     const now = new Date();
     const yyyy = now.getFullYear();
     const mm = String(now.getMonth() + 1).padStart(2, "0");
     const dd = String(now.getDate()).padStart(2, "0");
-    setCustomDate(`${yyyy}-${mm}-${dd}`);
-    setSortMode("custom");
+    return `${yyyy}-${mm}-${dd}`;
   };
+  const isTodayActive = sortMode === "custom" && customDate === todayStr();
 
-  useEffect(() => {
-    if (parsedTopCandidateCount === null || !canRevertCurrentTab) {
+  const handleSelectToday = () => {
+    // Toggle: pressing Today again clears the filter back to default (latest).
+    if (isTodayActive) {
+      setSortMode("latest");
+      setCustomDate("");
       return;
     }
-
-    const nextSelectedIds = visibleResults
-      .slice(0, parsedTopCandidateCount)
-      .map((result) => result.student);
-
-    setSelectedStudentIds((currentIds) => {
-      const hasSameSelection =
-        currentIds.length === nextSelectedIds.length &&
-        currentIds.every((id, index) => id === nextSelectedIds[index]);
-
-      return hasSameSelection ? currentIds : nextSelectedIds;
-    });
-  }, [parsedTopCandidateCount, visibleResults, canRevertCurrentTab]);
+    setCustomDate(todayStr());
+    setSortMode("custom");
+  };
 
   useEffect(() => {
     setSelectedStudentIds((currentIds) => {
@@ -1097,25 +1083,48 @@ export function AcceptedStudents() {
                     <CheckSquare className="w-5 h-5 text-blue-600" />
                     Bulk Selection
                   </span>
-                  {canRevertCurrentTab ? (
-                    <div className="flex items-center gap-2">
-                      <Input
-                        id="top-candidate-count"
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        value={topCandidateCount}
-                        onChange={(event) => {
-                          const value = event.target.value;
-                          if (/^\d*$/.test(value)) {
-                            setTopCandidateCount(value);
-                          }
-                        }}
-                        placeholder=""
-                        className="w-24 h-8"
-                      />
-                    </div>
-                  ) : null}
+                  <div className="flex items-center gap-1" title="Number of students to export across pages (respects filters). Leave blank for all.">
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={exportCount}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        if (/^\d*$/.test(value)) {
+                          setExportCount(value);
+                        }
+                      }}
+                      placeholder="Count"
+                      className="w-20 h-8"
+                    />
+                    <Button size="sm" variant="outline" onClick={handleApplyExportCount}>
+                      OK
+                    </Button>
+                    {parsedExportCount != null ? (
+                      <Badge variant="secondary" title="Export count currently held">
+                        Holding {parsedExportCount}
+                      </Badge>
+                    ) : null}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleResetExportCount}
+                    disabled={appliedExportCount === "" && exportCount === ""}
+                    title="Reset export count (export all)"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={isTodayActive ? "default" : "outline"}
+                    onClick={handleSelectToday}
+                    title="Filter to students who sat the exam today (click again to clear)"
+                    className={isTodayActive ? "bg-blue-700 hover:bg-blue-800 text-white" : ""}
+                  >
+                    Today
+                  </Button>
                 </div>
                 <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
                   <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -1129,33 +1138,6 @@ export function AcceptedStudents() {
                     )}
                     <Badge variant="outline">{PRETTY_STATUS_LABELS[TAB_TO_STATUS[activeTab]]}</Badge>
                   </div>
-                    <div className="flex items-center gap-1" title="Number of students to export across pages (respects filters). Leave blank for all.">
-                      <Input
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        value={exportCount}
-                        onChange={(event) => {
-                          const value = event.target.value;
-                          if (/^\d*$/.test(value)) {
-                            setExportCount(value);
-                          }
-                        }}
-                        placeholder="Count"
-                        className="w-20 h-8"
-                      />
-                      <Button size="sm" variant="outline" onClick={handleApplyExportCount}>
-                        OK
-                      </Button>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleSelectToday}
-                      title="Filter to students who sat the exam today"
-                    >
-                      Today
-                    </Button>
                     {canAcceptCurrentTab ? (
                       <Button
                         size="sm"

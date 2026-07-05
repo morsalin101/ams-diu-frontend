@@ -172,12 +172,10 @@ export function formatExamTaken(value?: string | null): string {
   if (Number.isNaN(date.getTime())) {
     return "";
   }
-  return date.toLocaleString("en-GB", {
+  return date.toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
     year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
   });
 }
 
