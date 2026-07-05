@@ -33,6 +33,10 @@ interface VivaAssignment {
   room: string;
   created_at: string;
   student_username: string;
+  student_full_name: string;
+  student_f_id: string;
+  student_registration_semester: string;
+  student_department_shortname: string;
   teacher_username: string;
 }
 
@@ -93,6 +97,9 @@ export function VivaAssign({ gradientClass }: VivaAssignmentManagementProps) {
 
   // State management
   const [assignments, setAssignments] = useState<VivaAssignment[]>([]);
+  // Full unpaginated id set — availability must never be derived from the
+  // paginated assignments list (students fell off page 1 and looked available).
+  const [assignedStudentIds, setAssignedStudentIds] = useState<Set<number>>(new Set());
   const [students, setStudents] = useState<Student[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -162,6 +169,8 @@ export function VivaAssign({ gradientClass }: VivaAssignmentManagementProps) {
         setAssignments(Array.isArray(data) ? sortAssignmentsByLatest(data) : []);
         setPagination(paginationFromDrf(response, page));
       }
+      const idsResponse = await vivaAssignmentAPI.getAssignedStudentIds();
+      setAssignedStudentIds(new Set(idsResponse?.student_ids || []));
     } catch (error: any) {
       console.error('Error loading assignments:', error);
       toast.error('Failed to load assignments');
@@ -280,8 +289,8 @@ export function VivaAssign({ gradientClass }: VivaAssignmentManagementProps) {
   };
 
   // Filter available students (not assigned)
-  const availableStudents = students.filter(student => 
-    !assignments.some(assignment => assignment.student === student.id)
+  const availableStudents = students.filter(student =>
+    student && student.id && !assignedStudentIds.has(student.id)
   );
 
   const handleSearch = () => {
@@ -544,7 +553,11 @@ export function VivaAssign({ gradientClass }: VivaAssignmentManagementProps) {
                       </TableCell>
                       <TableCell>
                         <div>
-                          <p className="font-medium">@{assignment.student_username}</p>
+                          <p className="font-medium">{assignment.student_full_name || assignment.student_username}</p>
+                          <p className="text-sm text-gray-500">@{assignment.student_username || 'unknown'}</p>
+                          <p className="text-xs text-gray-400">
+                            {assignment.student_f_id || 'N/A'} · {assignment.student_registration_semester || 'N/A'}
+                          </p>
                         </div>
                       </TableCell>
                       <TableCell>

@@ -19,6 +19,7 @@ interface Student {
   full_name: string;
   email: string;
   department_shortname?: string;
+  registration_semester?: string;
   ssc?: number;
   hsc?: number;
   diploma?: number;
@@ -106,13 +107,6 @@ export function VivaAssignmentDialog({
       setStudentSearchTerm('');
     }
   }, [open]);
-
-  // Helper function to check if student was created today
-  const isCreatedToday = (dateString: string) => {
-    const today = new Date();
-    const date = new Date(dateString);
-    return date.toDateString() === today.toDateString();
-  };
 
   // Filter students based on search term
   const filteredStudents = students.filter(student => {
@@ -304,9 +298,11 @@ export function VivaAssignmentDialog({
                             />
                           </TableHead>
                           <TableHead className="font-semibold px-2">Name</TableHead>
-                          <TableHead className="font-semibold px-2">ID</TableHead>
+                          <TableHead className="font-semibold px-2">Student ID</TableHead>
                           <TableHead className="font-semibold px-2">Username</TableHead>
-                          <TableHead className="font-semibold px-2 text-center">Status</TableHead>
+                          <TableHead className="font-semibold px-2">Department</TableHead>
+                          <TableHead className="font-semibold px-2">Registered Semester</TableHead>
+                          <TableHead className="font-semibold px-2 text-center">Created</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -326,12 +322,10 @@ export function VivaAssignmentDialog({
                             <TableCell className="font-medium px-2 whitespace-nowrap">{student.full_name}</TableCell>
                             <TableCell className="font-mono text-xs px-2 whitespace-nowrap">{student.f_id}</TableCell>
                             <TableCell className="text-gray-600 px-2 whitespace-nowrap">@{student.username}</TableCell>
-                            <TableCell className="text-center px-2">
-                              {isCreatedToday(student.created_at) && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 whitespace-nowrap">
-                                  New
-                                </span>
-                              )}
+                            <TableCell className="text-gray-600 px-2 whitespace-nowrap">{student.department_shortname || 'N/A'}</TableCell>
+                            <TableCell className="text-gray-600 px-2 whitespace-nowrap">{student.registration_semester || 'N/A'}</TableCell>
+                            <TableCell className="text-center text-xs text-gray-500 px-2 whitespace-nowrap">
+                              {new Date(student.created_at).toLocaleDateString()}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -410,9 +404,18 @@ export function VivaAssignmentDialog({
                                   `Schedule ID: ${schedule.id}`
                                 )}
                               </span>
-                              <span className="text-xs text-gray-500">
-                                {new Date(schedule.start_time).toLocaleDateString()}
-                              </span>
+                              {schedule.exam_details ? (
+                                <span className="text-xs text-gray-500">
+                                  Made {new Date(schedule.exam_details.created_at).toLocaleDateString()}
+                                  {' · '}{schedule.exam_details.total_marks} marks
+                                  {' · '}{schedule.exam_details.total_questions} Qs
+                                  {schedule.exam_details.language ? ` · ${schedule.exam_details.language}` : ''}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-gray-500">
+                                  {new Date(schedule.start_time).toLocaleDateString()}
+                                </span>
+                              )}
                             </div>
                           </SelectItem>
                         ))

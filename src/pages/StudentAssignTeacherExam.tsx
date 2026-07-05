@@ -120,6 +120,9 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
 
   // State managementStudentAssignTeacherExamz
   const [assignments, setAssignments] = useState<StudentAssignment[]>([]);
+  // Full unpaginated id set — availability must never be derived from the
+  // paginated assignments list (students fell off page 1 and looked available).
+  const [assignedStudentIds, setAssignedStudentIds] = useState<Set<number>>(new Set());
   const [students, setStudents] = useState<Student[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -203,6 +206,8 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
         setPagination(paginationFromDrf(response, page));
         setAssignmentFilterOptions(response.filter_options || {});
       }
+      const idsResponse = await studentAssignmentAPI.getAssignedStudentIds();
+      setAssignedStudentIds(new Set(idsResponse?.student_ids || []));
     } catch (error: any) {
       console.error('Error loading assignments:', error);
       toast.error('Failed to load assignments');
@@ -346,8 +351,8 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
   };
 
   // Filter available students (not assigned) - MOVED UP
-  const availableStudents = students.filter(student => 
-    student && student.id && !assignments.some(assignment => assignment.student === student.id)
+  const availableStudents = students.filter(student =>
+    student && student.id && !assignedStudentIds.has(student.id)
   );
   const handleSearch = () => {
     setPage(1);

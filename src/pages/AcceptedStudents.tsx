@@ -22,7 +22,6 @@ import toast from "react-hot-toast";
 import { SemesterCombobox } from "../components/SemesterCombobox";
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { Badge } from "../components/ui/badge";
-import { Switch } from "../components/ui/switch";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Checkbox } from "../components/ui/checkbox";
@@ -762,23 +761,6 @@ export function AcceptedStudents() {
     }
   };
 
-  const handleVivaToggle = async (result: AdmissionResult, vivaGiven: boolean) => {
-    // Optimistic flip; revert on failure.
-    const applyFlag = (value: boolean) =>
-      setResults((prev) =>
-        prev.map((item) => (item.id === result.id ? { ...item, viva_given: value } : item)),
-      );
-
-    applyFlag(vivaGiven);
-    try {
-      await admissionResultsAPI.setVivaStatus(result.id, vivaGiven);
-    } catch (toggleError: any) {
-      console.error('Error updating viva status:', toggleError);
-      applyFlag(!vivaGiven);
-      toast.error(toggleError?.message || 'Failed to update viva status');
-    }
-  };
-
   const handleRevert = async () => {
     if (!canRevertCurrentTab) {
       return;
@@ -1230,15 +1212,7 @@ export function AcceptedStudents() {
                                   <TableCell>{row.academic}</TableCell>
                                   <TableCell>{row.written}</TableCell>
                                   <TableCell>
-                                    <div className="flex items-center gap-2">
-                                      <Switch
-                                        checked={result.viva_given !== false}
-                                        onCheckedChange={(checked) => handleVivaToggle(result, checked)}
-                                        disabled={!hasWriteAccess}
-                                        aria-label={`Toggle viva status for ${row.studentName}`}
-                                      />
-                                      <span className="whitespace-nowrap">{row.viva}</span>
-                                    </div>
+                                    <span className="whitespace-nowrap">{row.viva}</span>
                                   </TableCell>
                                   <TableCell>{row.writtenViva}</TableCell>
                                   <TableCell className="font-semibold">{row.total}</TableCell>

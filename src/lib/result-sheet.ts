@@ -172,9 +172,7 @@ export function buildResultSheetRows(results: AdmissionResult[]): ResultSheetRow
     ssc: formatNumber(result.ssc_contribution),
     academic: formatNumber(result.academic_contribution),
     written: formatNumber(result.mcq_marks),
-    // viva_given is the admin-controlled display flag (toggle on the Results page).
-    // ponytail: viva shown as pass/fail only, marks hidden while viva values are 0.
-    viva: result.viva_given === false ? "Not Passed" : "Passed",
+    viva: formatNumber(result.viva_marks),
     writtenViva: formatNumber(result.written_viva_total),
     total: formatNumber(result.weighted_total_marks),
     remarks: result.is_admitted ? PRETTY_STATUS_LABELS.ACCEPTED : PRETTY_STATUS_LABELS[result.result_status],

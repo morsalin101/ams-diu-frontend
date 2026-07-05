@@ -971,6 +971,16 @@ export const studentAssignmentAPI = {
     }
   },
 
+  // All student ids holding an assignment (unpaginated; availability check)
+  getAssignedStudentIds: async () => {
+    try {
+      const response = await api.get('/api/student-assignments/assigned-student-ids/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
   // Bulk assign students to teacher and exam
   assignBulk: async (assignmentData) => {
     try {
@@ -1175,6 +1185,16 @@ export const vivaAssignmentAPI = {
       const response = await api.get('/api/viva-assignments/', {
         params: withDefaultPageSize(params),
       });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // All student ids holding a viva assignment (unpaginated; availability check)
+  getAssignedStudentIds: async () => {
+    try {
+      const response = await api.get('/api/viva-assignments/assigned-student-ids/');
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
