@@ -47,7 +47,11 @@ const INK = {
   axis: '#c3c2b7',
 };
 
-const DEPT_TOTAL_COLOR = '#2a78d6';
+// App theme color (matches the default "Default" theme indigo). Used for the
+// brand/neutral series and accents so the dashboard reads as one system; the
+// date-wise chart keeps its status colors since that distinction is the point.
+const THEME_COLOR = '#2E3094';
+const DEPT_TOTAL_COLOR = THEME_COLOR;
 const DEPT_SELECTED_COLOR = '#0ca30c';
 
 interface DailyRow {
@@ -129,7 +133,7 @@ export function AdmissionAnalytics({ gradientClass }: AdmissionAnalyticsProps) {
           value: stats.totals.total_results,
           description: `${stats.totals.attended} attended`,
           icon: Users,
-          accent: '#2a78d6',
+          accent: THEME_COLOR,
         },
         {
           title: 'Selected',
@@ -228,9 +232,10 @@ export function AdmissionAnalytics({ gradientClass }: AdmissionAnalyticsProps) {
                 <button
                   key={opt.value}
                   onClick={() => setDays(opt.value)}
+                  style={days === opt.value ? { backgroundColor: THEME_COLOR } : undefined}
                   className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
                     days === opt.value
-                      ? 'bg-blue-600 text-white'
+                      ? 'text-white'
                       : 'text-slate-600 hover:bg-slate-100'
                   }`}
                 >
