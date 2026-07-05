@@ -1,6 +1,7 @@
 import { StatsCards } from './StatsCards';
 import { QuickActions } from './QuickActions';
 import { QuestionsStatsDetail } from './QuestionsStatsDetail';
+import { AdmissionAnalytics } from './AdmissionAnalytics';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 
 interface DashboardContentProps {
@@ -30,6 +31,9 @@ export function DashboardContent({ gradientClass }: DashboardContentProps) {
 
       {/* Stats Cards */}
       <StatsCards gradientClass={gradientClass} />
+
+      {/* Admission Analytics — date-wise results, outcome & department breakdowns */}
+      <AdmissionAnalytics gradientClass={gradientClass} />
 
       {/* Questions Statistics Detail */}
       <QuestionsStatsDetail gradientClass={gradientClass} />

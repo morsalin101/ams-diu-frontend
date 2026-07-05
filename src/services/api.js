@@ -117,6 +117,37 @@ api.interceptors.request.use(
   }
 );
 
+// Add a response interceptor to auto-logout on an expired/invalid token.
+// When the backend rejects a request with 401 (e.g. the 1-day access token has
+// expired), clear the session and bounce the user back to the login screen.
+let isRedirectingToLogin = false;
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status;
+    const url = error?.config?.url || '';
+    const isAuthEndpoint =
+      url.includes('/api/auth/login/') ||
+      url.includes('/api/auth/register/') ||
+      url.includes('/api/auth/refresh/') ||
+      url.includes('/api/auth/password');
+
+    if (status === 401 && !isAuthEndpoint) {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('user');
+
+      // Guard against multiple in-flight 401s all triggering a redirect.
+      if (!isRedirectingToLogin && typeof window !== 'undefined') {
+        isRedirectingToLogin = true;
+        window.location.href = '/';
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
 // API endpoints
 export const examAPI = {
   // Generate exam questions
@@ -1300,6 +1331,16 @@ export const thresholdAPI = {
 
 // Admission Results API endpoints
 export const admissionResultsAPI = {
+  // Get aggregated admission statistics for the dashboard
+  getDashboardStats: async (params = {}) => {
+    try {
+      const response = await api.get('/api/admission/dashboard-stats/', { params });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
   // Get semester options for admission pages
   getSemesterOptions: async (params = {}) => {
     try {
