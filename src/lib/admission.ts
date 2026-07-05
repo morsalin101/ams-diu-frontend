@@ -67,6 +67,7 @@ export interface AdmissionResult {
   written_contribution: number;
   viva_contribution: number;
   exam_details: AdmissionExamDetails;
+  exam_taken_at: string | null;
   created_at: string;
   updated_at: string;
 }

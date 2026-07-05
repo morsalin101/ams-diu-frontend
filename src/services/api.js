@@ -1403,6 +1403,19 @@ export const admissionResultsAPI = {
     }
   },
 
+  // Fetch every result across pages (for bulk N/today export). Same filters/sort
+  // as getResults; loops pages at page_size=100.
+  getAllResults: async (params = {}) => {
+    try {
+      return await fetchAllPaginated(
+        (pageParams) => admissionResultsAPI.getResults({ ...params, ...pageParams }),
+        ['results', 'data'],
+      );
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
   // Explicit helper for rare workflows that truly need every matching result
   getAllResults: async (params = {}) => {
     try {

@@ -26,6 +26,7 @@ export interface ResultSheetRow {
   writtenViva: string;
   total: string;
   remarks: string;
+  examTakenAt: string;
 }
 
 const FACULTY_BY_DEPARTMENT_SHORTNAME: Record<string, string> = {
@@ -162,6 +163,24 @@ export function formatReportDate(value = new Date()) {
   });
 }
 
+// Exam-taken datetime for display/export; blank when the student never submitted.
+export function formatExamTaken(value?: string | null): string {
+  if (!value) {
+    return "";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  return date.toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function buildResultSheetRows(results: AdmissionResult[]): ResultSheetRow[] {
   return results.map((result, index) => ({
     id: result.id,
@@ -176,6 +195,7 @@ export function buildResultSheetRows(results: AdmissionResult[]): ResultSheetRow
     writtenViva: formatNumber(result.written_viva_total),
     total: formatNumber(result.weighted_total_marks),
     remarks: result.is_admitted ? PRETTY_STATUS_LABELS.ACCEPTED : PRETTY_STATUS_LABELS[result.result_status],
+    examTakenAt: formatExamTaken(result.exam_taken_at),
   }));
 }
 

@@ -33,6 +33,13 @@ import {
 } from "../components/ui/dropdown-menu";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { usePermissions } from "../hooks/usePermissions";
@@ -107,6 +114,7 @@ const RESULT_SHEET_PDF_COLUMNS: PdfColumn[] = [
   // { key: "writtenViva", header: "Written + Viva", cellWidth: 50, align: "center" },  // commented out: hidden column
   { key: "total", header: "Total", cellWidth: 40, align: "center" },
   { key: "remarks", header: "Status", cellWidth: 62, align: "center" },
+  { key: "examTakenAt", header: "Exam Taken", cellWidth: 66, align: "center" },
 ];
 
 // Build autoTable input from the column config above.
@@ -179,6 +187,14 @@ export function AcceptedStudents() {
   const [examRecords, setExamRecords] = useState<ExamLookupRecord[]>([]);
   const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
   const [topCandidateCount, setTopCandidateCount] = useState("");
+  // Sort/filter by exam-taken datetime. "latest" is the default (task 1).
+  const [sortMode, setSortMode] = useState<
+    "latest" | "oldest" | "name_asc" | "name_desc" | "custom"
+  >("latest");
+  const [customDate, setCustomDate] = useState("");
+  // Draft count in the input vs the count applied on OK (drives N-export).
+  const [exportCount, setExportCount] = useState("");
+  const [appliedExportCount, setAppliedExportCount] = useState("");
   const [draftSearch, setDraftSearch] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -194,6 +210,31 @@ export function AcceptedStudents() {
   const [selectedReportStudentName, setSelectedReportStudentName] = useState("");
   const [downloadingReportId, setDownloadingReportId] = useState<number | null>(null);
   const [isBulkDownloadingReports, setIsBulkDownloadingReports] = useState(false);
+
+  // sortMode/customDate -> backend sort_by/order/exam_taken_date query params.
+  const resultQueryParams = useMemo(() => {
+    switch (sortMode) {
+      case "name_asc":
+        return { sort_by: "name", order: "asc", exam_taken_date: undefined };
+      case "name_desc":
+        return { sort_by: "name", order: "desc", exam_taken_date: undefined };
+      case "oldest":
+        return { sort_by: "date", order: "asc", exam_taken_date: undefined };
+      case "custom":
+        return { sort_by: "date", order: "desc", exam_taken_date: customDate || undefined };
+      case "latest":
+      default:
+        return { sort_by: "date", order: "desc", exam_taken_date: undefined };
+    }
+  }, [sortMode, customDate]);
+
+  const parsedExportCount = useMemo(() => {
+    if (appliedExportCount.trim() === "") {
+      return null;
+    }
+    const countValue = Number(appliedExportCount);
+    return Number.isInteger(countValue) && countValue > 0 ? countValue : null;
+  }, [appliedExportCount]);
 
   useEffect(() => {
     if (!hasReadAccess) {
@@ -273,6 +314,11 @@ export function AcceptedStudents() {
     setPage(1);
   }, [department?.id, selectedSemester]);
 
+  // Changing sort/date filter jumps back to page 1.
+  useEffect(() => {
+    setPage(1);
+  }, [sortMode, customDate]);
+
   useEffect(() => {
     if (!hasReadAccess || !department?.id || !selectedSemester) {
       setResults([]);
@@ -293,6 +339,7 @@ export function AcceptedStudents() {
           result_status: TAB_TO_STATUS[activeTab],
           search: appliedSearch || undefined,
           page,
+          ...resultQueryParams,
         });
 
         if (!isMounted) {
@@ -333,7 +380,7 @@ export function AcceptedStudents() {
     return () => {
       isMounted = false;
     };
-  }, [hasReadAccess, department?.id, selectedSemester, activeTab, appliedSearch, page, reloadKey]);
+  }, [hasReadAccess, department?.id, selectedSemester, activeTab, appliedSearch, page, reloadKey, sortMode, customDate]);
 
   const visibleResults = results;
   const visibleRows = useMemo(() => buildResultSheetRows(visibleResults), [visibleResults]);
@@ -394,6 +441,27 @@ export function AcceptedStudents() {
     return `admission-test-result-${titleSemester}-${activeTab}-${scope}`;
   };
 
+  // Resolve which students to export. Manual checkbox selection wins; otherwise
+  // pull the full filtered+sorted list across pages (getAllResults), capped at
+  // the applied N. This is what makes N / Today / filters count in exports.
+  const resolveExportResults = async (): Promise<AdmissionResult[]> => {
+    if (hasSelectedRows) {
+      return selectedTabResults;
+    }
+    if (!department?.id || !selectedSemester) {
+      return [];
+    }
+    const response = await admissionResultsAPI.getAllResults({
+      department_id: department.id,
+      semester: selectedSemester,
+      result_status: TAB_TO_STATUS[activeTab],
+      search: appliedSearch || undefined,
+      ...resultQueryParams,
+    });
+    const all: AdmissionResult[] = response?.results || response?.data || [];
+    return parsedExportCount != null ? all.slice(0, parsedExportCount) : all;
+  };
+
   const exportPdf = async () => {
     if (isExportDisabled || !department) {
       return;
@@ -401,6 +469,12 @@ export function AcceptedStudents() {
 
     setExportingFormat("pdf");
     try {
+      const exportData = await resolveExportResults();
+      const rows = buildResultSheetRows(exportData);
+      if (rows.length === 0) {
+        toast.error("No students to export for the current filters.");
+        return;
+      }
       const logoDataUrl = await loadDiuLogoDataUrl();
       const doc = new jsPDF({
         orientation: "portrait",
@@ -442,7 +516,7 @@ export function AcceptedStudents() {
           bottom: 56,
         },
         head: pdfTableConfig.head,
-        body: exportRows.map((row) =>
+        body: rows.map((row) =>
           RESULT_SHEET_PDF_COLUMNS.map((column) => row[column.key] ?? ""),
         ),
         theme: "grid",
@@ -516,9 +590,15 @@ export function AcceptedStudents() {
 
     setExportingFormat("excel");
     try {
+      const exportData = await resolveExportResults();
+      const rows = buildResultSheetRows(exportData);
+      if (rows.length === 0) {
+        toast.error("No students to export for the current filters.");
+        return;
+      }
       const XLSX = await import("xlsx");
       const worksheet = XLSX.utils.json_to_sheet(
-        exportRows.map((row) => ({
+        rows.map((row) => ({
           SL: row.serial,
           "Application Serial": row.applicationSerial,
           "Student Name": row.studentName,
@@ -529,6 +609,7 @@ export function AcceptedStudents() {
           "Written + Viva": row.writtenViva,
           Total: row.total,
           Remarks: row.remarks,
+          "Exam Taken": row.examTakenAt,
         })),
       );
       worksheet["!cols"] = [
@@ -542,6 +623,7 @@ export function AcceptedStudents() {
         { wch: 16 },
         { wch: 10 },
         { wch: 16 },
+        { wch: 20 },
       ];
 
       const workbook = XLSX.utils.book_new();
@@ -573,6 +655,7 @@ export function AcceptedStudents() {
         result_status: TAB_TO_STATUS[activeTab],
         search: appliedSearch || undefined,
         page,
+        ...resultQueryParams,
       });
 
       const isConfigMissing = Boolean(response?.configuration_missing);
@@ -644,19 +727,20 @@ export function AcceptedStudents() {
   };
 
   const handleDownloadSelectedReports = async () => {
-    if (selectedTabResults.length === 0) {
-      toast.error("Select at least one candidate to download reports.");
-      return;
-    }
-
-    if (selectedTabResults.length === 1) {
-      await handleDownloadReport(selectedTabResults[0]);
-      return;
-    }
-
     setIsBulkDownloadingReports(true);
     try {
-      const reports = selectedTabResults.map((result) => ({
+      const exportData = await resolveExportResults();
+      if (exportData.length === 0) {
+        toast.error("No candidates to download for the current filters.");
+        return;
+      }
+
+      if (exportData.length === 1) {
+        await handleDownloadReport(exportData[0]);
+        return;
+      }
+
+      const reports = exportData.map((result) => ({
         exam_id: result.exam,
         student_id: result.student,
       }));
@@ -667,13 +751,31 @@ export function AcceptedStudents() {
       }
 
       downloadBlobFile(response.blob, response.filename);
-      toast.success(`Downloaded ${selectedTabResults.length} reports as ZIP.`);
+      toast.success(`Downloaded ${exportData.length} reports as ZIP.`);
     } catch (reportError: any) {
       console.error("Error downloading student report ZIP:", reportError);
       toast.error(reportError?.message || "Failed to download student reports ZIP");
     } finally {
       setIsBulkDownloadingReports(false);
     }
+  };
+
+  const handleApplyExportCount = () => {
+    setAppliedExportCount(exportCount.trim());
+    toast.success(
+      exportCount.trim() === ""
+        ? "Export count cleared — exports will include all matching students."
+        : `Export count set to ${exportCount.trim()}.`,
+    );
+  };
+
+  const handleSelectToday = () => {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    setCustomDate(`${yyyy}-${mm}-${dd}`);
+    setSortMode("custom");
   };
 
   useEffect(() => {
@@ -941,6 +1043,37 @@ export function AcceptedStudents() {
               Refresh
             </Button>
           </div>
+
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="space-y-2">
+              <Label>Sort / Filter</Label>
+              <Select value={sortMode} onValueChange={(value) => setSortMode(value as typeof sortMode)}>
+                <SelectTrigger className="w-56">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name_asc">Name (A–Z)</SelectItem>
+                  <SelectItem value="name_desc">Name (Z–A)</SelectItem>
+                  <SelectItem value="latest">Exam taken (Latest)</SelectItem>
+                  <SelectItem value="oldest">Exam taken (Oldest)</SelectItem>
+                  <SelectItem value="custom">Custom date…</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {sortMode === "custom" ? (
+              <div className="space-y-2">
+                <Label htmlFor="exam-taken-date">Exam date</Label>
+                <Input
+                  id="exam-taken-date"
+                  type="date"
+                  value={customDate}
+                  onChange={(event) => setCustomDate(event.target.value)}
+                  className="w-44"
+                />
+              </div>
+            ) : null}
+          </div>
         </CardContent>
       </Card>
 
@@ -996,6 +1129,33 @@ export function AcceptedStudents() {
                     )}
                     <Badge variant="outline">{PRETTY_STATUS_LABELS[TAB_TO_STATUS[activeTab]]}</Badge>
                   </div>
+                    <div className="flex items-center gap-1" title="Number of students to export across pages (respects filters). Leave blank for all.">
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={exportCount}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          if (/^\d*$/.test(value)) {
+                            setExportCount(value);
+                          }
+                        }}
+                        placeholder="Count"
+                        className="w-20 h-8"
+                      />
+                      <Button size="sm" variant="outline" onClick={handleApplyExportCount}>
+                        OK
+                      </Button>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleSelectToday}
+                      title="Filter to students who sat the exam today"
+                    >
+                      Today
+                    </Button>
                     {canAcceptCurrentTab ? (
                       <Button
                         size="sm"
@@ -1034,7 +1194,7 @@ export function AcceptedStudents() {
                         void handleDownloadSelectedReports();
                       }}
                       disabled={
-                        selectedTabResults.length === 0 ||
+                        isExportDisabled ||
                         isBulkDownloadingReports ||
                         downloadingReportId !== null
                       }
@@ -1044,7 +1204,7 @@ export function AcceptedStudents() {
                       ) : (
                         <Download className="w-4 h-4 mr-2" />
                       )}
-                      Download Selected
+                      Download Reports
                     </Button>
                     <div className="flex flex-wrap items-center gap-2">
                     <DropdownMenu>
@@ -1176,6 +1336,7 @@ export function AcceptedStudents() {
                               <TableHead>Written + Viva</TableHead>
                               <TableHead>Total</TableHead>
                               <TableHead>Status</TableHead>
+                              <TableHead>Exam Taken</TableHead>
                               <TableHead className="text-center">View</TableHead>
                               <TableHead className="text-center">Download</TableHead>
                             </TableRow>
@@ -1229,6 +1390,9 @@ export function AcceptedStudents() {
                                         Manual override for absent candidate
                                       </div>
                                     ) : null}
+                                  </TableCell>
+                                  <TableCell className="text-xs text-slate-600 whitespace-nowrap">
+                                    {row.examTakenAt || "—"}
                                   </TableCell>
                                   <TableCell className="text-center">
                                     <Button
