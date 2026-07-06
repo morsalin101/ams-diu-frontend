@@ -399,14 +399,15 @@ export function VivaAssignmentDialog({
                             <div className="flex flex-col">
                               <span className="font-medium text-sm">
                                 {schedule.exam_details ? (
-                                  `${schedule.exam_details.department} - ${schedule.exam_details.semester}`
+                                  `${schedule.exam_details.department} - ${schedule.exam_details.semester} · Exam #${schedule.exam_details.id}`
                                 ) : (
                                   `Schedule ID: ${schedule.id}`
                                 )}
                               </span>
                               {schedule.exam_details ? (
                                 <span className="text-xs text-gray-500">
-                                  Made {new Date(schedule.exam_details.created_at).toLocaleDateString()}
+                                  Made {new Date(schedule.exam_details.created_at).toLocaleDateString()}{' '}
+                                  {new Date(schedule.exam_details.created_at).toLocaleTimeString()}
                                   {' · '}{schedule.exam_details.total_marks} marks
                                   {' · '}{schedule.exam_details.total_questions} Qs
                                   {schedule.exam_details.language ? ` · ${schedule.exam_details.language}` : ''}

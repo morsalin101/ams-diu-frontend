@@ -86,6 +86,41 @@ const DEFAULT_SUMMARY = {
   ABSENT: 0,
 };
 
+type TabKey = keyof typeof TAB_TO_STATUS;
+const ALL_TABS = Object.keys(TAB_TO_STATUS) as TabKey[];
+
+// Per-tab labels (trigger text) and summary-card styling, so both the cards and
+// the tab strip can be rendered from an allow-list (cosmetic tab restriction).
+const TAB_LABELS: Record<TabKey, string> = {
+  selected: "Selected",
+  accepted: "Accepted",
+  rejected: "Not Selected",
+  waiting: "Waiting",
+  absent: "Absent",
+};
+const CARD_CONFIG: Record<TabKey, { label: string; className: string }> = {
+  selected: { label: "Selected", className: "text-green-600" },
+  accepted: { label: "Accepted", className: "text-emerald-700" },
+  rejected: { label: "Rejected", className: "text-rose-600" },
+  waiting: { label: "Waiting", className: "text-amber-600" },
+  absent: { label: "Absent", className: "text-slate-600" },
+};
+// Static class names (Tailwind can't see interpolated ones).
+const GRID_COLS_XL: Record<number, string> = {
+  1: "xl:grid-cols-1",
+  2: "xl:grid-cols-2",
+  3: "xl:grid-cols-3",
+  4: "xl:grid-cols-4",
+  5: "xl:grid-cols-5",
+};
+const GRID_COLS_MD: Record<number, string> = {
+  1: "md:grid-cols-1",
+  2: "md:grid-cols-2",
+  3: "md:grid-cols-3",
+  4: "md:grid-cols-4",
+  5: "md:grid-cols-5",
+};
+
 // Configurable columns for the exported PDF result sheet.
 // To adjust the PDF table:
 //   - Rename a column        → change the `header` value
@@ -107,10 +142,10 @@ const RESULT_SHEET_PDF_COLUMNS: PdfColumn[] = [
   { key: "serial", header: "SL", cellWidth: 24, align: "center" },
   { key: "applicationSerial", header: "Application Serial", cellWidth: 62 },
   { key: "studentName", header: "Student Name", cellWidth: 92 },
-  { key: "ssc", header: "SSC Number", cellWidth: 42, align: "center" },
-  { key: "academic", header: "HSC/Diploma Number", cellWidth: 72 },
-  { key: "written", header: "Written", cellWidth: 38, align: "center" },
-  { key: "viva", header: "Viva", cellWidth: 34, align: "center" },
+  { key: "ssc", header: "SSC", cellWidth: 58, align: "center" },
+  { key: "academic", header: "HSC/Diploma", cellWidth: 72 },
+  { key: "written", header: "Written", cellWidth: 58, align: "center" },
+  { key: "viva", header: "Viva", cellWidth: 54, align: "center" },
   // { key: "writtenViva", header: "Written + Viva", cellWidth: 50, align: "center" },  // commented out: hidden column
   { key: "total", header: "Total", cellWidth: 40, align: "center" },
   { key: "remarks", header: "Status", cellWidth: 62, align: "center" },
@@ -171,7 +206,15 @@ const scaleColumnWidthsToPage = (
 
 type ExportFormat = "pdf" | "excel";
 
-export function AcceptedStudents() {
+interface AcceptedStudentsProps {
+  // Cosmetic tab restriction: pass a subset to show only those tabs + their
+  // summary cards (e.g. ["selected","rejected"] for a published-results viewer).
+  // Not a security boundary — the API still serves every status.
+  allowedTabs?: TabKey[];
+}
+
+export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsProps = {}) {
+  const visibleTabs = allowedTabs.length > 0 ? allowedTabs : ALL_TABS;
   const { canRead, canWrite } = usePermissions();
   const { department, isFallback, isLoading: isDepartmentLoading, error: departmentError } =
     useEffectiveDepartment();
@@ -180,7 +223,7 @@ export function AcceptedStudents() {
 
   const [semesterOptions, setSemesterOptions] = useState<string[]>([]);
   const [selectedSemester, setSelectedSemester] = useState("");
-  const [activeTab, setActiveTab] = useState<keyof typeof TAB_TO_STATUS>("selected");
+  const [activeTab, setActiveTab] = useState<TabKey>(visibleTabs[0]);
   const [results, setResults] = useState<AdmissionResult[]>([]);
   const [summary, setSummary] = useState(DEFAULT_SUMMARY);
   const [configurationMissing, setConfigurationMissing] = useState(false);
@@ -589,8 +632,8 @@ export function AcceptedStudents() {
           SL: row.serial,
           "Application Serial": row.applicationSerial,
           "Student Name": row.studentName,
-          "SSC Number": row.ssc,
-          "HSC/Diploma Number": row.academic,
+          SSC: row.ssc,
+          "HSC/Diploma": row.academic,
           Written: row.written,
           Viva: row.viva,
           "Written + Viva": row.writtenViva,
@@ -600,17 +643,17 @@ export function AcceptedStudents() {
         })),
       );
       worksheet["!cols"] = [
-        { wch: 8 },
-        { wch: 20 },
-        { wch: 28 },
-        { wch: 10 },
-        { wch: 22 },
-        { wch: 10 },
-        { wch: 10 },
-        { wch: 16 },
-        { wch: 10 },
-        { wch: 16 },
-        { wch: 20 },
+        { wch: 8 },   // SL
+        { wch: 20 },  // Application Serial
+        { wch: 28 },  // Student Name
+        { wch: 16 },  // SSC
+        { wch: 22 },  // HSC/Diploma
+        { wch: 16 },  // Written
+        { wch: 16 },  // Viva
+        { wch: 18 },  // Written + Viva
+        { wch: 10 },  // Total
+        { wch: 16 },  // Remarks
+        { wch: 20 },  // Exam Taken
       ];
 
       const workbook = XLSX.utils.book_new();
@@ -918,37 +961,17 @@ export function AcceptedStudents() {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm font-medium text-gray-600">Selected</p>
-            <p className="text-2xl font-bold text-green-600">{summary.SELECTED}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm font-medium text-gray-600">Accepted</p>
-            <p className="text-2xl font-bold text-emerald-700">{summary.ACCEPTED}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm font-medium text-gray-600">Waiting</p>
-            <p className="text-2xl font-bold text-amber-600">{summary.WAITING}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm font-medium text-gray-600">Rejected</p>
-            <p className="text-2xl font-bold text-rose-600">{summary.REJECTED}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm font-medium text-gray-600">Absent</p>
-            <p className="text-2xl font-bold text-slate-600">{summary.ABSENT}</p>
-          </CardContent>
-        </Card>
+      <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${GRID_COLS_XL[visibleTabs.length] ?? "xl:grid-cols-5"}`}>
+        {visibleTabs.map((key) => (
+          <Card key={key}>
+            <CardContent className="p-4">
+              <p className="text-sm font-medium text-gray-600">{CARD_CONFIG[key].label}</p>
+              <p className={`text-2xl font-bold ${CARD_CONFIG[key].className}`}>
+                {summary[TAB_TO_STATUS[key]]}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       <Card>
@@ -1241,40 +1264,15 @@ export function AcceptedStudents() {
                   setPage(1);
                 }}
               >
-                <TabsList className="grid w-full h-auto grid-cols-2 gap-2 p-0 bg-transparent md:grid-cols-5">
-                  <TabsTrigger
-                    value="selected"
-                    className={RESULT_TAB_TRIGGER_CLASS}
-                  >
-                    Selected ({summary.SELECTED})
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="accepted"
-                    className={RESULT_TAB_TRIGGER_CLASS}
-                  >
-                    Accepted ({summary.ACCEPTED})
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="rejected"
-                    className={RESULT_TAB_TRIGGER_CLASS}
-                  >
-                    Not Selected ({summary.REJECTED})
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="waiting"
-                    className={RESULT_TAB_TRIGGER_CLASS}
-                  >
-                    Waiting ({summary.WAITING})
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="absent"
-                    className={RESULT_TAB_TRIGGER_CLASS}
-                  >
-                    Absent ({summary.ABSENT})
-                  </TabsTrigger>
+                <TabsList className={`grid w-full h-auto grid-cols-2 gap-2 p-0 bg-transparent ${GRID_COLS_MD[visibleTabs.length] ?? "md:grid-cols-5"}`}>
+                  {visibleTabs.map((key) => (
+                    <TabsTrigger key={key} value={key} className={RESULT_TAB_TRIGGER_CLASS}>
+                      {TAB_LABELS[key]} ({summary[TAB_TO_STATUS[key]]})
+                    </TabsTrigger>
+                  ))}
                 </TabsList>
 
-                {Object.entries(TAB_TO_STATUS).map(([tabKey]) => (
+                {visibleTabs.map((tabKey) => (
                   <TabsContent key={tabKey} value={tabKey} className="mt-4">
                     {isDepartmentLoading || isLoading ? (
                       <div className="flex items-center justify-center py-12">
@@ -1311,8 +1309,8 @@ export function AcceptedStudents() {
                               <TableHead>SL</TableHead>
                               <TableHead>Application Serial</TableHead>
                               <TableHead>Student Name</TableHead>
-                              <TableHead>SSC Number</TableHead>
-                              <TableHead>HSC/Diploma Number</TableHead>
+                              <TableHead>SSC</TableHead>
+                              <TableHead>HSC/Diploma</TableHead>
                               <TableHead>Written</TableHead>
                               <TableHead>Viva</TableHead>
                               <TableHead>Written + Viva</TableHead>

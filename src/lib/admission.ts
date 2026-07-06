@@ -48,6 +48,8 @@ export interface AdmissionResult {
   viva_marks: number;
   viva_marks_entered: boolean;
   viva_given: boolean;
+  written_total_marks: number;
+  viva_total_marks: number;
   written_viva_total: number;
   total_marks: number;
   weighted_total_marks: number;
@@ -113,6 +115,12 @@ export function getAcademicDisplayLabel(result: AdmissionResult) {
   }
 
   return "HSC";
+}
+
+// GPA scale used as the denominator: Diploma is out of 4, HSC out of 5.
+// Mirrors get_academic_max_score in admission_calculator.py.
+export function getAcademicMaxScore(result: AdmissionResult) {
+  return getAcademicSource(result) === "DIPLOMA" ? 4 : 5;
 }
 
 export function matchesAdmissionSearch(result: AdmissionResult, searchTerm: string) {

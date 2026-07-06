@@ -41,6 +41,10 @@ import { AcceptedStudents } from './pages/AcceptedStudents';
 import { DeleteQuestions } from './pages/DeleteQuestions';
 
 // Component mapping for dynamic routes
+// Cosmetic restricted view of the results board: only Selected + Not Selected
+// tabs. Point a menu item's component at "PublishedResults" to grant it.
+const PublishedResults = () => <AcceptedStudents allowedTabs={["selected", "rejected"]} />;
+
 const componentMap = {
   Dashboard: SimpleDashboard,
   CreateQuestions: SimpleCreateQuestions,
@@ -69,6 +73,7 @@ const componentMap = {
   MySchedule,
   ExamineeResult,
   AcceptedStudents,
+  PublishedResults,
   DeleteQuestions,
 };
 
@@ -136,6 +141,7 @@ function ProtectedRoutes() {
         <Route path="/override-selection" element={<ExamineeResult />} />
         <Route path="/examinee-result" element={<Navigate to="/override-selection" replace />} />
         <Route path="/results" element={<AcceptedStudents />} />
+        <Route path="/published-results" element={<PublishedResults />} />
         <Route path="/result" element={<Navigate to="/results" replace />} />
         <Route path="/accepted-students" element={<Navigate to="/results" replace />} />
         <Route path="/deletequestions" element={<DeleteQuestions />} />

@@ -101,7 +101,8 @@ export function VivaModal({
       (sum: number, mark: number) => sum + (mark || 0),
       0,
     );
-    setVivaMarks(prev => ({ ...prev, marks: total }));
+    // Round to 2dp so float sums like 0.1+0.2 don't send 7.30000000000001.
+    setVivaMarks(prev => ({ ...prev, marks: Math.round(total * 100) / 100 }));
   }, [vivaMarks.rubrics_marks]);
 
   const loadRubrics = async () => {

@@ -29,9 +29,12 @@ interface Student {
   created_at: string;
 }
 
+// Default password for new student accounts.
+const DEFAULT_STUDENT_PASSWORD = '123';
+
 const createEmptyFormData = () => ({
   username: '',
-  password: '',
+  password: DEFAULT_STUDENT_PASSWORD,
   f_id: '',
   full_name: '',
   email: '',
@@ -43,8 +46,8 @@ const createEmptyFormData = () => ({
   diploma: ''
 });
 
-// Default password = student's last name, symbols/spaces stripped.
-const deriveDefaultPassword = (fullName: string) => {
+// Last name, symbols/spaces stripped — used for the fallback email.
+const deriveLastName = (fullName: string) => {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
   const lastName = parts.length ? parts[parts.length - 1] : '';
   return lastName.replace(/[^a-zA-Z0-9]/g, '');
@@ -52,7 +55,7 @@ const deriveDefaultPassword = (fullName: string) => {
 
 // Placeholder email when none is entered: {lastname}notinserted@mail.com
 const deriveFallbackEmail = (fullName: string) => {
-  const lastName = deriveDefaultPassword(fullName).toLowerCase() || 'student';
+  const lastName = deriveLastName(fullName).toLowerCase() || 'student';
   return `${lastName}notinserted@mail.com`;
 };
 
@@ -411,7 +414,7 @@ export function Students({ gradientClass }: StudentsProps) {
                           setFormData(prev => ({
                             ...prev,
                             full_name,
-                            password: passwordAuto ? deriveDefaultPassword(full_name) : prev.password,
+                            password: passwordAuto ? DEFAULT_STUDENT_PASSWORD : prev.password,
                           }));
                         }}
                         placeholder="John Doe"
@@ -466,9 +469,9 @@ export function Students({ gradientClass }: StudentsProps) {
                           setPasswordAuto(false);
                           setFormData(prev => ({ ...prev, password: e.target.value }));
                         }}
-                        placeholder="Auto-filled from last name"
+                        placeholder="Defaults to 123"
                       />
-                      <p className="text-xs text-gray-500">Defaults to the student's last name. Edit to override.</p>
+                      <p className="text-xs text-gray-500">Defaults to 123. Edit to override.</p>
                     </div>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                       <div className="space-y-2">

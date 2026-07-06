@@ -1,5 +1,7 @@
 import {
   PRETTY_STATUS_LABELS,
+  getAcademicDisplayValue,
+  getAcademicMaxScore,
   type AdmissionResult,
   type EffectiveDepartment,
 } from "./admission";
@@ -73,6 +75,16 @@ function formatNumber(value: number | null | undefined) {
   }
 
   return Number(value).toFixed(2).replace(/\.00$/, "");
+}
+
+// "4.83 out of 5"; when total is missing/0 (e.g. no viva assigned), show the
+// value alone rather than a meaningless "x out of 0".
+function formatOutOf(value?: number | null, total?: number | null): string {
+  const v = formatNumber(value);
+  if (!total || total <= 0) {
+    return v;
+  }
+  return `${v} out of ${formatNumber(total)}`;
 }
 
 function normalizeFacultyLabel(value: string | null | undefined) {
@@ -186,11 +198,14 @@ export function buildResultSheetRows(results: AdmissionResult[]): ResultSheetRow
     applicationSerial: result.student_f_id || "N/A",
     studentName: result.student_full_name || "N/A",
     username: result.student_username || "",
-    ssc: formatNumber(result.ssc_contribution),
-    academic: formatNumber(result.academic_contribution),
-    written: formatNumber(result.mcq_marks),
-    viva: formatNumber(result.viva_marks),
-    writtenViva: formatNumber(result.written_viva_total),
+    ssc: formatOutOf(result.student_ssc, 5),
+    academic: formatOutOf(getAcademicDisplayValue(result), getAcademicMaxScore(result)),
+    written: formatOutOf(result.mcq_marks, result.written_total_marks),
+    viva: formatOutOf(result.viva_marks, result.viva_total_marks),
+    writtenViva: formatOutOf(
+      result.written_viva_total,
+      (result.written_total_marks || 0) + (result.viva_total_marks || 0),
+    ),
     total: formatNumber(result.weighted_total_marks),
     remarks: result.is_admitted ? PRETTY_STATUS_LABELS.ACCEPTED : PRETTY_STATUS_LABELS[result.result_status],
     examTakenAt: formatExamTaken(result.exam_taken_at),
