@@ -149,7 +149,6 @@ const RESULT_SHEET_PDF_COLUMNS: PdfColumn[] = [
   // { key: "writtenViva", header: "Written + Viva", cellWidth: 50, align: "center" },  // commented out: hidden column
   { key: "total", header: "Total", cellWidth: 40, align: "center" },
   { key: "remarks", header: "Status", cellWidth: 62, align: "center" },
-  { key: "examTakenAt", header: "Exam Taken", cellWidth: 66, align: "center" },
 ];
 
 // Build autoTable input from the column config above.
@@ -205,6 +204,18 @@ const scaleColumnWidthsToPage = (
 };
 
 type ExportFormat = "pdf" | "excel";
+
+// PDF header "Exam Date": the common exam-taken calendar day of the exported
+// cohort, else today (when dates differ or any student was absent).
+const resolveExportExamDate = (rows: AdmissionResult[]): string => {
+  const keys = new Set(
+    rows.map((r) => (r.exam_taken_at ? new Date(r.exam_taken_at).toDateString() : "none")),
+  );
+  if (keys.size === 1 && !keys.has("none")) {
+    return formatReportDate(new Date(rows[0].exam_taken_at as string));
+  }
+  return formatReportDate();
+};
 
 interface AcceptedStudentsProps {
   // Cosmetic tab restriction: pass a subset to show only those tabs + their
@@ -515,7 +526,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
       const marginX = 26;
       const tableTop = 190;
       const bottomMargin = 28;
-      const reportDate = formatReportDate();
+      const reportDate = resolveExportExamDate(exportData);
       const activeStatusLabel = PRETTY_STATUS_LABELS[TAB_TO_STATUS[activeTab]];
 
       const drawHeader = () => {
@@ -639,7 +650,6 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
           "Written + Viva": row.writtenViva,
           Total: row.total,
           Remarks: row.remarks,
-          "Exam Taken": row.examTakenAt,
         })),
       );
       worksheet["!cols"] = [
@@ -653,7 +663,6 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
         { wch: 18 },  // Written + Viva
         { wch: 10 },  // Total
         { wch: 16 },  // Remarks
-        { wch: 20 },  // Exam Taken
       ];
 
       const workbook = XLSX.utils.book_new();

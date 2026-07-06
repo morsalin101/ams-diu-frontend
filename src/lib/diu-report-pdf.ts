@@ -87,6 +87,8 @@ export function drawDiuPdfChrome(
   doc.text(`Page ${doc.getNumberOfPages()}`, pageWidth - marginX, pageHeight - 12, {
     align: "right",
   });
+  // Generated-on stamp, bottom-left (always today, distinct from the exam date above).
+  doc.text(formatReportDate(), marginX, pageHeight - 12, { align: "left" });
 }
 
 type Signatory = {
