@@ -147,7 +147,7 @@ const RESULT_SHEET_PDF_COLUMNS: PdfColumn[] = [
   { key: "written", header: "Written", cellWidth: 58, align: "center" },
   { key: "viva", header: "Viva", cellWidth: 54, align: "center" },
   // { key: "writtenViva", header: "Written + Viva", cellWidth: 50, align: "center" },  // commented out: hidden column
-  { key: "total", header: "Total", cellWidth: 40, align: "center" },
+  { key: "total", header: "Total", cellWidth: 58, align: "center" },
   { key: "remarks", header: "Status", cellWidth: 62, align: "center" },
 ];
 
@@ -558,7 +558,9 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
         },
         head: pdfTableConfig.head,
         body: rows.map((row) =>
-          RESULT_SHEET_PDF_COLUMNS.map((column) => row[column.key] ?? ""),
+          RESULT_SHEET_PDF_COLUMNS.map((column) =>
+            column.key === "total" ? `${row.total} / 100` : row[column.key] ?? "",
+          ),
         ),
         theme: "grid",
         styles: {
@@ -648,7 +650,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
           Written: row.written,
           Viva: row.viva,
           "Written + Viva": row.writtenViva,
-          Total: row.total,
+          Total: `${row.total} / 100`,
           Remarks: row.remarks,
         })),
       );
@@ -661,7 +663,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
         { wch: 16 },  // Written
         { wch: 16 },  // Viva
         { wch: 18 },  // Written + Viva
-        { wch: 10 },  // Total
+        { wch: 14 },  // Total
         { wch: 16 },  // Remarks
       ];
 
@@ -1365,7 +1367,10 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
                                     <span className="whitespace-nowrap">{row.viva}</span>
                                   </TableCell>
                                   <TableCell>{row.writtenViva}</TableCell>
-                                  <TableCell className="font-semibold">{row.total}</TableCell>
+                                  <TableCell className="font-semibold">
+                                    {row.total}
+                                    <span className="ml-1 text-xs font-normal text-gray-400">/ 100</span>
+                                  </TableCell>
                                   <TableCell>
                                     <Badge
                                       variant="outline"
