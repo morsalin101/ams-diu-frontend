@@ -1,6 +1,7 @@
 import {
   PRETTY_STATUS_LABELS,
   getAcademicDisplayValue,
+  getAcademicDisplayLabel,
   getAcademicMaxScore,
   type AdmissionResult,
   type EffectiveDepartment,
@@ -77,14 +78,14 @@ function formatNumber(value: number | null | undefined) {
   return Number(value).toFixed(2).replace(/\.00$/, "");
 }
 
-// "4.83 out of 5"; when total is missing/0 (e.g. no viva assigned), show the
-// value alone rather than a meaningless "x out of 0".
+// "4.83 / 5"; when total is missing/0 (e.g. no viva assigned), show the
+// value alone rather than a meaningless "x / 0".
 function formatOutOf(value?: number | null, total?: number | null): string {
   const v = formatNumber(value);
   if (!total || total <= 0) {
     return v;
   }
-  return `${v} out of ${formatNumber(total)}`;
+  return `${v} / ${formatNumber(total)}`;
 }
 
 function normalizeFacultyLabel(value: string | null | undefined) {
@@ -191,18 +192,27 @@ export function formatExamTaken(value?: string | null): string {
   });
 }
 
-export function buildResultSheetRows(results: AdmissionResult[]): ResultSheetRow[] {
+// When `withDenominator` is false the mark columns hold bare values (e.g. "12")
+// instead of "12 / 15" — used by the exports, where the denominator moves into
+// the column header (see `getColumnHeader`) so a table can be shown per cohort.
+export function buildResultSheetRows(
+  results: AdmissionResult[],
+  { withDenominator = true }: { withDenominator?: boolean } = {},
+): ResultSheetRow[] {
+  const fmt = (value?: number | null, total?: number | null) =>
+    withDenominator ? formatOutOf(value, total) : formatNumber(value);
+
   return results.map((result, index) => ({
     id: result.id,
     serial: index + 1,
     applicationSerial: result.student_f_id || "N/A",
     studentName: result.student_full_name || "N/A",
     username: result.student_username || "",
-    ssc: formatOutOf(result.student_ssc, 5),
-    academic: formatOutOf(getAcademicDisplayValue(result), getAcademicMaxScore(result)),
-    written: formatOutOf(result.mcq_marks, result.written_total_marks),
-    viva: formatOutOf(result.viva_marks, result.viva_total_marks),
-    writtenViva: formatOutOf(
+    ssc: fmt(result.student_ssc, 5),
+    academic: fmt(getAcademicDisplayValue(result), getAcademicMaxScore(result)),
+    written: fmt(result.mcq_marks, result.written_total_marks),
+    viva: fmt(result.viva_marks, result.viva_total_marks),
+    writtenViva: fmt(
       result.written_viva_total,
       (result.written_total_marks || 0) + (result.viva_total_marks || 0),
     ),
@@ -210,6 +220,104 @@ export function buildResultSheetRows(results: AdmissionResult[]): ResultSheetRow
     remarks: result.is_admitted ? PRETTY_STATUS_LABELS.ACCEPTED : PRETTY_STATUS_LABELS[result.result_status],
     examTakenAt: formatExamTaken(result.exam_taken_at),
   }));
+}
+
+// The per-column maximums that vary between students. SSC (5) and the weighted
+// Total (100) are constant, so they never split a table and aren't part of the
+// grouping signature.
+export interface ResultDenominators {
+  academicLabel: string; // "HSC" | "Diploma"
+  academicMax: number; // 5 (HSC) | 4 (Diploma)
+  writtenTotal: number;
+  vivaTotal: number;
+}
+
+export interface ResultSheetGroup {
+  key: string;
+  denominators: ResultDenominators;
+  results: AdmissionResult[];
+}
+
+export function getResultDenominators(result: AdmissionResult): ResultDenominators {
+  return {
+    academicLabel: getAcademicDisplayLabel(result),
+    academicMax: getAcademicMaxScore(result),
+    writtenTotal: Number(result.written_total_marks) || 0,
+    vivaTotal: Number(result.viva_total_marks) || 0,
+  };
+}
+
+// Split an export cohort into groups that share the same denominators, so each
+// group can be rendered as its own table with those maxes in the headers.
+// Order: HSC before Diploma, then written total asc, then viva total asc.
+export function groupResultsByDenominators(results: AdmissionResult[]): ResultSheetGroup[] {
+  const groups = new Map<string, ResultSheetGroup>();
+
+  for (const result of results) {
+    const denominators = getResultDenominators(result);
+    const key = [
+      denominators.academicLabel,
+      denominators.academicMax,
+      denominators.writtenTotal,
+      denominators.vivaTotal,
+    ].join("|");
+    const existing = groups.get(key);
+    if (existing) {
+      existing.results.push(result);
+    } else {
+      groups.set(key, { key, denominators, results: [result] });
+    }
+  }
+
+  return Array.from(groups.values()).sort((a, b) => {
+    const left = a.denominators;
+    const right = b.denominators;
+    if (left.academicMax !== right.academicMax) return right.academicMax - left.academicMax;
+    if (left.writtenTotal !== right.writtenTotal) return left.writtenTotal - right.writtenTotal;
+    if (left.vivaTotal !== right.vivaTotal) return left.vivaTotal - right.vivaTotal;
+    return left.academicLabel.localeCompare(right.academicLabel);
+  });
+}
+
+// Append "(out of X)" only when X is a real maximum (>0).
+function withMax(label: string, max: number): string {
+  return max > 0 ? `${label} (out of ${formatNumber(max)})` : label;
+}
+
+// Column header text for a given group. Mark columns carry that group's
+// denominator; the rest are static labels.
+export function getColumnHeader(
+  key: keyof ResultSheetRow,
+  denominators: ResultDenominators,
+): string {
+  switch (key) {
+    case "serial":
+      return "SL";
+    case "applicationSerial":
+      return "Application Serial";
+    case "studentName":
+      return "Student Name";
+    case "username":
+      return "Username";
+    case "ssc":
+      return withMax("SSC", 5);
+    case "academic":
+      return withMax(denominators.academicLabel, denominators.academicMax);
+    case "written":
+      return withMax("Written", denominators.writtenTotal);
+    case "viva":
+      return withMax("Viva", denominators.vivaTotal);
+    case "writtenViva":
+      return withMax("Written + Viva", denominators.writtenTotal + denominators.vivaTotal);
+    case "total":
+      return withMax("Total", 100);
+    case "remarks":
+      return "Status";
+    case "examTakenAt":
+      return "Exam Taken";
+    default:
+      return String(key);
+  }
 }
 
 export function getResultStatusBadgeClass(status: AdmissionResult["result_status"] | "ACCEPTED") {

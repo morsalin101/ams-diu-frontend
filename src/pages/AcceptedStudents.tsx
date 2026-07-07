@@ -51,7 +51,9 @@ import {
 } from "../lib/admission";
 import {
   buildResultSheetRows,
+  getColumnHeader,
   getResultStatusBadgeClass,
+  groupResultsByDenominators,
   resolveFacultyName,
   type ExamLookupRecord,
 } from "../lib/result-sheet";
@@ -151,6 +153,22 @@ const RESULT_SHEET_PDF_COLUMNS: PdfColumn[] = [
   { key: "remarks", header: "Status", cellWidth: 62, align: "center" },
 ];
 
+// Column order for the Excel result sheet. Headers are computed per denominator
+// group via getColumnHeader; the mark columns hold bare values (denominator is
+// in the header). Keep in sync with the `!cols` widths in exportExcel.
+const RESULT_SHEET_EXCEL_KEYS = [
+  "serial",
+  "applicationSerial",
+  "studentName",
+  "ssc",
+  "academic",
+  "written",
+  "viva",
+  "writtenViva",
+  "total",
+  "remarks",
+] as const;
+
 // Build autoTable input from the column config above.
 // Pass `effectiveColumnWidths` (from `scaleColumnWidthsToPage`) to make the
 // table fill the full usable page width and avoid a gap on the right side.
@@ -236,7 +254,10 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
   const [selectedSemester, setSelectedSemester] = useState("");
   const [activeTab, setActiveTab] = useState<TabKey>(visibleTabs[0]);
   const [results, setResults] = useState<AdmissionResult[]>([]);
+  // `summary` tracks the active search/date filters (drives the tab counts);
+  // `totalSummary` stays at the whole-semester totals (drives the top cards).
   const [summary, setSummary] = useState(DEFAULT_SUMMARY);
+  const [totalSummary, setTotalSummary] = useState(DEFAULT_SUMMARY);
   const [configurationMissing, setConfigurationMissing] = useState(false);
   const [examRecords, setExamRecords] = useState<ExamLookupRecord[]>([]);
   const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
@@ -362,6 +383,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
   useEffect(() => {
     setResults([]);
     setSummary(DEFAULT_SUMMARY);
+    setTotalSummary(DEFAULT_SUMMARY);
     setConfigurationMissing(false);
     setSelectedStudentIds([]);
     setPage(1);
@@ -376,6 +398,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
     if (!hasReadAccess || !department?.id || !selectedSemester) {
       setResults([]);
       setSummary(DEFAULT_SUMMARY);
+      setTotalSummary(DEFAULT_SUMMARY);
       setPagination(DEFAULT_PAGINATION);
       setConfigurationMissing(false);
       return;
@@ -408,6 +431,10 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
             ...DEFAULT_SUMMARY,
             ...(response?.summary || {}),
           });
+          setTotalSummary(isConfigMissing ? DEFAULT_SUMMARY : {
+            ...DEFAULT_SUMMARY,
+            ...(response?.total_summary || response?.summary || {}),
+          });
           setSelectedStudentIds([]);
         });
       } catch (resultError: any) {
@@ -419,6 +446,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
         toast.error(resultError?.message || "Failed to load accepted students");
         setResults([]);
         setSummary(DEFAULT_SUMMARY);
+        setTotalSummary(DEFAULT_SUMMARY);
         setPagination(DEFAULT_PAGINATION);
         setConfigurationMissing(false);
       } finally {
@@ -511,8 +539,10 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
     setExportingFormat("pdf");
     try {
       const exportData = await resolveExportResults();
-      const rows = buildResultSheetRows(exportData);
-      if (rows.length === 0) {
+      // Cluster by denominators so students with different exam/viva totals or
+      // HSC-vs-Diploma each get their own table (maxes live in the headers).
+      const groups = groupResultsByDenominators(exportData);
+      if (groups.length === 0) {
         toast.error("No students to export for the current filters.");
         return;
       }
@@ -526,6 +556,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
       const marginX = 26;
       const tableTop = 190;
       const bottomMargin = 28;
+      const groupGap = 16;
       const reportDate = resolveExportExamDate(exportData);
       const activeStatusLabel = PRETTY_STATUS_LABELS[TAB_TO_STATUS[activeTab]];
 
@@ -540,7 +571,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
         });
       };
 
-      const pdfTableConfig = buildPdfTableConfig(
+      const { columnStyles } = buildPdfTableConfig(
         RESULT_SHEET_PDF_COLUMNS,
         scaleColumnWidthsToPage(
           RESULT_SHEET_PDF_COLUMNS,
@@ -548,47 +579,57 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
           marginX,
         ),
       );
-      autoTable(doc, {
-        startY: tableTop,
-        margin: {
-          top: tableTop,
-          left: marginX,
-          right: marginX,
-          bottom: 56,
-        },
-        head: pdfTableConfig.head,
-        body: rows.map((row) =>
-          RESULT_SHEET_PDF_COLUMNS.map((column) =>
-            column.key === "total" ? `${row.total} out of 100` : row[column.key] ?? "",
+
+      // One table per group, each flowing after the previous one. The
+      // denominators live in the column headers, which repeat on page breaks.
+      groups.forEach((group, groupIndex) => {
+        const groupRows = buildResultSheetRows(group.results, { withDenominator: false });
+        const startY =
+          groupIndex === 0 ? tableTop : ((doc as any).lastAutoTable?.finalY ?? tableTop) + groupGap;
+        autoTable(doc, {
+          startY,
+          margin: {
+            top: tableTop,
+            left: marginX,
+            right: marginX,
+            bottom: 56,
+          },
+          head: [
+            RESULT_SHEET_PDF_COLUMNS.map((column) =>
+              getColumnHeader(column.key, group.denominators),
+            ),
+          ],
+          body: groupRows.map((row) =>
+            RESULT_SHEET_PDF_COLUMNS.map((column) => row[column.key] ?? ""),
           ),
-        ),
-        theme: "grid",
-        styles: {
-          font: "helvetica",
-          fontSize: 8,
-          cellPadding: 4,
-          textColor: [15, 23, 42],
-          lineColor: [203, 213, 225],
-          lineWidth: 0.6,
-          overflow: "linebreak",
-          valign: "middle",
-        },
-        headStyles: {
-          fillColor: [46, 48, 148],
-          textColor: [255, 255, 255],
-          fontStyle: "bold",
-          halign: "center",
-        },
-        bodyStyles: {
-          minCellHeight: 18,
-        },
-        alternateRowStyles: {
-          fillColor: [248, 250, 252],
-        },
-        columnStyles: pdfTableConfig.columnStyles,
-        didDrawPage: () => {
-          drawHeader();
-        },
+          theme: "grid",
+          styles: {
+            font: "helvetica",
+            fontSize: 8,
+            cellPadding: 4,
+            textColor: [15, 23, 42],
+            lineColor: [203, 213, 225],
+            lineWidth: 0.6,
+            overflow: "linebreak",
+            valign: "middle",
+          },
+          headStyles: {
+            fillColor: [46, 48, 148],
+            textColor: [255, 255, 255],
+            fontStyle: "bold",
+            halign: "center",
+          },
+          bodyStyles: {
+            minCellHeight: 18,
+          },
+          alternateRowStyles: {
+            fillColor: [248, 250, 252],
+          },
+          columnStyles,
+          didDrawPage: () => {
+            drawHeader();
+          },
+        });
       });
 
       // Render the signature block as one indivisible block at the very end.
@@ -634,36 +675,40 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
     setExportingFormat("excel");
     try {
       const exportData = await resolveExportResults();
-      const rows = buildResultSheetRows(exportData);
-      if (rows.length === 0) {
+      // Same clustering as the PDF: one table per denominator group, stacked in
+      // a single sheet with a caption row and a blank separator between them.
+      const groups = groupResultsByDenominators(exportData);
+      if (groups.length === 0) {
         toast.error("No students to export for the current filters.");
         return;
       }
       const XLSX = await import("xlsx");
-      const worksheet = XLSX.utils.json_to_sheet(
-        rows.map((row) => ({
-          SL: row.serial,
-          "Application Serial": row.applicationSerial,
-          "Student Name": row.studentName,
-          SSC: row.ssc,
-          "HSC/Diploma": row.academic,
-          Written: row.written,
-          Viva: row.viva,
-          "Written + Viva": row.writtenViva,
-          Total: `${row.total} out of 100`,
-          Remarks: row.remarks,
-        })),
-      );
+      const sheetRows: (string | number)[][] = [];
+
+      groups.forEach((group, groupIndex) => {
+        if (groupIndex > 0) {
+          sheetRows.push([]); // blank separator between tables
+        }
+        sheetRows.push(
+          RESULT_SHEET_EXCEL_KEYS.map((key) => getColumnHeader(key, group.denominators)),
+        );
+
+        buildResultSheetRows(group.results, { withDenominator: false }).forEach((row) => {
+          sheetRows.push(RESULT_SHEET_EXCEL_KEYS.map((key) => row[key]));
+        });
+      });
+
+      const worksheet = XLSX.utils.aoa_to_sheet(sheetRows);
       worksheet["!cols"] = [
         { wch: 8 },   // SL
         { wch: 20 },  // Application Serial
         { wch: 28 },  // Student Name
-        { wch: 16 },  // SSC
-        { wch: 22 },  // HSC/Diploma
-        { wch: 16 },  // Written
-        { wch: 16 },  // Viva
-        { wch: 18 },  // Written + Viva
-        { wch: 18 },  // Total
+        { wch: 16 },  // SSC (out of 5)
+        { wch: 22 },  // HSC/Diploma (out of X)
+        { wch: 20 },  // Written (out of X)
+        { wch: 18 },  // Viva (out of X)
+        { wch: 26 },  // Written + Viva (out of X)
+        { wch: 20 },  // Total (out of 100)
         { wch: 16 },  // Remarks
       ];
 
@@ -683,6 +728,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
     if (!department?.id || !selectedSemester) {
       setResults([]);
       setSummary(DEFAULT_SUMMARY);
+      setTotalSummary(DEFAULT_SUMMARY);
       setConfigurationMissing(false);
       setSelectedStudentIds([]);
       return;
@@ -707,12 +753,17 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
         ...DEFAULT_SUMMARY,
         ...(response?.summary || {}),
       });
+      setTotalSummary(isConfigMissing ? DEFAULT_SUMMARY : {
+        ...DEFAULT_SUMMARY,
+        ...(response?.total_summary || response?.summary || {}),
+      });
       setSelectedStudentIds([]);
     } catch (refreshError: any) {
       console.error("Error refreshing accepted students:", refreshError);
       toast.error(refreshError?.message || "Failed to refresh accepted students");
       setResults([]);
       setSummary(DEFAULT_SUMMARY);
+      setTotalSummary(DEFAULT_SUMMARY);
       setPagination(DEFAULT_PAGINATION);
       setConfigurationMissing(false);
       setSelectedStudentIds([]);
@@ -978,7 +1029,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
             <CardContent className="p-4">
               <p className="text-sm font-medium text-gray-600">{CARD_CONFIG[key].label}</p>
               <p className={`text-2xl font-bold ${CARD_CONFIG[key].className}`}>
-                {summary[TAB_TO_STATUS[key]]}
+                {totalSummary[TAB_TO_STATUS[key]]}
               </p>
             </CardContent>
           </Card>
