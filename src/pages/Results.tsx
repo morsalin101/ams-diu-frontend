@@ -33,7 +33,6 @@ import {
   User,
   BookOpen,
   Calendar,
-  Building2,
   Loader2,
   AlertTriangle,
   TrendingUp,
@@ -94,7 +93,20 @@ interface ExamResult {
     rubrics_marks: { [key: string]: number };
     remarks: string | null;
   };
+  result_status: string;
 }
+
+// Admission status shown per row (replaces the department column — a teacher
+// only ever sees their own department, so it carried no signal).
+const STATUS_META: Record<string, { label: string; className: string }> = {
+  SELECTED: { label: 'Selected', className: 'text-green-700 bg-green-50 border-green-200' },
+  ACCEPTED: { label: 'Accepted', className: 'text-emerald-800 bg-emerald-50 border-emerald-300' },
+  WAITING: { label: 'Waiting', className: 'text-amber-700 bg-amber-50 border-amber-200' },
+  REJECTED: { label: 'Not Selected', className: 'text-rose-700 bg-rose-50 border-rose-200' },
+  ABSENT: { label: 'Absent', className: 'text-slate-700 bg-slate-50 border-slate-200' },
+  PENDING: { label: 'Pending', className: 'text-slate-600 bg-slate-50 border-slate-200' },
+};
+const getStatusMeta = (status?: string) => STATUS_META[status || 'PENDING'] || STATUS_META.PENDING;
 
 interface ApiResponse {
   success: boolean;
@@ -754,14 +766,11 @@ export function Results({ gradientClass }: ResultsProps) {
                             <p className="truncate text-xs text-slate-500 md:text-sm">
                               ID: {result.student_f_id}
                             </p>
-                            <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-500 md:text-sm">
-                              <Building2 className="h-3.5 w-3.5 shrink-0 md:h-4 md:w-4" />
-                              <span className="truncate">
-                                {getDisplayDepartment(
-                                  result.exam_details.department,
-                                )}
-                              </span>
-                            </p>
+                            <span
+                              className={`mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold md:text-xs ${getStatusMeta(result.result_status).className}`}
+                            >
+                              {getStatusMeta(result.result_status).label}
+                            </span>
                           </div>
                         </div>
                         {isVivaCompleted ? (
@@ -811,11 +820,11 @@ export function Results({ gradientClass }: ResultsProps) {
                   <TableRow>
                     <TableHead>Form ID</TableHead>
                     <TableHead>Student</TableHead>
-                    <TableHead>Department</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Semester</TableHead>
                     <TableHead>Correct Answers</TableHead>
                     <TableHead>Wrong Answers</TableHead>
-                    <TableHead>Score %</TableHead>
+                    <TableHead>Written Score</TableHead>
                     <TableHead>Viva Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -846,14 +855,12 @@ export function Results({ gradientClass }: ResultsProps) {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Building2 className="w-4 h-4 text-gray-500" />
-                            <span className="text-sm">
-                              {getDisplayDepartment(
-                                result.exam_details.department,
-                              )}
-                            </span>
-                          </div>
+                          <Badge
+                            variant="outline"
+                            className={`text-xs ${getStatusMeta(result.result_status).className}`}
+                          >
+                            {getStatusMeta(result.result_status).label}
+                          </Badge>
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className="text-xs">
