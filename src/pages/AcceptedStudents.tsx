@@ -147,7 +147,7 @@ const RESULT_SHEET_PDF_COLUMNS: PdfColumn[] = [
   { key: "written", header: "Written", cellWidth: 58, align: "center" },
   { key: "viva", header: "Viva", cellWidth: 54, align: "center" },
   // { key: "writtenViva", header: "Written + Viva", cellWidth: 50, align: "center" },  // commented out: hidden column
-  { key: "total", header: "Total", cellWidth: 58, align: "center" },
+  { key: "total", header: "Total", cellWidth: 76, align: "center" },
   { key: "remarks", header: "Status", cellWidth: 62, align: "center" },
 ];
 
@@ -559,7 +559,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
         head: pdfTableConfig.head,
         body: rows.map((row) =>
           RESULT_SHEET_PDF_COLUMNS.map((column) =>
-            column.key === "total" ? `${row.total} / 100` : row[column.key] ?? "",
+            column.key === "total" ? `${row.total} out of 100` : row[column.key] ?? "",
           ),
         ),
         theme: "grid",
@@ -650,7 +650,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
           Written: row.written,
           Viva: row.viva,
           "Written + Viva": row.writtenViva,
-          Total: `${row.total} / 100`,
+          Total: `${row.total} out of 100`,
           Remarks: row.remarks,
         })),
       );
@@ -663,7 +663,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
         { wch: 16 },  // Written
         { wch: 16 },  // Viva
         { wch: 18 },  // Written + Viva
-        { wch: 14 },  // Total
+        { wch: 18 },  // Total
         { wch: 16 },  // Remarks
       ];
 
