@@ -145,7 +145,7 @@ const RESULT_SHEET_PDF_COLUMNS: PdfColumn[] = [
   { key: "applicationSerial", header: "Application Serial", cellWidth: 62 },
   { key: "studentName", header: "Student Name", cellWidth: 92 },
   { key: "ssc", header: "SSC", cellWidth: 58, align: "center" },
-  { key: "academic", header: "HSC/Diploma", cellWidth: 72 },
+  { key: "academic", header: "HSC/Diploma", cellWidth: 72, align: "center" },
   { key: "written", header: "Written", cellWidth: 58, align: "center" },
   { key: "viva", header: "Viva", cellWidth: 54, align: "center" },
   // { key: "writtenViva", header: "Written + Viva", cellWidth: 50, align: "center" },  // commented out: hidden column
