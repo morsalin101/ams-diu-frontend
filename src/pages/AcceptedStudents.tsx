@@ -191,6 +191,11 @@ const buildPdfTableConfig = (
   return { head, columnStyles };
 };
 
+const formatPdfColumnHeader = (header: string) => {
+  const match = header.match(/^(.*) \((out of .+)\)$/i);
+  return match ? `${match[1]}\n(${match[2]})` : header;
+};
+
 /**
  * Scale the configured column widths so they exactly fill the available page
  * width. This keeps the right edge of the table flush with the right margin
@@ -263,7 +268,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
   const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
   // Sort/filter by exam-taken datetime. "latest" is the default (task 1).
   const [sortMode, setSortMode] = useState<
-    "latest" | "oldest" | "name_asc" | "name_desc" | "custom"
+    "latest" | "oldest" | "name_asc" | "name_desc" | "score_high" | "score_low" | "custom"
   >("latest");
   const [customDate, setCustomDate] = useState("");
   // Draft count in the input vs the count applied on OK (drives N-export).
@@ -292,6 +297,10 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
         return { sort_by: "name", order: "asc", exam_taken_date: undefined };
       case "name_desc":
         return { sort_by: "name", order: "desc", exam_taken_date: undefined };
+      case "score_high":
+        return { sort_by: "score", order: "desc", exam_taken_date: undefined };
+      case "score_low":
+        return { sort_by: "score", order: "asc", exam_taken_date: undefined };
       case "oldest":
         return { sort_by: "date", order: "asc", exam_taken_date: undefined };
       case "custom":
@@ -596,7 +605,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
           },
           head: [
             RESULT_SHEET_PDF_COLUMNS.map((column) =>
-              getColumnHeader(column.key, group.denominators),
+              formatPdfColumnHeader(getColumnHeader(column.key, group.denominators)),
             ),
           ],
           body: groupRows.map((row) =>
@@ -618,6 +627,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
             textColor: [255, 255, 255],
             fontStyle: "bold",
             halign: "center",
+            valign: "top",
           },
           bodyStyles: {
             minCellHeight: 18,
@@ -1125,6 +1135,8 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
                 <SelectContent>
                   <SelectItem value="name_asc">Name (A–Z)</SelectItem>
                   <SelectItem value="name_desc">Name (Z–A)</SelectItem>
+                  <SelectItem value="score_high">Highest score</SelectItem>
+                  <SelectItem value="score_low">Lowest score</SelectItem>
                   <SelectItem value="latest">Exam taken (Latest)</SelectItem>
                   <SelectItem value="oldest">Exam taken (Oldest)</SelectItem>
                   <SelectItem value="custom">Custom date…</SelectItem>
@@ -1228,7 +1240,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
                         size="sm"
                         onClick={handleAcceptAdmission}
                         disabled={selectedStudentIds.length === 0 || isAccepting}
-                        className="bg-green-600 hover:bg-green-700 text-white"
+                        className="text-white bg-green-600 hover:bg-green-700"
                       >
                         {isAccepting ? (
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
