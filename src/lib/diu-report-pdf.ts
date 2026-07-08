@@ -73,7 +73,13 @@ export function drawDiuPdfChrome(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.text(`Faculty of ${facultyName}`, centerX, 140, { align: "center" });
-  doc.text(`Department of ${departmentName}`, centerX, 156, {
+  // Some department names already include the "Department of" prefix; don't
+  // repeat it (e.g. avoid "Department of Department of Computer Science...").
+  const departmentText = departmentName.trim();
+  const departmentLine = /^department\s+of\b/i.test(departmentText)
+    ? departmentText
+    : `Department of ${departmentText}`;
+  doc.text(departmentLine, centerX, 156, {
     align: "center",
   });
   doc.text(`Exam Date: ${dateLabel}`, centerX, 172, { align: "center" });

@@ -1,12 +1,21 @@
 import { useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Bell, Menu, Settings, User } from 'lucide-react';
+import { Bell, Building2, LogOut, Mail, Menu, Settings, Shield, User } from 'lucide-react';
 import { Button } from './ui/button';
 
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
 import { useSidebar } from './ui/sidebar';
 import { useMenu } from '../contexts/MenuContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface DashboardHeaderProps {}
 
@@ -63,6 +72,11 @@ export function DashboardHeader({}: DashboardHeaderProps) {
   const location = useLocation();
   const { menuItems } = useMenu();
   const { toggleSidebar } = useSidebar();
+  const { user, logout } = useAuth();
+
+  const displayName = user?.username || 'User';
+  const roleName = user?.role_details?.role_name;
+  const departmentName = user?.department_details?.department_name;
 
   const pageTitle = useMemo(() => {
     const pathname = location.pathname;
@@ -106,15 +120,56 @@ export function DashboardHeader({}: DashboardHeaderProps) {
             <Settings className="h-5 w-5 md:h-6 md:w-6" />
           </Button>
           
-          <div className="flex items-center gap-2 md:gap-3">
-            <Avatar className="h-9 w-9 bg-white/10 ring-1 ring-white/20 md:h-11 md:w-11">
-              <AvatarImage src="" alt="Admin" />
-              <AvatarFallback className="bg-white/15 text-white">
-                <User className="h-4 w-4 md:h-5 md:w-5" />
-              </AvatarFallback>
-            </Avatar>
-            <span className="hidden text-sm font-semibold text-white sm:block md:text-base">Admin User</span>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="Open user menu"
+                className="flex items-center gap-2 rounded-lg px-1.5 py-1 transition-colors hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 md:gap-3"
+              >
+                <Avatar className="h-9 w-9 bg-white/10 ring-1 ring-white/20 md:h-11 md:w-11">
+                  <AvatarImage src="" alt={displayName} />
+                  <AvatarFallback className="bg-white/15 text-white">
+                    <User className="h-4 w-4 md:h-5 md:w-5" />
+                  </AvatarFallback>
+                </Avatar>
+                <span className="hidden text-sm font-semibold text-white sm:block md:text-base">
+                  {roleName || displayName}
+                </span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-semibold text-gray-900 break-words">{displayName}</span>
+                  {roleName && <span className="text-xs capitalize text-gray-500 break-words">{roleName}</span>}
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <div className="space-y-2 px-2 py-1.5 text-sm">
+                <div className="flex items-start gap-2 text-gray-700">
+                  <Mail className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+                  <span className="min-w-0 break-words">{user?.email || 'Not Entered'}</span>
+                </div>
+                <div className="flex items-start gap-2 text-gray-700">
+                  <Shield className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+                  <span className="min-w-0 break-words capitalize">{roleName || '—'}</span>
+                </div>
+                <div className="flex items-start gap-2 text-gray-700">
+                  <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+                  <span className="min-w-0 break-words">{departmentName || '—'}</span>
+                </div>
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={logout}
+                className="cursor-pointer text-red-600 focus:bg-red-50 focus:text-red-700"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>

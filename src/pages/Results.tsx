@@ -33,7 +33,6 @@ import {
   User,
   BookOpen,
   Calendar,
-  Building2,
   Loader2,
   AlertTriangle,
   TrendingUp,
@@ -94,7 +93,20 @@ interface ExamResult {
     rubrics_marks: { [key: string]: number };
     remarks: string | null;
   };
+  result_status: string;
 }
+
+// Admission status shown per row (replaces the department column — a teacher
+// only ever sees their own department, so it carried no signal).
+const STATUS_META: Record<string, { label: string; className: string }> = {
+  SELECTED: { label: 'Selected', className: 'text-green-700 bg-green-50 border-green-200' },
+  ACCEPTED: { label: 'Accepted', className: 'text-emerald-800 bg-emerald-50 border-emerald-300' },
+  WAITING: { label: 'Waiting', className: 'text-amber-700 bg-amber-50 border-amber-200' },
+  REJECTED: { label: 'Not Selected', className: 'text-rose-700 bg-rose-50 border-rose-200' },
+  ABSENT: { label: 'Absent', className: 'text-slate-700 bg-slate-50 border-slate-200' },
+  PENDING: { label: 'Pending', className: 'text-slate-600 bg-slate-50 border-slate-200' },
+};
+const getStatusMeta = (status?: string) => STATUS_META[status || 'PENDING'] || STATUS_META.PENDING;
 
 interface ApiResponse {
   success: boolean;
@@ -754,14 +766,11 @@ export function Results({ gradientClass }: ResultsProps) {
                             <p className="truncate text-xs text-slate-500 md:text-sm">
                               ID: {result.student_f_id}
                             </p>
-                            <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-500 md:text-sm">
-                              <Building2 className="h-3.5 w-3.5 shrink-0 md:h-4 md:w-4" />
-                              <span className="truncate">
-                                {getDisplayDepartment(
-                                  result.exam_details.department,
-                                )}
-                              </span>
-                            </p>
+                            <span
+                              className={`mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold md:text-xs ${getStatusMeta(result.result_status).className}`}
+                            >
+                              {getStatusMeta(result.result_status).label}
+                            </span>
                           </div>
                         </div>
                         {isVivaCompleted ? (
@@ -793,7 +802,7 @@ export function Results({ gradientClass }: ResultsProps) {
                         <Button
                           onClick={() => openResultDialog(result)}
                           variant="outline"
-                          className="flex-1 min-w-0 whitespace-nowrap px-1.5 text-xs text-slate-600 md:h-11 md:text-sm"
+                          className="hidden"
                         >
                           <Eye className="mr-1 h-4 w-4 shrink-0" />
                           View Results
@@ -811,11 +820,11 @@ export function Results({ gradientClass }: ResultsProps) {
                   <TableRow>
                     <TableHead>Form ID</TableHead>
                     <TableHead>Student</TableHead>
-                    <TableHead>Department</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Semester</TableHead>
                     <TableHead>Correct Answers</TableHead>
                     <TableHead>Wrong Answers</TableHead>
-                    <TableHead>Score %</TableHead>
+                    <TableHead>Written Score</TableHead>
                     <TableHead>Viva Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -846,14 +855,12 @@ export function Results({ gradientClass }: ResultsProps) {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Building2 className="w-4 h-4 text-gray-500" />
-                            <span className="text-sm">
-                              {getDisplayDepartment(
-                                result.exam_details.department,
-                              )}
-                            </span>
-                          </div>
+                          <Badge
+                            variant="outline"
+                            className={`text-xs ${getStatusMeta(result.result_status).className}`}
+                          >
+                            {getStatusMeta(result.result_status).label}
+                          </Badge>
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className="text-xs">
@@ -968,40 +975,51 @@ export function Results({ gradientClass }: ResultsProps) {
       {/* Result Details Dialog */}
       <Dialog open={showResultDialog} onOpenChange={setShowResultDialog}>
         <DialogContent
-          className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 overflow-y-auto rounded-none p-0 md:h-[82vh] md:max-h-[82vh] md:w-[95vw] md:max-w-[95vw] md:gap-2 md:overflow-hidden md:rounded-lg md:p-4 xl:max-w-[1400px]"
+          className="flex h-[100dvh] max-h-[100dvh] w-screen max-w-full flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:h-auto sm:max-h-[92vh] sm:w-[95vw] sm:max-w-[95vw] sm:rounded-xl sm:p-0 md:max-h-[90vh] lg:max-w-[1100px] xl:max-w-[1200px] 2xl:max-w-[1320px] [&>button]:hidden"
         >
-          <DialogHeader className="hidden flex-shrink-0 border-b border-slate-200 pb-2 md:block">
-            <DialogTitle className="flex items-center gap-2 text-lg font-extrabold text-slate-800">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2E3094]/10">
-                <BarChart3 className="w-4 h-4 text-[#2E3094]" />
-              </span>
-              Detailed Result Analysis
-            </DialogTitle>
-            <DialogDescription className="text-xs text-slate-500">
-              Complete performance breakdown for {selectedResult?.student_name}
-            </DialogDescription>
-          </DialogHeader>
+          {/* Modal Header */}
+          <header className="flex-shrink-0 border-b border-gray-100">
+            {/* Top toolbar: Back arrow (mobile only) + Close icon */}
+            <div className="flex items-center justify-between px-3 pt-2 sm:px-4 sm:pt-3 md:px-5 md:pt-4">
+              <button
+                onClick={() => setShowResultDialog(false)}
+                className="rounded-full p-2 text-slate-600 transition-colors hover:bg-slate-100 md:hidden"
+                aria-label="Back"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+              <span className="hidden md:block" aria-hidden="true" />
+              <button
+                onClick={() => setShowResultDialog(false)}
+                className="shrink-0 rounded p-1 text-indigo-900 transition-colors hover:bg-gray-100"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5 sm:h-6 sm:w-6" />
+              </button>
+            </div>
 
-          {selectedResult && (
-            <>
+            {/* Title row */}
+            <div className="flex items-start gap-3 px-4 pb-4 sm:px-5 sm:pb-5 md:gap-4 md:px-6 md:pb-6">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 sm:h-10 sm:w-10">
+                <BarChart3 className="h-5 w-5 text-indigo-600 sm:h-6 sm:w-6" />
+              </div>
+              <div className="min-w-0">
+                <DialogTitle className="truncate text-lg font-bold text-slate-800 md:text-xl">
+                  Detailed Result Analysis
+                </DialogTitle>
+                <DialogDescription className="mt-0.5 text-xs text-gray-500 sm:mt-1 sm:text-sm">
+                  Complete performance breakdown for {selectedResult?.student_name}
+                </DialogDescription>
+              </div>
+            </div>
+          </header>
+
+          {/* Modal Content */}
+          <div className="flex-1 overflow-y-auto">
+            {selectedResult && (
+              <>
               {/* Mobile detailed view */}
               <div className="md:hidden">
-                <div className="bg-white px-5 pb-4 pt-5">
-                  <button
-                    onClick={() => setShowResultDialog(false)}
-                    className="-ml-2 mb-3 rounded-full p-2 text-slate-600 hover:bg-slate-100"
-                    aria-label="Back"
-                  >
-                    <ArrowLeft className="h-5 w-5" />
-                  </button>
-                  <h1 className="text-xl font-bold text-[#2E3094]">
-                    Detailed Result Analysis
-                  </h1>
-                  <p className="mt-0.5 text-sm text-slate-500">
-                    Complete performance breakdown for {selectedResult.student_name}
-                  </p>
-                </div>
-
                 <div className="space-y-4 px-5 pb-10 pt-4">
                   {/* Student identity + high-level stats */}
                   <div
@@ -1147,6 +1165,7 @@ export function Results({ gradientClass }: ResultsProps) {
                       Viva Assessment
                     </h3>
                   </div>
+
                   {selectedResult.viva_marks?.marks > 0 ? (
                     <div className="flex items-center justify-between rounded-2xl border border-green-200 bg-green-50 p-4">
                       <span className="text-sm font-semibold text-green-800">
@@ -1178,41 +1197,57 @@ export function Results({ gradientClass }: ResultsProps) {
                 </div>
               </div>
 
-              {/* Desktop detailed view */}
-              <div className="hidden min-h-0 flex-1 grid-rows-[auto_auto_minmax(88px,auto)_auto] gap-2 md:grid">
-              <Card className="border-blue-200 shadow-sm bg-gradient-to-r from-blue-50 to-indigo-50">
-                <CardContent className="p-3">
-                  <div className="grid grid-cols-1 items-center gap-3 xl:grid-cols-[1fr_auto]">
-                    <div className="min-w-0">
-                      <h3 className="flex items-center gap-2 text-base font-bold text-slate-800">
-                        <User className="h-4 w-4 text-[#2E3094]" />
-                        <span className="truncate">
-                          {selectedResult.student_name}
-                        </span>
-                      </h3>
-                      <div className="mt-2 grid grid-cols-1 gap-1.5 text-xs text-slate-600 md:grid-cols-3">
-                        <p>
-                          <strong>Department:</strong>{' '}
-                          {getDisplayDepartment(
-                            selectedResult.exam_details.department,
-                          )}
+              {/* Desktop detailed view (hidden on mobile) */}
+              <div className="hidden md:block space-y-4 p-5 sm:space-y-5 sm:p-5 md:space-y-6 md:p-6">
+                {/* Student Summary Section */}
+                <section
+                  className="rounded-xl border border-gray-100 p-4 md:p-5"
+                  data-purpose="student-info-bar"
+                >
+                  <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+                    {/* Student info + meta */}
+                    <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 md:gap-x-8 md:gap-y-4 lg:w-auto lg:flex-grow">
+                      <div className="flex items-center gap-3">
+                        <User className="h-5 w-5 shrink-0 text-indigo-500" />
+                        <div className="min-w-0">
+                          <p className="truncate text-base font-bold text-slate-800 sm:text-lg">
+                            {selectedResult.student_name}
+                          </p>
+                          <p className="text-xs text-gray-500 sm:text-sm">
+                            Department:{' '}
+                            <span className="text-slate-700">
+                              {getDisplayDepartment(
+                                selectedResult.exam_details.department,
+                              )}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center md:items-end">
+                        <p className="text-xs text-gray-500 sm:text-sm">
+                          Semester:{' '}
+                          <span className="font-medium text-slate-700">
+                            {formatSemesterLabel(
+                              selectedResult.exam_details.semester,
+                            )}
+                          </span>
                         </p>
-                        <p>
-                          <strong>Semester:</strong>{' '}
-                          {formatSemesterLabel(
-                            selectedResult.exam_details.semester,
-                          )}
-                        </p>
-                        <p>
-                          <strong>Total Questions:</strong>{' '}
-                          {selectedResult.exam_details.total_questions}
+                      </div>
+                      <div className="flex items-center md:items-end">
+                        <p className="text-xs text-gray-500 sm:text-sm">
+                          Total Questions:{' '}
+                          <span className="font-medium text-slate-700">
+                            {selectedResult.exam_details.total_questions}
+                          </span>
                         </p>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    {/* High-level stats */}
+                    <div className="grid w-full grid-cols-3 gap-2 md:flex md:w-auto md:flex-wrap md:gap-3">
+                      {/* Performance score card */}
                       <div
-                        className={`flex min-w-[140px] items-center gap-2 rounded-2xl border px-3 py-2 ${getPerformanceColor(selectedResult.results.score_percentage)}`}
+                        className={`flex min-w-0 items-center gap-2 rounded-xl border px-3 py-2 md:min-w-[140px] ${getPerformanceColor(selectedResult.results.score_percentage)}`}
                       >
                         {React.createElement(
                           getPerformanceBadgeIcon(
@@ -1220,215 +1255,207 @@ export function Results({ gradientClass }: ResultsProps) {
                           ),
                           { className: 'h-5 w-5 shrink-0' },
                         )}
-                        <div>
-                          <div className="text-lg font-extrabold leading-none">
+                        <div className="min-w-0">
+                          <p className="text-base font-bold leading-tight sm:text-lg md:text-xl">
                             {formatPercentage(
                               selectedResult.results.score_percentage,
                             )}
-                          </div>
-                          <div className="mt-0.5 text-xs font-semibold">
+                          </p>
+                          <p className="text-[10px] font-semibold opacity-80 sm:text-xs">
                             {getPerformanceLabel(
                               selectedResult.results.score_percentage,
                             )}
-                          </div>
+                          </p>
                         </div>
                       </div>
 
-                      <div className="flex min-w-[140px] items-center gap-2 rounded-2xl border border-green-200 bg-green-50 px-3 py-2">
-                        <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
-                        <div>
-                          <div className="text-lg font-extrabold leading-none text-green-600">
+                      {/* Correct Answers */}
+                      <div className="flex min-w-0 items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 md:min-w-[140px]">
+                        <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500" />
+                        <div className="min-w-0">
+                          <p className="text-base font-bold leading-tight text-emerald-600 sm:text-lg md:text-xl">
                             {selectedResult.results.correct_answers}
-                          </div>
-                          <div className="mt-0.5 text-xs font-semibold text-green-700">
+                          </p>
+                          <p className="text-[10px] font-semibold text-emerald-500 sm:text-xs">
                             Correct Answers
-                          </div>
+                          </p>
                         </div>
                       </div>
 
-                      <div className="flex min-w-[140px] items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-2">
-                        <XCircle className="w-5 h-5 text-red-600 shrink-0" />
-                        <div>
-                          <div className="text-lg font-extrabold leading-none text-red-600">
+                      {/* Wrong Answers */}
+                      <div className="flex min-w-0 items-center gap-2 rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 md:min-w-[140px]">
+                        <XCircle className="h-5 w-5 shrink-0 text-rose-500" />
+                        <div className="min-w-0">
+                          <p className="text-base font-bold leading-tight text-rose-600 sm:text-lg md:text-xl">
                             {selectedResult.results.wrong_answers}
-                          </div>
-                          <div className="mt-0.5 text-xs font-semibold text-red-700">
+                          </p>
+                          <p className="text-[10px] font-semibold text-rose-500 sm:text-xs">
                             Wrong Answers
-                          </div>
+                          </p>
                         </div>
                       </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </section>
 
-              <Card className="flex h-full min-h-[160px] flex-col overflow-visible border-slate-200 shadow-sm">
-                <CardHeader className="px-4 py-2 border-b border-slate-100">
-                  <CardTitle className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                    <BookOpen className="h-4 w-4 text-[#2E3094]" />
+              {/* Subject-wise Performance */}
+              <section
+                className="rounded-xl border border-gray-100 p-4 md:p-5"
+                data-purpose="subject-wise-performance"
+              >
+                <div className="mb-4 flex items-center gap-2 md:mb-6">
+                  <BookOpen className="h-5 w-5 text-indigo-800" />
+                  <h2 className="text-sm font-semibold text-slate-700">
                     Subject-wise Performance Analysis
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-2">
-                  {selectedResult.subjects?.length ? (
-                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-                      {selectedResult.subjects
-                        .sort((a, b) => b.score_percentage - a.score_percentage)
-                        .map(subject => {
-                          const SubjectIcon = getPerformanceBadgeIcon(
-                            subject.score_percentage,
-                          );
-                          return (
-                            <div
-                              key={subject.subject_id}
-                              className="rounded-xl border border-slate-200 bg-[#F8FAFC] p-3 shadow-sm transition-colors hover:border-[#2E3094]/25"
-                            >
-                              <div className="flex items-start justify-between gap-2 mb-2">
-                                <h4 className="flex items-center min-w-0 gap-2 text-sm font-bold text-slate-800">
-                                  <BookOpen className="w-4 h-4 shrink-0 text-slate-500" />
-                                  <span className="line-clamp-2">
-                                    {subject.subject_name}
-                                  </span>
-                                </h4>
-                                <Badge
-                                  variant="outline"
-                                  className={`${getPerformanceColor(subject.score_percentage)} shrink-0 rounded-lg px-2 py-0.5 text-[11px] font-bold`}
-                                >
-                                  <SubjectIcon className="w-3 h-3 mr-1" />
-                                  {formatPercentage(subject.score_percentage)}
-                                </Badge>
+                  </h2>
+                </div>
+                {selectedResult.subjects?.length ? (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+                    {[...selectedResult.subjects]
+                      .sort((a, b) => b.score_percentage - a.score_percentage)
+                      .map((subject) => {
+                        const skipped =
+                          subject.total_questions -
+                          subject.correct_answers -
+                          subject.wrong_answers;
+                        return (
+                          <div
+                            key={subject.subject_id}
+                            className="rounded-xl border border-gray-100 p-3 shadow-sm sm:p-4"
+                            data-purpose="subject-card"
+                          >
+                            <div className="mb-3 flex items-center justify-between gap-2 sm:mb-4">
+                              <div className="flex min-w-0 items-center gap-2">
+                                <BookOpen className="h-4 w-4 shrink-0 text-gray-400" />
+                                <span className="truncate font-bold text-slate-800">
+                                  {subject.subject_name}
+                                </span>
                               </div>
-
-                              <div className="grid grid-cols-2 gap-1.5 text-center sm:grid-cols-4">
-                                <div className="rounded-lg bg-white px-1.5 py-2 shadow-sm">
-                                  <div className="text-sm font-bold leading-none text-slate-900">
-                                    {subject.total_questions}
-                                  </div>
-                                  <div className="mt-1 text-[11px] font-medium text-slate-600">
-                                    Total
-                                  </div>
-                                </div>
-                                <div className="rounded-lg bg-green-100 px-1.5 py-2 shadow-sm">
-                                  <div className="text-sm font-bold leading-none text-green-600">
-                                    {subject.correct_answers}
-                                  </div>
-                                  <div className="mt-1 text-[11px] font-medium text-slate-600">
-                                    Correct
-                                  </div>
-                                </div>
-                                <div className="rounded-lg bg-red-100 px-1.5 py-2 shadow-sm">
-                                  <div className="text-sm font-bold leading-none text-red-600">
-                                    {subject.wrong_answers}
-                                  </div>
-                                  <div className="mt-1 text-[11px] font-medium text-slate-600">
-                                    Wrong
-                                  </div>
-                                </div>
-                                <div className="rounded-lg bg-blue-100 px-1.5 py-2 shadow-sm">
-                                  <div className="text-sm font-bold leading-none text-blue-600">
-                                    {subject.total_questions -
-                                      subject.correct_answers -
-                                      subject.wrong_answers}
-                                  </div>
-                                  <div className="mt-1 text-[11px] font-medium text-slate-600">
-                                    Skipped
-                                  </div>
-                                </div>
+                              <span
+                                className={`shrink-0 rounded border px-2 py-0.5 text-[10px] font-bold ${getPerformanceColor(subject.score_percentage)}`}
+                              >
+                                {formatPercentage(subject.score_percentage)}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-4 gap-1 text-center">
+                              <div className="rounded-lg bg-gray-50 p-1.5 sm:p-2">
+                                <p className="text-xs font-bold text-slate-700">
+                                  {subject.total_questions}
+                                </p>
+                                <p className="text-[9px] text-gray-500">Total</p>
+                              </div>
+                              <div className="rounded-lg bg-emerald-50 p-1.5 sm:p-2">
+                                <p className="text-xs font-bold text-emerald-600">
+                                  {subject.correct_answers}
+                                </p>
+                                <p className="text-[9px] text-emerald-600">Correct</p>
+                              </div>
+                              <div className="rounded-lg bg-rose-50 p-1.5 sm:p-2">
+                                <p className="text-xs font-bold text-rose-600">
+                                  {subject.wrong_answers}
+                                </p>
+                                <p className="text-[9px] text-rose-600">Wrong</p>
+                              </div>
+                              <div className="rounded-lg bg-sky-50 p-1.5 sm:p-2">
+                                <p className="text-xs font-bold text-sky-600">
+                                  {skipped}
+                                </p>
+                                <p className="text-[9px] text-sky-600">Skipped</p>
                               </div>
                             </div>
-                          );
-                        })}
-                    </div>
-                  ) : (
-                    <div className="flex h-full min-h-[120px] items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 text-sm font-medium text-slate-500">
-                      No subject-wise performance data available.
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card className="flex-shrink-0 min-h-0 overflow-hidden shadow-sm border-slate-200">
-                <CardHeader className="px-4 py-2 border-b border-slate-100">
-                  <CardTitle className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                    <GraduationCap className="h-4 w-4 text-[#2E3094]" />
-                    Viva Assessment
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="max-h-[100px] overflow-y-auto p-2">
-                  {selectedResult?.viva_marks?.marks > 0 ? (
-                    <div className="p-2 border border-green-200 rounded-xl bg-green-50">
-                      <div className="flex items-center justify-between gap-3">
-                        <h4 className="text-sm font-semibold text-green-800">
-                          Viva Completed
-                        </h4>
-                        <Badge
-                          variant="default"
-                          className="text-green-800 bg-green-100 border-green-200"
-                        >
-                          <Award className="w-3 h-3 mr-1" />
-                          {selectedResult.viva_marks.marks} marks
-                        </Badge>
-                      </div>
-                      {selectedResult.viva_marks.remarks && (
-                        <div className="mt-1.5">
-                          <p className="mb-1 text-xs font-medium text-green-700">
-                            Examiner's Remarks:
-                          </p>
-                          <p className="p-2 text-xs text-green-600 bg-white border rounded-lg line-clamp-2">
-                            {selectedResult.viva_marks.remarks}
-                          </p>
-                        </div>
-                      )}
-                      {Object.keys(selectedResult.viva_marks.rubrics_marks)
-                        .length > 0 && (
-                        <div className="mt-1.5">
-                          <p className="mb-1 text-xs font-medium text-green-700">
-                            Rubric Breakdown:
-                          </p>
-                          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-                            {Object.entries(
-                              selectedResult.viva_marks.rubrics_marks,
-                            ).map(([rubricId, marks]) => (
-                              <div
-                                key={rubricId}
-                                className="p-2 text-xs bg-white border rounded-lg"
-                              >
-                                <span className="font-medium">
-                                  Rubric {rubricId}:
-                                </span>{' '}
-                                {marks} marks
-                              </div>
-                            ))}
                           </div>
-                        </div>
-                      )}
+                        );
+                      })}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
+                    No subject-wise performance data available.
+                  </div>
+                )}
+              </section>
+
+              {/* Viva Assessment */}
+              <section
+                className="rounded-xl border border-gray-100 p-4 md:p-5"
+                data-purpose="viva-assessment-section"
+              >
+                <div className="mb-4 flex items-center gap-2 md:mb-6">
+                  <BookOpen className="h-5 w-5 text-indigo-900" />
+                  <h2 className="text-sm font-semibold text-slate-700">
+                    Viva Assessment
+                  </h2>
+                </div>
+                {selectedResult?.viva_marks?.marks > 0 ? (
+                  <div className="flex flex-col gap-3 rounded-xl border border-emerald-100 bg-emerald-50/30 p-3 sm:gap-4 sm:p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h3 className="text-sm font-bold text-emerald-700">
+                        Viva Completed
+                      </h3>
+                      <div className="flex items-center gap-1 rounded bg-emerald-100 px-2 py-1 text-[11px] font-bold text-emerald-700">
+                        <Award className="h-3 w-3" />
+                        {selectedResult.viva_marks.marks} marks
+                      </div>
                     </div>
-                  ) : (
-                    <div className="flex items-center justify-between gap-3 p-2 border border-yellow-200 rounded-xl bg-yellow-50">
-                      <div className="flex items-center gap-3">
-                        <AlertTriangle className="w-6 h-6 text-yellow-600 shrink-0" />
-                        <p className="text-sm font-medium text-yellow-800">
-                          Viva examination has not been completed
+                    {selectedResult.viva_marks.remarks && (
+                      <div>
+                        <p className="mb-1 text-[11px] font-semibold text-emerald-800">
+                          Examiner's Remarks:
+                        </p>
+                        <p className="rounded-lg border bg-white p-2 text-[11px] text-slate-700">
+                          {selectedResult.viva_marks.remarks}
                         </p>
                       </div>
-                      <Button
-                        onClick={() => {
-                          setShowResultDialog(false);
-                          openVivaModal(selectedResult!);
-                        }}
-                        className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#1E2078] hover:to-[#3A3F9A]"
-                        size="sm"
-                      >
-                        <GraduationCap className="w-4 h-4 mr-1" />
-                        Give Viva Marks
-                      </Button>
+                    )}
+                    {Object.keys(selectedResult.viva_marks.rubrics_marks)
+                      .length > 0 && (
+                      <div>
+                        <p className="mb-2 text-[11px] font-semibold text-emerald-800">
+                          Rubric Breakdown:
+                        </p>
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                          {Object.entries(
+                            selectedResult.viva_marks.rubrics_marks,
+                          ).map(([rubricId, marks]) => (
+                            <div
+                              key={rubricId}
+                              className="rounded-lg border border-gray-100 bg-white p-3 text-[11px] text-slate-700"
+                            >
+                              <span className="font-bold">
+                                Rubric {rubricId}:
+                              </span>{' '}
+                              {marks} marks
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-start justify-between gap-3 rounded-xl border border-yellow-200 bg-yellow-50 p-4 md:flex-row md:items-center">
+                    <div className="flex items-center gap-3">
+                      <AlertTriangle className="h-6 w-6 shrink-0 text-yellow-600" />
+                      <p className="text-sm font-medium text-yellow-800">
+                        Viva examination has not been completed
+                      </p>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                    <Button
+                      onClick={() => {
+                        setShowResultDialog(false);
+                        openVivaModal(selectedResult);
+                      }}
+                      size="sm"
+                      className="w-full bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#1E2078] hover:to-[#3A3F9A] md:w-auto"
+                    >
+                      <GraduationCap className="mr-1 h-4 w-4" />
+                      Give Viva Marks
+                    </Button>
+                  </div>
+                )}
+              </section>
               </div>
             </>
           )}
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -1438,6 +1465,12 @@ export function Results({ gradientClass }: ResultsProps) {
         onOpenChange={setShowVivaModal}
         studentResult={selectedResult}
         onVivaMarksAdded={handleVivaMarksAdded}
+        onViewWrittenResult={() => {
+          if (selectedResult) {
+            setShowVivaModal(false);
+            openResultDialog(selectedResult);
+          }
+        }}
       />
     </div>
   );
