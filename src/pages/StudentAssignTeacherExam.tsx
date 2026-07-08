@@ -9,7 +9,7 @@ import { Checkbox } from '../components/ui/checkbox';
 import { Users, UserPlus, Trash2, Search, Calendar, BookOpen, User, Building, AlertTriangle, Loader2, X } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { StudentAssignmentDialog } from '../components/StudentAssignmentDialog';
-import { studentAssignmentAPI, studentsAPI, usersAPI, scheduleAPI } from '../services/api';
+import { studentAssignmentAPI, vivaAssignmentAPI, studentsAPI, usersAPI, scheduleAPI } from '../services/api';
 import { usePermissions } from '../hooks/usePermissions';
 import PaginationControls, { DEFAULT_PAGINATION, paginationFromDrf } from '../components/PaginationControls';
 import toast from 'react-hot-toast';
@@ -140,11 +140,17 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
   // Form states
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [assignmentError, setAssignmentError] = useState<AssignmentSemesterError | null>(null);
+  const [vivaAssignmentError, setVivaAssignmentError] = useState<{ message?: string } | null>(null);
   const [assignmentForm, setAssignmentForm] = useState({
     teacher_id: '',
+    viva_teacher_id: '',
+    viva_time: '',
+    viva_room: '',
     exam_id: '',
     schedule_id: ''
   });
+  // Map of student_id -> viva teacher username (derived from viva assignments list)
+  const [vivaTeacherByStudent, setVivaTeacherByStudent] = useState<Record<number, string>>({});
 
   // Filter states
   const [draftSearch, setDraftSearch] = useState('');
@@ -208,6 +214,21 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
       }
       const idsResponse = await studentAssignmentAPI.getAssignedStudentIds();
       setAssignedStudentIds(new Set(idsResponse?.student_ids || []));
+      // Pull viva teacher map (page_size large so we get all on first page)
+      try {
+        const vivaResp = await vivaAssignmentAPI.getAllAssignments({ page_size: 1000 });
+        const vivaRows = getResponseRows(vivaResp);
+        const map: Record<number, string> = {};
+        vivaRows.forEach((row: any) => {
+          if (row && row.student != null && row.teacher_username) {
+            map[row.student] = row.teacher_username;
+          }
+        });
+        setVivaTeacherByStudent(map);
+      } catch (vivaErr) {
+        // Viva map is non-critical; leave whatever we had.
+        console.warn('Failed to load viva teacher map:', vivaErr);
+      }
     } catch (error: any) {
       console.error('Error loading assignments:', error);
       toast.error('Failed to load assignments');
@@ -258,38 +279,73 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
     }
   };
 
-  // Handle bulk assignment
+  // Handle bulk assignment (creates BOTH written and viva records in sequence)
   const handleBulkAssign = async () => {
     if (selectedStudents.length === 0) {
       toast.error('Please select at least one student');
       return;
     }
 
-    if (!assignmentForm.teacher_id || !assignmentForm.schedule_id) {
-      toast.error('Please select a teacher and schedule');
+    if (!assignmentForm.teacher_id || !assignmentForm.viva_teacher_id ||
+        !assignmentForm.viva_time || !assignmentForm.viva_room ||
+        !assignmentForm.schedule_id) {
+      toast.error('Please fill in all required fields (written teacher, viva teacher, time, room, schedule)');
       return;
     }
 
     try {
       setIsLoading(true);
       setAssignmentError(null);
-      const assignmentData = {
+      setVivaAssignmentError(null);
+      const scheduleId = parseInt(assignmentForm.schedule_id);
+      const schedule = schedules.find(s => s.id === scheduleId);
+      const examId = schedule?.exam ?? null;
+
+      // Step 1: written assignment
+      const writtenData = {
         student_ids: selectedStudents,
         teacher_id: parseInt(assignmentForm.teacher_id),
-        exam_id: assignmentForm.exam_id ? parseInt(assignmentForm.exam_id) : null,
-        schedule_id: parseInt(assignmentForm.schedule_id)
+        exam_id: assignmentForm.exam_id ? parseInt(assignmentForm.exam_id) : examId,
+        schedule_id: scheduleId
       };
 
-      const response = await studentAssignmentAPI.assignBulk(assignmentData);
-      if (response && (response.success !== false)) {
-        toast.success(`Successfully assigned ${selectedStudents.length} students`);
-        setShowAssignDialog(false);
-        setSelectedStudents([]);
-        setAssignmentForm({ teacher_id: '', exam_id: '', schedule_id: '' });
-        setPage(1);
-        setReloadKey((current) => current + 1);
+      const writtenResponse = await studentAssignmentAPI.assignBulk(writtenData);
+      if (writtenResponse && (writtenResponse.success !== false)) {
+        // Step 2: viva assignment (only if written succeeded)
+        const vivaAssignmentsPayload = {
+          assignments: selectedStudents.map((studentId) => ({
+            student: studentId,
+            teacher: parseInt(assignmentForm.viva_teacher_id),
+            exam: examId,
+            time: assignmentForm.viva_time.length === 5
+              ? `${assignmentForm.viva_time}:00`
+              : assignmentForm.viva_time,
+            room: assignmentForm.viva_room,
+          })),
+        };
+        try {
+          const vivaResponse = await vivaAssignmentAPI.createAssignments(vivaAssignmentsPayload);
+          if (vivaResponse && (vivaResponse.success !== false)) {
+            toast.success(`Assigned ${selectedStudents.length} students to written + viva`);
+            setShowAssignDialog(false);
+            setSelectedStudents([]);
+            setAssignmentForm({ teacher_id: '', viva_teacher_id: '', viva_time: '', viva_room: '', exam_id: '', schedule_id: '' });
+            setPage(1);
+            setReloadKey((current) => current + 1);
+          } else {
+            toast.error(`Written saved; viva: ${vivaResponse?.message || 'failed'}`);
+            setVivaAssignmentError({ message: vivaResponse?.message || 'Viva create returned a failure response.' });
+            setReloadKey((current) => current + 1);
+          }
+        } catch (vivaErr: any) {
+          console.error('Error creating viva assignments:', vivaErr);
+          const message = vivaErr?.message || vivaErr?.detail || 'Viva assignment failed.';
+          toast.error(`Written saved; viva failed: ${message}`);
+          setVivaAssignmentError({ message });
+          setReloadKey((current) => current + 1);
+        }
       } else {
-        toast.error(response.message || 'Failed to assign students');
+        toast.error(writtenResponse?.message || 'Failed to assign students');
       }
     } catch (error: any) {
       console.error('Error assigning students:', error);
@@ -575,7 +631,11 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
                     isLoading={isLoading}
                     filterDate={draftFilterDate}
                     assignmentError={assignmentError}
-                    onClearAssignmentError={() => setAssignmentError(null)}
+                    vivaAssignmentError={vivaAssignmentError}
+                    onClearAssignmentError={() => {
+                      setAssignmentError(null);
+                      setVivaAssignmentError(null);
+                    }}
                   />
                 </>
               )}
@@ -618,7 +678,8 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
                   </TableHead>
                   <TableHead>Student</TableHead>
                   <TableHead>Student ID</TableHead>
-                  <TableHead>Teacher</TableHead>
+                  <TableHead>Written Teacher</TableHead>
+                  <TableHead>Viva Teacher</TableHead>
                   <TableHead>Department</TableHead>
                   <TableHead>Registered Semester</TableHead>
                   <TableHead>Created</TableHead>
@@ -628,7 +689,7 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
               <TableBody>
                 {assignments.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-8 text-center">
+                    <TableCell colSpan={9} className="py-8 text-center">
                       <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                       <p className="font-medium text-gray-500">No assignments found</p>
                       <p className="text-sm text-gray-400">
@@ -667,6 +728,13 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
                       </TableCell>
                       <TableCell>
                         <p className="font-medium">@{assignment.teacher_username || 'unknown'}</p>
+                      </TableCell>
+                      <TableCell>
+                        {vivaTeacherByStudent[assignment.student] ? (
+                          <p className="font-medium">@{vivaTeacherByStudent[assignment.student]}</p>
+                        ) : (
+                          <span className="text-sm text-gray-400">—</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary">{assignment.exam_department || 'N/A'}</Badge>

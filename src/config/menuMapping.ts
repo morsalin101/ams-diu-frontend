@@ -30,9 +30,12 @@ export const menuToGroupMapping: Record<string, { group: string; order: number }
   'student acceptance criteria': { group: 'DEPARTMENTAL CONTROLS', order: 1 },
   'publish exam': { group: 'DEPARTMENTAL CONTROLS', order: 2 },
   'exam schedule': { group: 'DEPARTMENTAL CONTROLS', order: 3 },
+  // The merged Student Assign menu may still be served by the backend under
+  // its old "student assign(written)" label until the menu row is renamed on
+  // the backend. Map both labels so it always lands in DEPARTMENTAL CONTROLS.
+  'student assign': { group: 'DEPARTMENTAL CONTROLS', order: 4 },
   'student assign(written)': { group: 'DEPARTMENTAL CONTROLS', order: 4 },
-  'student assign(viva)': { group: 'DEPARTMENTAL CONTROLS', order: 5 },
-  'override selection': { group: 'DEPARTMENTAL CONTROLS', order: 6 },
+  'override selection': { group: 'DEPARTMENTAL CONTROLS', order: 5 },
 
   // FACULTY CONTROLS
   'my schedule': { group: 'FACULTY CONTROLS', order: 1 },

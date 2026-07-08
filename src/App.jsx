@@ -27,7 +27,6 @@ import { PublishedExams } from './pages/PublishedExams';
 import { Results } from './pages/Results';
 import { VivaManagement } from './pages/VivaManagement';
 import { MarksDistribution } from './pages/MarksDistribution';
-import { VivaAssign } from './pages/VivaAssign';
 import { StudentAssignTeacherExam } from './pages/StudentAssignTeacherExam';
 import LayoutTestPage from './pages/LayoutTestPage';
 import InsertQuestions from './pages/InsertQuestions';
@@ -63,7 +62,6 @@ const componentMap = {
   Results,
   VivaManagement,
   MarksDistribution,
-  VivaAssign,
   StudentAssignTeacherExam,
   InsertQuestions,
   AiQuestionScrapper,
@@ -127,7 +125,6 @@ function ProtectedRoutes() {
         <Route path="/viva-rubrics-management" element={<VivaManagement />} />
         <Route path="/viva-management" element={<Navigate to="/viva-rubrics-management" replace />} />
         <Route path="/marks-distribution" element={<MarksDistribution />} />
-        <Route path="/viva-assign" element={<VivaAssign />} />
         <Route path="/student-assign-teacher-exam" element={<StudentAssignTeacherExam />} />
         <Route path="/published-exams" element={<PublishedExams />} />
         <Route path="/blocked-questions" element={<BlockedQuestions />} />

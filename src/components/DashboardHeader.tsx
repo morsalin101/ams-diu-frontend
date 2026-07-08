@@ -42,7 +42,6 @@ const PAGE_TITLE_FALLBACKS: Record<string, string> = {
   '/my-schedule': 'My Schedule',
   '/all-results': 'All Results',
   '/student-assign-teacher-exam': 'Student Assignment Management',
-  '/viva-assign': 'Viva Assignment Management',
   '/marks-distribution': 'Marks Distribution Management',
 };
 

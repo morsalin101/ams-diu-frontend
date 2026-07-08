@@ -84,14 +84,25 @@ interface StudentAssignmentDialogProps {
   onSelectedStudentsChange: (students: number[]) => void;
   assignmentForm: {
     teacher_id: string;
+    viva_teacher_id: string;
+    viva_time: string;
+    viva_room: string;
     exam_id: string;
     schedule_id: string;
   };
-  onAssignmentFormChange: (form: { teacher_id: string; exam_id: string; schedule_id: string }) => void;
+  onAssignmentFormChange: (form: {
+    teacher_id: string;
+    viva_teacher_id: string;
+    viva_time: string;
+    viva_room: string;
+    exam_id: string;
+    schedule_id: string;
+  }) => void;
   onAssign: () => void;
   isLoading: boolean;
   filterDate?: string;
   assignmentError?: AssignmentSemesterError | null;
+  vivaAssignmentError?: { message?: string } | null;
   onClearAssignmentError?: () => void;
 }
 
@@ -109,6 +120,7 @@ export function StudentAssignmentDialog({
   isLoading,
   filterDate,
   assignmentError,
+  vivaAssignmentError,
   onClearAssignmentError
 }: StudentAssignmentDialogProps) {
   const [studentSearchTerm, setStudentSearchTerm] = useState('');
@@ -210,7 +222,7 @@ export function StudentAssignmentDialog({
             <span className="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-sm">
               <UserPlus className="h-5 w-5" />
             </span>
-            <DialogTitle className="text-xl sm:text-2xl font-bold text-gray-800">Assign Students to Teacher and Exam</DialogTitle>
+            <DialogTitle className="text-xl sm:text-2xl font-bold text-gray-800">Assign Students (Written + Viva)</DialogTitle>
           </div>
         </DialogHeader>
 
@@ -370,7 +382,7 @@ export function StudentAssignmentDialog({
               <div className="flex-1 space-y-5">
                 {/* Teacher Selection */}
                 <div className="space-y-2 sm:space-y-3">
-                  <div className="text-base sm:text-lg font-medium">Teacher *</div>
+                  <div className="text-base sm:text-lg font-medium">Written Teacher *</div>
                   <Select
                     value={assignmentForm.teacher_id}
                     onValueChange={(value) => {
@@ -378,8 +390,36 @@ export function StudentAssignmentDialog({
                       onAssignmentFormChange({ ...assignmentForm, teacher_id: value });
                     }}
                   >
-                    <SelectTrigger className="h-11 sm:h-12 text-sm sm:text-base" aria-label="Teacher">
-                      <SelectValue placeholder="Select a teacher" />
+                    <SelectTrigger className="h-11 sm:h-12 text-sm sm:text-base" aria-label="Written Teacher">
+                      <SelectValue placeholder="Select written teacher" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teachers.map(teacher => (
+                        <SelectItem key={teacher.id} value={teacher.id.toString()}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{teacher.username}</span>
+                            <span className="text-sm text-gray-500">
+                              {teacher.department_details?.department_name || 'No department'} ({teacher.department_details?.department_shortname || 'N/A'})
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Viva Teacher Selection */}
+                <div className="space-y-2 sm:space-y-3">
+                  <div className="text-base sm:text-lg font-medium">Viva Teacher *</div>
+                  <Select
+                    value={assignmentForm.viva_teacher_id}
+                    onValueChange={(value) => {
+                      onClearAssignmentError?.();
+                      onAssignmentFormChange({ ...assignmentForm, viva_teacher_id: value });
+                    }}
+                  >
+                    <SelectTrigger className="h-11 sm:h-12 text-sm sm:text-base" aria-label="Viva Teacher">
+                      <SelectValue placeholder="Select viva teacher" />
                     </SelectTrigger>
                     <SelectContent>
                       {teachers.map(teacher => (
@@ -400,7 +440,7 @@ export function StudentAssignmentDialog({
 
                 {/* Schedule Selection */}
                 <div className="space-y-2 sm:space-y-3">
-                  <div className="text-base sm:text-lg font-medium">Schedule *</div>
+                  <div className="text-base sm:text-lg font-medium">Schedule (shared by Written + Viva) *</div>
                   <Select
                     value={assignmentForm.schedule_id}
                     onValueChange={(value) => {
@@ -438,14 +478,51 @@ export function StudentAssignmentDialog({
                   </Select>
                 </div>
 
+                {/* Viva Time + Room */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div className="space-y-2 sm:space-y-3">
+                    <div className="text-base sm:text-lg font-medium">Viva Time *</div>
+                    <Input
+                      type="time"
+                      required
+                      value={assignmentForm.viva_time}
+                      onChange={(e) => {
+                        onClearAssignmentError?.();
+                        onAssignmentFormChange({ ...assignmentForm, viva_time: e.target.value });
+                      }}
+                      className="h-11 sm:h-12 text-sm sm:text-base"
+                      aria-label="Viva Time"
+                    />
+                  </div>
+                  <div className="space-y-2 sm:space-y-3">
+                    <div className="text-base sm:text-lg font-medium">Viva Room *</div>
+                    <Input
+                      type="text"
+                      required
+                      maxLength={64}
+                      placeholder="e.g. Room 204"
+                      value={assignmentForm.viva_room}
+                      onChange={(e) => {
+                        onClearAssignmentError?.();
+                        onAssignmentFormChange({ ...assignmentForm, viva_room: e.target.value });
+                      }}
+                      className="h-11 sm:h-12 text-sm sm:text-base"
+                      aria-label="Viva Room"
+                    />
+                  </div>
+                </div>
+
                 {/* Assignment Summary */}
-                {selectedStudents.length > 0 && assignmentForm.teacher_id && assignmentForm.schedule_id && (
+                {selectedStudents.length > 0 && assignmentForm.teacher_id && assignmentForm.viva_teacher_id && assignmentForm.viva_time && assignmentForm.viva_room && assignmentForm.schedule_id && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                     <h4 className="font-semibold text-green-800 mb-2">Assignment Summary</h4>
                     <div className="text-sm text-green-700 space-y-1">
                       <p>• {selectedStudents.length} student{selectedStudents.length !== 1 ? 's' : ''} will be assigned</p>
-                      <p>• Teacher: {teachers.find(t => t.id.toString() === assignmentForm.teacher_id)?.username}</p>
+                      <p>• Written Teacher: {teachers.find(t => t.id.toString() === assignmentForm.teacher_id)?.username}</p>
+                      <p>• Viva Teacher: {teachers.find(t => t.id.toString() === assignmentForm.viva_teacher_id)?.username}</p>
                       <p>• Schedule: {new Date(filteredSchedules.find(s => s.id.toString() === assignmentForm.schedule_id)?.start_time || '').toLocaleDateString()}</p>
+                      <p>• Viva Time: {assignmentForm.viva_time}</p>
+                      <p>• Viva Room: {assignmentForm.viva_room}</p>
                     </div>
                     {mismatchedSelectedCount > 0 && (
                       <p className="mt-2 text-sm font-medium text-amber-700">
@@ -475,6 +552,17 @@ export function StudentAssignmentDialog({
                     )}
                   </div>
                 )}
+
+                {/* Viva assignment error (when written succeeded but viva failed) */}
+                {vivaAssignmentError && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <h4 className="font-semibold text-amber-800 mb-2">Viva Assignment Failed</h4>
+                    <p className="text-sm text-amber-700">
+                      The written assignment was saved, but the viva assignment could not be created.
+                      {' '}{vivaAssignmentError.message || 'Please retry from the Viva Assign page.'}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Action Buttons */}
@@ -487,9 +575,17 @@ export function StudentAssignmentDialog({
                 >
                   Cancel
                 </Button>
-                <Button 
+                <Button
                   onClick={onAssign}
-                  disabled={isLoading || selectedStudents.length === 0 || !assignmentForm.teacher_id || !assignmentForm.schedule_id}
+                  disabled={
+                    isLoading ||
+                    selectedStudents.length === 0 ||
+                    !assignmentForm.teacher_id ||
+                    !assignmentForm.viva_teacher_id ||
+                    !assignmentForm.viva_time ||
+                    !assignmentForm.viva_room ||
+                    !assignmentForm.schedule_id
+                  }
                   className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#1E2078] hover:to-[#3A3F9A] px-8"
                   size="lg"
                 >
