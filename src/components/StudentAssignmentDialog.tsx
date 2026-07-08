@@ -449,24 +449,36 @@ export function StudentAssignmentDialog({
                       onAssignmentFormChange({ ...assignmentForm, schedule_id: value });
                     }}
                   >
-                    <SelectTrigger className="h-11 sm:h-12 text-sm sm:text-base" aria-label="Schedule">
-                      <SelectValue placeholder="Select a schedule" className="text-center" />
+                    <SelectTrigger
+                      className="h-auto min-h-[56px] sm:min-h-[64px] py-3 text-base sm:text-lg !whitespace-normal items-center"
+                      aria-label="Schedule"
+                    >
+                      <SelectValue
+                        placeholder="Select a schedule"
+                        className="text-center !whitespace-normal !overflow-visible text-clip leading-snug"
+                      />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="!min-w-[var(--radix-select-trigger-width)]">
                       {filteredSchedules.length === 0 ? (
                         <div className="p-4 text-center text-gray-500">No schedules available</div>
                       ) : (
                         filteredSchedules.map(schedule => (
-                          <SelectItem key={schedule.id} value={schedule.id.toString()}>
-                            <div className="flex flex-col min-w-0">
-                              <span className="font-medium truncate">
+                          <SelectItem key={schedule.id} value={schedule.id.toString()} className="!py-4 !px-5 text-base sm:text-lg">
+                            <div className="flex flex-col items-center text-center min-w-0 gap-1.5">
+                              <span className="font-medium whitespace-normal break-words text-base sm:text-lg text-center">
                                 {schedule.exam_details ? (
-                                  `${schedule.exam_details.department} - ${schedule.exam_details.semester}`
+                                  <>
+                                    {schedule.exam_details.department_shortnames?.length
+                                      ? schedule.exam_details.department_shortnames.join(' / ')
+                                      : schedule.exam_details.department}
+                                    {' - '}
+                                    {schedule.exam_details.semester}
+                                  </>
                                 ) : (
                                   `Schedule ID: ${schedule.id}`
                                 )}
                               </span>
-                              <span className="text-xs text-gray-500 truncate">
+                              <span className="text-sm text-gray-500 whitespace-normal break-words text-center">
                                 {new Date(schedule.start_time).toLocaleDateString()} | {' '}
                                 {new Date(schedule.start_time).toLocaleTimeString()} - {' '}
                                 {new Date(schedule.end_time).toLocaleTimeString()}

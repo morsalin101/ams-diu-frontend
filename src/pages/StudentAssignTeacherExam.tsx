@@ -115,6 +115,8 @@ export function StudentAssignTeacherExam({ gradientClass }: StudentAssignmentMan
     if (Array.isArray(response?.data)) return response.data;
     if (Array.isArray(response?.results)) return response.results;
     if (Array.isArray(response?.students)) return response.students;
+    // Viva assignment endpoint wraps rows under "assignments"
+    if (Array.isArray(response?.assignments)) return response.assignments;
     return [];
   };
 

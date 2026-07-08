@@ -104,7 +104,8 @@ export function Students({ gradientClass }: StudentsProps) {
   // Password auto-fills from last name until the admin edits it manually.
   const [passwordAuto, setPasswordAuto] = useState(true);
 
-  const semesterOptions = buildAcademicSemesterOptions();
+  // Only current and next year semesters are valid for new student registration.
+  const semesterOptions = buildAcademicSemesterOptions({ previousYears: 0, nextYears: 1 });
 
   const handleAcademicTypeChange = (value: string) => {
     const academicType = value as AcademicType;
