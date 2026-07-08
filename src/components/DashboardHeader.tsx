@@ -138,35 +138,66 @@ export function DashboardHeader({}: DashboardHeaderProps) {
                 </span>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64">
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-sm font-semibold text-gray-900 break-words">{displayName}</span>
-                  {roleName && <span className="text-xs capitalize text-gray-500 break-words">{roleName}</span>}
+            <DropdownMenuContent align="end" className="w-72 p-0 sm:w-80">
+              {/* Header: large avatar + name + role */}
+              <div className="flex flex-col items-center gap-1.5 px-4 pb-4 pt-5">
+                <Avatar className="h-20 w-20 bg-blue-100 ring-4 ring-blue-50">
+                  <AvatarImage src="" alt={displayName} />
+                  <AvatarFallback className="bg-blue-100 text-blue-600">
+                    <User className="h-10 w-10" strokeWidth={1.75} />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="mt-1 text-base font-semibold text-gray-900 break-words text-center">
+                  {displayName}
                 </div>
-              </DropdownMenuLabel>
+                {roleName && (
+                  <div className="text-sm text-gray-500 capitalize">{roleName}</div>
+                )}
+              </div>
+
               <DropdownMenuSeparator />
-              <div className="space-y-2 px-2 py-1.5 text-sm">
-                <div className="flex items-start gap-2 text-gray-700">
-                  <Mail className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
-                  <span className="min-w-0 break-words">{user?.email || 'Not Entered'}</span>
+
+              {/* Info rows: email / role / department with colored icon tiles */}
+              <div className="space-y-1 px-2 py-2 text-sm">
+                <div className="flex items-start gap-3 rounded-md px-2 py-2 transition-colors hover:bg-gray-50">
+                  <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600">
+                    <Mail className="h-4 w-4" />
+                  </span>
+                  <span className="min-w-0 flex-1 break-words pt-1.5 text-gray-700">
+                    {user?.email || 'Not Entered'}
+                  </span>
                 </div>
-                <div className="flex items-start gap-2 text-gray-700">
-                  <Shield className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
-                  <span className="min-w-0 break-words capitalize">{roleName || '—'}</span>
+                <div className="flex items-start gap-3 rounded-md px-2 py-2 transition-colors hover:bg-gray-50">
+                  <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-gray-100 text-gray-600">
+                    <Shield className="h-4 w-4" />
+                  </span>
+                  <span className="min-w-0 flex-1 break-words pt-1.5 capitalize text-gray-700">
+                    {roleName || '—'}
+                  </span>
                 </div>
-                <div className="flex items-start gap-2 text-gray-700">
-                  <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
-                  <span className="min-w-0 break-words">{departmentName || '—'}</span>
+                <div className="flex items-start gap-3 rounded-md px-2 py-2 transition-colors hover:bg-gray-50">
+                  <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-gray-100 text-gray-600">
+                    <Building2 className="h-4 w-4" />
+                  </span>
+                  <span className="min-w-0 flex-1 break-words pt-1.5 text-gray-700">
+                    {departmentName || '—'}
+                  </span>
                 </div>
               </div>
+
               <DropdownMenuSeparator />
+
+              {/* Logout: red icon tile + red label */}
               <DropdownMenuItem
                 onClick={logout}
-                className="cursor-pointer text-red-600 focus:bg-red-50 focus:text-red-700"
+                className="m-2 cursor-pointer rounded-md p-0 focus:bg-transparent"
               >
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
+                <div className="flex w-full items-center gap-3 rounded-md px-2 py-2 transition-colors hover:bg-red-50 focus:bg-red-50">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-red-50 text-red-600">
+                    <LogOut className="h-4 w-4" />
+                  </span>
+                  <span className="font-medium text-red-600">Logout</span>
+                </div>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
