@@ -249,7 +249,7 @@ export function StudentAssignmentDialog({
                   </div>
                   <Select value={semesterFilter} onValueChange={setSemesterFilter}>
                     <SelectTrigger className="w-full md:w-[220px] h-11 sm:h-12">
-                      <SelectValue placeholder="Filter by semester" />
+                      <SelectValue placeholder="Filter by semester" className="text-center" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Semesters</SelectItem>
@@ -380,63 +380,64 @@ export function StudentAssignmentDialog({
               </div>
               
               <div className="flex-1 space-y-5">
-                {/* Teacher Selection */}
-                <div className="space-y-2 sm:space-y-3">
-                  <div className="text-base sm:text-lg font-medium">Written Teacher *</div>
-                  <Select
-                    value={assignmentForm.teacher_id}
-                    onValueChange={(value) => {
-                      onClearAssignmentError?.();
-                      onAssignmentFormChange({ ...assignmentForm, teacher_id: value });
-                    }}
-                  >
-                    <SelectTrigger className="h-11 sm:h-12 text-sm sm:text-base" aria-label="Written Teacher">
-                      <SelectValue placeholder="Select written teacher" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {teachers.map(teacher => (
-                        <SelectItem key={teacher.id} value={teacher.id.toString()}>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{teacher.username}</span>
-                            <span className="text-sm text-gray-500">
-                              {teacher.department_details?.department_name || 'No department'} ({teacher.department_details?.department_shortname || 'N/A'})
-                            </span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                {/* Written + Viva Teacher (side by side) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  {/* Written Teacher Selection */}
+                  <div className="space-y-2 sm:space-y-3">
+                    <div className="text-base sm:text-lg font-medium">Written Teacher *</div>
+                    <Select
+                      value={assignmentForm.teacher_id}
+                      onValueChange={(value) => {
+                        onClearAssignmentError?.();
+                        onAssignmentFormChange({ ...assignmentForm, teacher_id: value });
+                      }}
+                    >
+                      <SelectTrigger className="h-11 sm:h-12 text-sm sm:text-base" aria-label="Written Teacher">
+                        <SelectValue placeholder="Select written teacher" className="text-center" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {teachers.map(teacher => (
+                          <SelectItem key={teacher.id} value={teacher.id.toString()}>
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="font-medium truncate">{teacher.username}</span>
+                              <span className="text-xs text-gray-500 truncate">
+                                ({teacher.department_details?.department_shortname || 'N/A'})
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Viva Teacher Selection */}
+                  <div className="space-y-2 sm:space-y-3">
+                    <div className="text-base sm:text-lg font-medium">Viva Teacher *</div>
+                    <Select
+                      value={assignmentForm.viva_teacher_id}
+                      onValueChange={(value) => {
+                        onClearAssignmentError?.();
+                        onAssignmentFormChange({ ...assignmentForm, viva_teacher_id: value });
+                      }}
+                    >
+                      <SelectTrigger className="h-11 sm:h-12 text-sm sm:text-base" aria-label="Viva Teacher">
+                        <SelectValue placeholder="Select viva teacher" className="text-center" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {teachers.map(teacher => (
+                          <SelectItem key={teacher.id} value={teacher.id.toString()}>
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="font-medium truncate">{teacher.username}</span>
+                              <span className="text-xs text-gray-500 truncate">
+                                ({teacher.department_details?.department_shortname || 'N/A'})
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-
-                {/* Viva Teacher Selection */}
-                <div className="space-y-2 sm:space-y-3">
-                  <div className="text-base sm:text-lg font-medium">Viva Teacher *</div>
-                  <Select
-                    value={assignmentForm.viva_teacher_id}
-                    onValueChange={(value) => {
-                      onClearAssignmentError?.();
-                      onAssignmentFormChange({ ...assignmentForm, viva_teacher_id: value });
-                    }}
-                  >
-                    <SelectTrigger className="h-11 sm:h-12 text-sm sm:text-base" aria-label="Viva Teacher">
-                      <SelectValue placeholder="Select viva teacher" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {teachers.map(teacher => (
-                        <SelectItem key={teacher.id} value={teacher.id.toString()}>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{teacher.username}</span>
-                            <span className="text-sm text-gray-500">
-                              {teacher.department_details?.department_name || 'No department'} ({teacher.department_details?.department_shortname || 'N/A'})
-                            </span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-
 
                 {/* Schedule Selection */}
                 <div className="space-y-2 sm:space-y-3">
@@ -449,7 +450,7 @@ export function StudentAssignmentDialog({
                     }}
                   >
                     <SelectTrigger className="h-11 sm:h-12 text-sm sm:text-base" aria-label="Schedule">
-                      <SelectValue placeholder="Select a schedule" />
+                      <SelectValue placeholder="Select a schedule" className="text-center" />
                     </SelectTrigger>
                     <SelectContent>
                       {filteredSchedules.length === 0 ? (
@@ -457,15 +458,15 @@ export function StudentAssignmentDialog({
                       ) : (
                         filteredSchedules.map(schedule => (
                           <SelectItem key={schedule.id} value={schedule.id.toString()}>
-                            <div className="flex flex-col">
-                              <span className="font-medium">
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-medium truncate">
                                 {schedule.exam_details ? (
                                   `${schedule.exam_details.department} - ${schedule.exam_details.semester}`
                                 ) : (
                                   `Schedule ID: ${schedule.id}`
                                 )}
                               </span>
-                              <span className="text-sm text-gray-500">
+                              <span className="text-xs text-gray-500 truncate">
                                 {new Date(schedule.start_time).toLocaleDateString()} | {' '}
                                 {new Date(schedule.start_time).toLocaleTimeString()} - {' '}
                                 {new Date(schedule.end_time).toLocaleTimeString()}
