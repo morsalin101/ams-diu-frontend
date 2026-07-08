@@ -47,17 +47,8 @@ const createEmptyFormData = () => ({
 });
 
 // Last name, symbols/spaces stripped — used for the fallback email.
-const deriveLastName = (fullName: string) => {
-  const parts = fullName.trim().split(/\s+/).filter(Boolean);
-  const lastName = parts.length ? parts[parts.length - 1] : '';
-  return lastName.replace(/[^a-zA-Z0-9]/g, '');
-};
-
-// Placeholder email when none is entered: {lastname}notinserted@mail.com
-const deriveFallbackEmail = (fullName: string) => {
-  const lastName = deriveLastName(fullName).toLowerCase() || 'student';
-  return `${lastName}notinserted@mail.com`;
-};
+// Stored/shown when a student is added without an email.
+const NOT_ENTERED_EMAIL = 'Not Entered';
 
 const getStudentAcademicType = (student: Student): AcademicType => {
   if (student.academic_type === 'DIPLOMA') {
@@ -77,8 +68,8 @@ const buildStudentPayload = (formData: ReturnType<typeof createEmptyFormData>) =
   ...formData,
   // Applicant ID drives both username and f_id (one identifier for applicants).
   f_id: formData.f_id || formData.username,
-  // Email is optional; fall back to a generated placeholder.
-  email: formData.email.trim() || deriveFallbackEmail(formData.full_name),
+  // Email is optional; fall back to a clear "Not Entered" marker.
+  email: formData.email.trim() || NOT_ENTERED_EMAIL,
   hsc: formData.academic_type === 'HSC' ? formData.hsc : '0',
   diploma: formData.academic_type === 'DIPLOMA' ? formData.diploma : '0',
 });
