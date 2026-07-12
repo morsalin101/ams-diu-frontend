@@ -1416,35 +1416,6 @@ export const admissionResultsAPI = {
     }
   },
 
-  // Explicit helper for rare workflows that truly need every matching result
-  getAllResults: async (params = {}) => {
-    try {
-      const firstResponse = await api.get('/api/admission/results/', {
-        params: {
-          page_size: 100,
-          page: 1,
-          ...params,
-        },
-      });
-      const firstData = firstResponse.data;
-      const allResults = [...(firstData?.results || [])];
-      let nextUrl = firstData?.next;
-
-      while (nextUrl) {
-        const nextResponse = await api.get(nextUrl);
-        allResults.push(...(nextResponse.data?.results || []));
-        nextUrl = nextResponse.data?.next;
-      }
-
-      return {
-        ...firstData,
-        results: allResults,
-      };
-    } catch (error) {
-      throw error.response?.data || error.message;
-    }
-  },
-
   // Get detailed student admission report
   getStudentDetailReport: async (examId, studentId) => {
     try {
