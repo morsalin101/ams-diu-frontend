@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 
-const BASE_URL = 'https://api.tatomal.me';
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://api.tatomal.me';
 //const BASE_URL = 'http://localhost:8000';
 
 
@@ -1074,7 +1074,7 @@ export const fileAPI = {
     try {
       const formData = new FormData();
       if (Array.isArray(files)) {
-        files.forEach((file, idx) => formData.append('files', file));
+        files.forEach((file) => formData.append('files', file));
       } else if (files) {
         formData.append('files', files);
       }
@@ -1441,7 +1441,7 @@ export const admissionResultsAPI = {
 
       const disposition = response.headers?.['content-disposition'] || '';
       const utf8FilenameMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
-      const plainFilenameMatch = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const plainFilenameMatch = disposition.match(/filename="?([^";]+)"?/i);
       const encodedFilename = utf8FilenameMatch?.[1] || plainFilenameMatch?.[1] || '';
 
       let filename = `student-admission-report-${examId}-${studentId}.pdf`;
@@ -1487,7 +1487,7 @@ export const admissionResultsAPI = {
 
       const disposition = response.headers?.['content-disposition'] || '';
       const utf8FilenameMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
-      const plainFilenameMatch = disposition.match(/filename=\"?([^\";]+)\"?/i);
+      const plainFilenameMatch = disposition.match(/filename="?([^";]+)"?/i);
       const encodedFilename = utf8FilenameMatch?.[1] || plainFilenameMatch?.[1] || '';
 
       let filename = 'student-admission-reports.zip';
