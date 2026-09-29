@@ -20,11 +20,14 @@ export const menuToGroupMapping: Record<string, { group: string; order: number }
   'ai question scrapper': { group: 'QUESTION MANAGEMENT', order: 6 },
 
   // EXAM CONTROLS & MAPPING
+  'faculty management': { group: 'EXAM CONTROLS & MAPPING', order: 0 },
+  'faculty': { group: 'EXAM CONTROLS & MAPPING', order: 0 },
   'department management': { group: 'EXAM CONTROLS & MAPPING', order: 1 },
-  'subject management': { group: 'EXAM CONTROLS & MAPPING', order: 2 },
-  'subject department mapping': { group: 'EXAM CONTROLS & MAPPING', order: 3 },
-  'viva rubrics management': { group: 'EXAM CONTROLS & MAPPING', order: 4 },
-  'marks distribution management': { group: 'EXAM CONTROLS & MAPPING', order: 5 },
+  'faculty department mapping': { group: 'EXAM CONTROLS & MAPPING', order: 2 },
+  'subject management': { group: 'EXAM CONTROLS & MAPPING', order: 3 },
+  'subject department mapping': { group: 'EXAM CONTROLS & MAPPING', order: 4 },
+  'viva rubrics management': { group: 'EXAM CONTROLS & MAPPING', order: 5 },
+  'marks distribution management': { group: 'EXAM CONTROLS & MAPPING', order: 6 },
 
   // DEPARTMENTAL CONTROLS
   'student acceptance criteria': { group: 'DEPARTMENTAL CONTROLS', order: 1 },

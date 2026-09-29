@@ -10,6 +10,7 @@ import { AlertTriangle, Layers, Plus, Trash2, RefreshCw, Building, BookOpen } fr
 import { subjectDepartmentAPI, departmentAPI, subjectAPI } from '../services/api';
 import { usePermissions } from '../hooks/usePermissions';
 import toast from 'react-hot-toast';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 interface Department {
   id: number;
@@ -38,6 +39,21 @@ const SubjectDepartmentMapping: React.FC = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState<string>('');
   const [selectedSubjects, setSelectedSubjects] = useState<number[]>([]);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: React.ReactNode;
+    confirmText?: string;
+    cancelText?: string;
+    variant?: 'danger' | 'warning' | 'info';
+    isLoading?: boolean;
+    onConfirm: () => void | Promise<void>;
+  }>({
+    open: false,
+    title: '',
+    description: null,
+    onConfirm: () => {},
+  });
 
   useEffect(() => {
     if (canRead()) {
@@ -120,26 +136,43 @@ const SubjectDepartmentMapping: React.FC = () => {
     }
   };
 
-  const handleDeleteMapping = async (mappingId: number, departmentName: string) => {
+  const handleDeleteMapping = (mappingId: number, departmentName: string) => {
     if (!canDelete()) {
       toast.error('You do not have permission to delete department-subject mappings');
       return;
     }
 
-    if (!confirm(`Are you sure you want to delete the mapping for "${departmentName}"? This action cannot be undone.`)) {
-      return;
-    }
-
-    try {
-      const response = await subjectDepartmentAPI.deleteMapping(mappingId);
-      if (response.success) {
-        toast.success('Mapping deleted successfully');
-        loadMappings();
-      }
-    } catch (error: any) {
-      console.error('Error deleting mapping:', error);
-      toast.error(error.message || 'Failed to delete mapping');
-    }
+    setConfirmDialog({
+      open: true,
+      title: 'Delete Mapping?',
+      variant: 'danger',
+      confirmText: 'Yes, Delete',
+      cancelText: 'Cancel',
+      description: (
+        <span>
+          Are you sure you want to delete the mapping for{' '}
+          <strong className="text-gray-900 font-semibold">{departmentName}</strong>? All mapped subjects will be unlinked from this department.
+        </span>
+      ),
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, isLoading: true }));
+        try {
+          const response = await subjectDepartmentAPI.deleteMapping(mappingId);
+          if (response.success) {
+            toast.success('Mapping deleted successfully');
+            setConfirmDialog(prev => ({ ...prev, open: false, isLoading: false }));
+            loadMappings();
+          } else {
+            toast.error(response.message || 'Failed to delete mapping');
+            setConfirmDialog(prev => ({ ...prev, isLoading: false }));
+          }
+        } catch (error: any) {
+          console.error('Error deleting mapping:', error);
+          toast.error(error.message || 'Failed to delete mapping');
+          setConfirmDialog(prev => ({ ...prev, isLoading: false }));
+        }
+      },
+    });
   };
 
   const resetForm = () => {
@@ -359,6 +392,19 @@ const SubjectDepartmentMapping: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Confirmation Dialog (SweetAlert-style) */}
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => setConfirmDialog(prev => ({ ...prev, open }))}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
+        variant={confirmDialog.variant}
+        isLoading={confirmDialog.isLoading}
+        onConfirm={confirmDialog.onConfirm}
+      />
     </div>
   );
 };

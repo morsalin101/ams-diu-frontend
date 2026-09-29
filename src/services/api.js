@@ -882,6 +882,79 @@ export const departmentAPI = {
   },
 };
 
+// Faculty API endpoints
+export const facultyAPI = {
+  // Get all faculties
+  getAllFaculties: async () => {
+    try {
+      const response = await api.get('/api/faculties/');
+      const responseData = response.data;
+      
+      if (responseData.success && responseData.data) {
+        return {
+          success: true,
+          data: responseData.data,
+          message: responseData.message
+        };
+      }
+      
+      return responseData;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get faculty by ID
+  getFaculty: async (facultyId) => {
+    try {
+      const response = await api.get(`/api/faculties/${facultyId}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Create faculty
+  createFaculty: async (facultyData) => {
+    try {
+      const response = await api.post('/api/faculties/create/', facultyData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Update faculty (PUT)
+  updateFaculty: async (facultyId, facultyData) => {
+    try {
+      const response = await api.put(`/api/faculties/${facultyId}/update/`, facultyData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Update faculty (PATCH)
+  patchFaculty: async (facultyId, facultyData) => {
+    try {
+      const response = await api.patch(`/api/faculties/${facultyId}/update/`, facultyData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Delete faculty
+  deleteFaculty: async (facultyId) => {
+    try {
+      const response = await api.delete(`/api/faculties/${facultyId}/delete/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+};
+
 // Subject API endpoints
 export const subjectAPI = {
   // Get all subjects
@@ -981,6 +1054,103 @@ export const subjectDepartmentAPI = {
   getDepartmentSubjects: async (departmentId) => {
     try {
       const response = await api.get(`/api/subject-departments/department/${departmentId}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+};
+
+// Faculty-Department Mapping API endpoints
+export const facultyDepartmentAPI = {
+  // Get all mappings
+  getAllMappings: async () => {
+    try {
+      const response = await api.get('/api/faculty-departments/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get mapping by ID
+  getMapping: async (mappingId) => {
+    try {
+      const response = await api.get(`/api/faculty-departments/${mappingId}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Create mapping
+  createMapping: async (mappingData) => {
+    try {
+      const response = await api.post('/api/faculty-departments/create/', mappingData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Update mapping (PUT)
+  updateMapping: async (mappingId, mappingData) => {
+    try {
+      const response = await api.put(`/api/faculty-departments/${mappingId}/update/`, mappingData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Update mapping (PATCH)
+  patchMapping: async (mappingId, mappingData) => {
+    try {
+      const response = await api.patch(`/api/faculty-departments/${mappingId}/update/`, mappingData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Add departments to faculty mapping
+  addDepartments: async (mappingId, departmentIds) => {
+    try {
+      const response = await api.post(`/api/faculty-departments/${mappingId}/add-departments/`, {
+        department_ids: departmentIds,
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Remove departments from faculty mapping
+  removeDepartments: async (mappingId, departmentIds) => {
+    try {
+      const response = await api.post(`/api/faculty-departments/${mappingId}/remove-departments/`, {
+        department_ids: departmentIds,
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Delete mapping
+  deleteMapping: async (mappingId) => {
+    try {
+      const response = await api.delete(`/api/faculty-departments/${mappingId}/delete/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get departments for a specific faculty
+  getFacultyDepartments: async (facultyId) => {
+    try {
+      const response = await api.get(`/api/faculty-departments/faculty/${facultyId}/`);
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
