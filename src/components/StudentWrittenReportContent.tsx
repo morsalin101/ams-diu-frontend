@@ -42,7 +42,8 @@ function formatDateOnly(dateString?: string | null) {
 
 export function StudentWrittenReportContent({ report }: StudentWrittenReportContentProps) {
   const applicantName = report.student.full_name || report.student.username;
-  const facultyName = report.written_exam.faculty || "Science and Information Technology";
+  const rawFaculty = report.written_exam.faculty || "Science and Information Technology";
+  const facultyName = rawFaculty.toUpperCase() === "FSIT" ? "Science and Information Technology" : rawFaculty;
   const departmentName = (report.written_exam.department || "Computer Science & Engineering").trim();
   const deptLine = /^department\s+of\b/i.test(departmentName)
     ? departmentName
@@ -95,8 +96,8 @@ export function StudentWrittenReportContent({ report }: StudentWrittenReportCont
       </div>
 
       {/* Title */}
-      <div className="text-center mb-5">
-        <h3 className="text-sm sm:text-base font-bold underline underline-offset-4 text-slate-900">
+      <div className="text-center pb-8 mt-4">
+        <h3 className="text-sm sm:text-base font-bold text-slate-900">
           Written Examination Report
         </h3>
       </div>
@@ -292,50 +293,31 @@ export function StudentWrittenReportContent({ report }: StudentWrittenReportCont
             questionReviews.map((question, index) => (
               <div
                 key={question.question_id || index}
-                className="rounded-lg border border-slate-200 bg-white p-3.5 shadow-sm"
+                className="rounded-lg border border-slate-200 bg-white p-3.5 shadow-sm break-inside-avoid"
               >
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <Badge
-                      variant="outline"
-                      className="border-slate-300 bg-white text-slate-800 font-bold text-[10px]"
-                    >
-                      Q{index + 1}
-                    </Badge>
-                    <Badge
-                      variant="outline"
-                      className="border-indigo-200 bg-indigo-50 text-indigo-700 text-[10px]"
-                    >
-                      {question.subject || "General"}
-                    </Badge>
-                    <Badge
-                      variant="outline"
-                      className={`text-[10px] ${getQuestionStatusBadgeClass(question.status)}`}
-                    >
-                      {question.status}
-                    </Badge>
+                <div className="flex justify-between items-start gap-4 mb-2.5">
+                  <div className="flex-1">
+                    {/* Question Text */}
+                    <p className="text-[13px] font-bold leading-snug text-slate-800 whitespace-pre-wrap">
+                      <span className="mr-1 text-slate-900">Q{index + 1}.</span>
+                      {question.question_text}
+                    </p>
                   </div>
-                  <div className="text-[10px] text-slate-500 text-right">
-                    <span>Type: {question.question_type}</span>
-                    <span className="mx-1.5">|</span>
-                    <span>Marks: {formatReportNumber(question.marks)}</span>
+                  <div className="bg-slate-50/80 rounded-md px-3 py-2 text-[10px] text-slate-500 shrink-0 border border-slate-100">
+                    <div className="mb-0.5">Type: {question.question_type}</div>
+                    <div>Marks: {formatReportNumber(question.marks)}</div>
                   </div>
                 </div>
 
-                {/* Question Text */}
-                <p className="text-xs font-semibold leading-relaxed text-slate-900 whitespace-pre-wrap mt-1">
-                  {question.question_text}
-                </p>
-
                 {/* Options */}
                 {question.options && Object.keys(question.options).length > 0 && (
-                  <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[12px] mb-2.5">
                     {Object.entries(question.options).map(([key, value]) => (
                       <div
                         key={key}
-                        className="rounded border border-slate-200 bg-slate-50/70 px-2.5 py-1.5 text-slate-700"
+                        className="rounded-md border border-slate-100 bg-[#F9FAFB] px-3 py-2 text-slate-500"
                       >
-                        <span className="font-bold text-slate-900 mr-1.5">{key}.</span>
+                        <span className="font-bold text-slate-700 mr-1.5">{key}.</span>
                         <span>{value}</span>
                       </div>
                     ))}
@@ -343,20 +325,20 @@ export function StudentWrittenReportContent({ report }: StudentWrittenReportCont
                 )}
 
                 {/* Student Answer vs Correct Answer */}
-                <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  <div className="rounded border border-slate-200 bg-slate-50 p-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-0.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[12px]">
+                  <div className="rounded-md border border-slate-100 bg-[#F9FAFB] p-2.5">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block mb-1">
                       Student Answer
                     </span>
-                    <span className="font-medium text-slate-900">
+                    <span className="font-bold text-slate-700">
                       {formatAnswerDisplay(question.student_answer)}
                     </span>
                   </div>
-                  <div className="rounded border border-emerald-200 bg-emerald-50/60 p-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block mb-0.5">
+                  <div className="rounded-md border border-emerald-100 bg-emerald-50/50 p-2.5">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 block mb-1">
                       Correct Answer
                     </span>
-                    <span className="font-semibold text-emerald-900">
+                    <span className="font-bold text-emerald-800">
                       {formatCorrectAnswersDisplay(question.correct_answers)}
                     </span>
                   </div>

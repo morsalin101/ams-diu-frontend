@@ -38,7 +38,8 @@ function formatDateOnly(dateString?: string | null) {
 
 export function StudentVivaReportContent({ report }: StudentVivaReportContentProps) {
   const applicantName = report.student.full_name || report.student.username;
-  const facultyName = report.written_exam.faculty || "Science and Information Technology";
+  const rawFaculty = report.written_exam.faculty || "Science and Information Technology";
+  const facultyName = rawFaculty.toUpperCase() === "FSIT" ? "Science and Information Technology" : rawFaculty;
   const departmentName = (report.written_exam.department || "Computer Science & Engineering").trim();
   const deptLine = /^department\s+of\b/i.test(departmentName)
     ? departmentName
@@ -63,7 +64,7 @@ export function StudentVivaReportContent({ report }: StudentVivaReportContentPro
           Daffodil International University
         </h2>
         <p className="text-xs sm:text-sm font-semibold text-slate-800 mt-0.5">
-          Admission Test Results, {formatSemesterLabel(report.written_exam.semester)}
+          Admission Test Result, {formatSemesterLabel(report.written_exam.semester)}
         </p>
         <p className="text-[11px] sm:text-xs text-slate-700 mt-0.5">Faculty of {facultyName}</p>
         <p className="text-[11px] sm:text-xs text-slate-700">{deptLine}</p>
@@ -78,7 +79,7 @@ export function StudentVivaReportContent({ report }: StudentVivaReportContentPro
 
       {/* Title */}
       <div className="text-center mb-5">
-        <h3 className="text-sm sm:text-base font-bold underline underline-offset-4 text-slate-900">
+        <h3 className="text-sm sm:text-base font-bold text-slate-900">
           Viva Examination Report
         </h3>
       </div>

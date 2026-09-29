@@ -2,11 +2,7 @@ import { useEffect, useState } from "react";
 import { Download, FileText, Loader2, Mic, PenTool, X, XCircle } from "lucide-react";
 import toast from "react-hot-toast";
 
-import {
-  downloadIndividualTestReportPdf,
-  downloadIndividualVivaReportPdf,
-  downloadIndividualWrittenReportPdf,
-} from "../lib/individual-report-pdf";
+import { downloadDomAsPdf } from "../lib/dom-to-pdf";
 import { type StudentAdmissionDetailReport } from "../lib/student-report";
 import { admissionResultsAPI } from "../services/api";
 import { StudentAdmissionReportContent } from "./StudentAdmissionReportContent";
@@ -110,34 +106,29 @@ export function StudentAdmissionReportDialog({
   }, [open, examId, studentId, reportProp]);
 
   // Download action corresponding to the currently active report tab
-  const handleDownload = async () => {
-    if (!report) {
-      return;
-    }
+  const applicantName =
+    report?.student?.full_name || report?.student?.username || studentName || "Candidate";
+  const serialId = report?.student?.application_serial || "";
 
+  const handleDownload = async () => {
+    if (!report) return;
     setIsDownloading(true);
+    
+    let filename = `Report_${(applicantName || "Student").replace(/\s+/g, "_")}_${serialId}.pdf`;
+    if (activeTab === "admission") filename = `Admission_${filename}`;
+    if (activeTab === "written") filename = `Written_${filename}`;
+    if (activeTab === "viva") filename = `Viva_${filename}`;
+
     try {
-      if (activeTab === "admission") {
-        await downloadIndividualTestReportPdf(report);
-        toast.success("Student test report downloaded successfully");
-      } else if (activeTab === "written") {
-        await downloadIndividualWrittenReportPdf(report);
-        toast.success("Written examination report downloaded successfully");
-      } else {
-        await downloadIndividualVivaReportPdf(report);
-        toast.success("Viva examination report downloaded successfully");
-      }
-    } catch (downloadError: any) {
-      console.error("Error downloading student report PDF:", downloadError);
-      toast.error(downloadError?.message || "Failed to download PDF report");
+      await downloadDomAsPdf("report-pdf-content", filename);
+      toast.success("PDF generated successfully");
+    } catch (error) {
+      console.error("Print error:", error);
+      toast.error("Failed to generate PDF");
     } finally {
       setIsDownloading(false);
     }
   };
-
-  const applicantName =
-    report?.student?.full_name || report?.student?.username || studentName || "Candidate";
-  const serialId = report?.student?.application_serial || "";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -181,13 +172,6 @@ export function StudentAdmissionReportDialog({
                         ? "Written Examination Report"
                         : "Viva Examination Report"}
                   </h2>
-                  <span className="hidden md:inline-flex text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-white/15 text-blue-100 border border-white/15">
-                    {activeTab === "admission"
-                      ? "Template 1"
-                      : activeTab === "written"
-                        ? "Template 3"
-                        : "Template 2"}
-                  </span>
                 </div>
                 <p className="text-[11px] sm:text-xs text-blue-100/80 truncate">
                   {applicantName}
@@ -252,7 +236,7 @@ export function StudentAdmissionReportDialog({
                 }`}
               >
                 <PenTool className="h-3.5 w-3.5" />
-                <span>Written Result</span>
+                <span>Written Report</span>
               </button>
 
               <button
@@ -265,7 +249,7 @@ export function StudentAdmissionReportDialog({
                 }`}
               >
                 <Mic className="h-3.5 w-3.5" />
-                <span>Viva Result</span>
+                <span>Viva Report</span>
               </button>
             </div>
 
@@ -303,7 +287,10 @@ export function StudentAdmissionReportDialog({
               </Card>
             ) : (
               /* The Paper Sheet Container: Designed to match authentic A4 document styling with zero horizontal waste */
-              <div className="w-full max-w-[800px] bg-white border border-slate-300/80 rounded-lg shadow-md p-3.5 sm:p-6 md:p-8 text-slate-900 transition-all">
+              <div 
+                id="report-pdf-content"
+                className="w-full max-w-[700px] bg-white border border-slate-300/80 rounded-lg shadow-md p-3.5 sm:p-6 md:p-8 text-slate-900 transition-all"
+              >
                 {activeTab === "admission" && <StudentAdmissionReportContent report={report} />}
                 {activeTab === "written" && <StudentWrittenReportContent report={report} />}
                 {activeTab === "viva" && <StudentVivaReportContent report={report} />}

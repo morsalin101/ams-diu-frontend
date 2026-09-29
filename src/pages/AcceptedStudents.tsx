@@ -68,6 +68,13 @@ import { downloadBlobFile } from "../lib/pdf-download";
 import { admissionResultsAPI, examAPI } from "../services/api";
 import { StudentAdmissionReportDialog } from "../components/StudentAdmissionReportDialog";
 import PaginationControls, { DEFAULT_PAGINATION, paginationFromDrf } from "../components/PaginationControls";
+import {
+  ResultsSortFilterControls,
+  type SortCategory,
+  type ScoreSort,
+  type ExamsSort,
+  type DateSort,
+} from "../components/ResultsSortFilterControls";
 
 const TAB_TO_STATUS = {
   selected: "SELECTED",
@@ -266,11 +273,16 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
   const [configurationMissing, setConfigurationMissing] = useState(false);
   const [examRecords, setExamRecords] = useState<ExamLookupRecord[]>([]);
   const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
-  // Sort/filter by exam-taken datetime. "latest" is the default (task 1).
-  const [sortMode, setSortMode] = useState<
-    "latest" | "oldest" | "name_asc" | "name_desc" | "score_high" | "score_low" | "custom"
-  >("latest");
-  const [customDate, setCustomDate] = useState("");
+  // Sort and filter divided into 3 distinct logical groups:
+  // 1. SCORE ("score_high" | "score_low")
+  // 2. EXAM TAKEN ("exams_most" | "exams_fewest")
+  // 3. DATE ("latest" | "oldest" | "custom")
+  const [activeSortCategory, setActiveSortCategory] = useState<SortCategory>("date");
+  const [scoreSort, setScoreSort] = useState<ScoreSort>("score_high");
+  const [examsSort, setExamsSort] = useState<ExamsSort>("exams_most");
+  const [dateSort, setDateSort] = useState<DateSort>("latest");
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
   // Draft count in the input vs the count applied on OK (drives N-export).
   const [exportCount, setExportCount] = useState("");
   const [appliedExportCount, setAppliedExportCount] = useState("");
@@ -290,26 +302,61 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
   const [downloadingReportId, setDownloadingReportId] = useState<number | null>(null);
   const [isBulkDownloadingReports, setIsBulkDownloadingReports] = useState(false);
 
-  // sortMode/customDate -> backend sort_by/order/exam_taken_date query params.
+  // Computed backend query params for sorting & date filtering
   const resultQueryParams = useMemo(() => {
-    switch (sortMode) {
-      case "name_asc":
-        return { sort_by: "name", order: "asc", exam_taken_date: undefined };
-      case "name_desc":
-        return { sort_by: "name", order: "desc", exam_taken_date: undefined };
-      case "score_high":
-        return { sort_by: "score", order: "desc", exam_taken_date: undefined };
-      case "score_low":
-        return { sort_by: "score", order: "asc", exam_taken_date: undefined };
-      case "oldest":
-        return { sort_by: "date", order: "asc", exam_taken_date: undefined };
-      case "custom":
-        return { sort_by: "date", order: "desc", exam_taken_date: customDate || undefined };
-      case "latest":
-      default:
-        return { sort_by: "date", order: "desc", exam_taken_date: undefined };
+    const params: {
+      sort_by: string;
+      order: string;
+      exam_taken_date?: string;
+      start_date?: string;
+      end_date?: string;
+    } = {
+      sort_by: "date",
+      order: "desc",
+    };
+
+    if (activeSortCategory === "score") {
+      params.sort_by = "score";
+      params.order = scoreSort === "score_high" ? "desc" : "asc";
+    } else if (activeSortCategory === "exams") {
+      params.sort_by = "exams_taken";
+      params.order = examsSort === "exams_most" ? "desc" : "asc";
+    } else {
+      // date
+      params.sort_by = "date";
+      params.order = dateSort === "oldest" ? "asc" : "desc";
     }
-  }, [sortMode, customDate]);
+
+    if (dateSort === "custom") {
+      if (customStartDate && customEndDate && customStartDate === customEndDate) {
+        params.exam_taken_date = customStartDate;
+      } else {
+        if (customStartDate) {
+          params.start_date = customStartDate;
+        }
+        if (customEndDate) {
+          params.end_date = customEndDate;
+        }
+      }
+    }
+
+    return params;
+  }, [activeSortCategory, scoreSort, examsSort, dateSort, customStartDate, customEndDate]);
+
+  const handleResetSortAndFilter = () => {
+    setActiveSortCategory("date");
+    setScoreSort("score_high");
+    setExamsSort("exams_most");
+    setDateSort("latest");
+    setCustomStartDate("");
+    setCustomEndDate("");
+  };
+
+  const isSortFilterCustomized =
+    activeSortCategory !== "date" ||
+    dateSort !== "latest" ||
+    Boolean(customStartDate) ||
+    Boolean(customEndDate);
 
   const parsedExportCount = useMemo(() => {
     if (appliedExportCount.trim() === "") {
@@ -401,7 +448,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
   // Changing sort/date filter jumps back to page 1.
   useEffect(() => {
     setPage(1);
-  }, [sortMode, customDate]);
+  }, [activeSortCategory, scoreSort, examsSort, dateSort, customStartDate, customEndDate]);
 
   useEffect(() => {
     if (!hasReadAccess || !department?.id || !selectedSemester) {
@@ -470,7 +517,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
     return () => {
       isMounted = false;
     };
-  }, [hasReadAccess, department?.id, selectedSemester, activeTab, appliedSearch, page, reloadKey, sortMode, customDate]);
+  }, [hasReadAccess, department?.id, selectedSemester, activeTab, appliedSearch, page, reloadKey, resultQueryParams]);
 
   const visibleResults = results;
   const visibleRows = useMemo(() => buildResultSheetRows(visibleResults), [visibleResults]);
@@ -884,17 +931,26 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
     const dd = String(now.getDate()).padStart(2, "0");
     return `${yyyy}-${mm}-${dd}`;
   };
-  const isTodayActive = sortMode === "custom" && customDate === todayStr();
+  const isTodayActive =
+    activeSortCategory === "date" &&
+    dateSort === "custom" &&
+    customStartDate === todayStr() &&
+    customEndDate === todayStr();
 
   const handleSelectToday = () => {
     // Toggle: pressing Today again clears the filter back to default (latest).
     if (isTodayActive) {
-      setSortMode("latest");
-      setCustomDate("");
+      setActiveSortCategory("date");
+      setDateSort("latest");
+      setCustomStartDate("");
+      setCustomEndDate("");
       return;
     }
-    setCustomDate(todayStr());
-    setSortMode("custom");
+    const today = todayStr();
+    setActiveSortCategory("date");
+    setDateSort("custom");
+    setCustomStartDate(today);
+    setCustomEndDate(today);
   };
 
   useEffect(() => {
@@ -1125,38 +1181,23 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
             </Button>
           </div>
 
-          <div className="flex flex-wrap items-end gap-4">
-            <div className="space-y-2">
-              <Label>Sort / Filter</Label>
-              <Select value={sortMode} onValueChange={(value) => setSortMode(value as typeof sortMode)}>
-                <SelectTrigger className="w-56">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="name_asc">Name (A–Z)</SelectItem>
-                  <SelectItem value="name_desc">Name (Z–A)</SelectItem>
-                  <SelectItem value="score_high">Highest score</SelectItem>
-                  <SelectItem value="score_low">Lowest score</SelectItem>
-                  <SelectItem value="latest">Exam taken (Latest)</SelectItem>
-                  <SelectItem value="oldest">Exam taken (Oldest)</SelectItem>
-                  <SelectItem value="custom">Custom date…</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {sortMode === "custom" ? (
-              <div className="space-y-2">
-                <Label htmlFor="exam-taken-date">Exam date</Label>
-                <Input
-                  id="exam-taken-date"
-                  type="date"
-                  value={customDate}
-                  onChange={(event) => setCustomDate(event.target.value)}
-                  className="w-44"
-                />
-              </div>
-            ) : null}
-          </div>
+          <ResultsSortFilterControls
+            activeCategory={activeSortCategory}
+            onCategoryChange={setActiveSortCategory}
+            scoreSort={scoreSort}
+            onScoreSortChange={setScoreSort}
+            examsSort={examsSort}
+            onExamsSortChange={setExamsSort}
+            dateSort={dateSort}
+            onDateSortChange={setDateSort}
+            startDate={customStartDate}
+            endDate={customEndDate}
+            onStartDateChange={setCustomStartDate}
+            onEndDateChange={setCustomEndDate}
+            onReset={handleResetSortAndFilter}
+            isCustomized={isSortFilterCustomized}
+            disabled={isDepartmentLoading || isLoading || !department || !selectedSemester}
+          />
         </CardContent>
       </Card>
 
@@ -1173,11 +1214,11 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
       ) : (
         <>
           <Card>
-            <CardHeader>
-              <CardTitle className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="flex items-center gap-2">
-                    <CheckSquare className="w-5 h-5 text-blue-600" />
+            <CardHeader className="pb-2">
+              <CardTitle className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="flex items-center gap-1.5 text-base sm:text-lg">
+                    <CheckSquare className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
                     Bulk Selection
                   </span>
                   <div className="flex items-center gap-1" title="Number of students to export across pages (respects filters). Leave blank for all.">
@@ -1193,14 +1234,14 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
                         }
                       }}
                       placeholder="Count"
-                      className="w-20 h-8"
+                      className="w-16 h-8 text-sm"
                     />
-                    <Button size="sm" variant="outline" onClick={handleApplyExportCount}>
+                    <Button size="sm" variant="outline" onClick={handleApplyExportCount} className="h-8 px-2">
                       OK
                     </Button>
                     {parsedExportCount != null ? (
                       <Badge variant="secondary" title="Export count currently held">
-                        Holding {parsedExportCount}
+                        Held {parsedExportCount}
                       </Badge>
                     ) : null}
                   </div>
@@ -1210,6 +1251,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
                     onClick={handleResetExportCount}
                     disabled={appliedExportCount === "" && exportCount === ""}
                     title="Reset export count (export all)"
+                    className="h-8 px-2"
                   >
                     <X className="w-4 h-4" />
                   </Button>
@@ -1218,34 +1260,34 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
                     variant={isTodayActive ? "default" : "outline"}
                     onClick={handleSelectToday}
                     title="Filter to students who sat the exam today (click again to clear)"
-                    className={isTodayActive ? "bg-blue-700 hover:bg-blue-800 text-white" : ""}
+                    className={`h-8 px-2.5 ${isTodayActive ? "bg-blue-700 hover:bg-blue-800 text-white" : ""}`}
                   >
                     Today
                   </Button>
                 </div>
-                <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
-                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                <div className="flex flex-wrap items-center justify-start gap-1.5 xl:justify-end">
+                  <div className="flex flex-wrap items-center gap-1.5 text-sm">
                     {department && (
-                      <Badge variant="outline">
+                      <Badge variant="outline" className="px-1.5 py-0 h-6">
                         {department.department_shortname}
                       </Badge>
                     )}
                     {selectedSemester && (
-                      <Badge variant="secondary">{formatSemesterLabel(selectedSemester)}</Badge>
+                      <Badge variant="secondary" className="px-1.5 py-0 h-6">{formatSemesterLabel(selectedSemester)}</Badge>
                     )}
-                    <Badge variant="outline">{PRETTY_STATUS_LABELS[TAB_TO_STATUS[activeTab]]}</Badge>
+                    <Badge variant="outline" className="px-1.5 py-0 h-6">{PRETTY_STATUS_LABELS[TAB_TO_STATUS[activeTab]]}</Badge>
                   </div>
                     {canAcceptCurrentTab ? (
                       <Button
                         size="sm"
                         onClick={handleAcceptAdmission}
                         disabled={selectedStudentIds.length === 0 || isAccepting}
-                        className="text-white bg-green-600 hover:bg-green-700"
+                        className="h-8 px-2.5 text-white bg-green-600 hover:bg-green-700"
                       >
                         {isAccepting ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
                         ) : (
-                          <CheckCircle2 className="w-4 h-4 mr-2" />
+                          <CheckCircle2 className="w-4 h-4 mr-1.5" />
                         )}
                         Accept
                       </Button>
@@ -1256,13 +1298,14 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
                         variant="outline"
                         onClick={handleRevert}
                         disabled={selectedStudentIds.length === 0 || isReverting}
+                        className="h-8 px-2.5"
                       >
                         {isReverting ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
                         ) : (
-                          <RotateCcw className="w-4 h-4 mr-2" />
+                          <RotateCcw className="w-4 h-4 mr-1.5" />
                         )}
-                        Revert Status
+                        Revert
                       </Button>
                     ) : null}
                   
@@ -1277,29 +1320,29 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
                         isBulkDownloadingReports ||
                         downloadingReportId !== null
                       }
+                      className="h-8 px-2.5"
                     >
                       {isBulkDownloadingReports ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
                       ) : (
-                        <Download className="w-4 h-4 mr-2" />
+                        <Download className="w-4 h-4 mr-1.5" />
                       )}
-                      Download Reports
+                      Reports
                     </Button>
-                    <div className="flex flex-wrap items-center gap-2">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
                           size="sm"
                           disabled={isExportDisabled}
-                          className="bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#23257a] hover:to-[#4046a8]"
+                          className="h-8 px-2.5 bg-gradient-to-r from-[#2E3094] to-[#4C51BF] hover:from-[#23257a] hover:to-[#4046a8]"
                         >
                           {exportingFormat ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
                           ) : (
-                            <Download className="w-4 h-4 mr-2" />
+                            <Download className="w-4 h-4 mr-1.5" />
                           )}
                           Export
-                          <ChevronDown className="w-4 h-4 ml-2" />
+                          <ChevronDown className="w-4 h-4 ml-1.5" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent
@@ -1326,7 +1369,6 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </div>
                 </div>
               </CardTitle>
             </CardHeader>
