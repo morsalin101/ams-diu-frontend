@@ -13,6 +13,7 @@ import {
   Menu as MenuIcon, 
   Key,
   Building,
+  Landmark,
   BookOpen,
   Layers,
   AlertTriangle,
@@ -40,6 +41,7 @@ const iconMap: { [key: string]: any } = {
   'Menu': MenuIcon,
   'Key': Key,
   'Building': Building,
+  'Landmark': Landmark,
   'BookOpen': BookOpen,
   'Layers': Layers,
   'AlertTriangle': AlertTriangle,
@@ -170,7 +172,23 @@ export const MenuProvider: React.FC<{ children: React.ReactNode }> = ({ children
           permissions: { edit: true, read: true, write: true, delete: true }
         },
         {
+          id: 8,
+          label: "Faculty Management",
+          icon: "Landmark",
+          link: "/faculty-management",
+          component: "FacultyManagement",
+          permissions: { edit: true, read: true, write: true, delete: true }
+        },
+        {
           id: 9,
+          label: "Faculty Department Mapping",
+          icon: "Layers",
+          link: "/faculty-department-mapping",
+          component: "FacultyDepartmentMapping",
+          permissions: { edit: true, read: true, write: true, delete: true }
+        },
+        {
+          id: 10,
           label: "Delete Questions(DB)",
           icon: "Trash2",
           link: "/deletequestions",

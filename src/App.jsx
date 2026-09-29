@@ -19,6 +19,8 @@ import { UsersManagement } from './pages/UsersManagement';
 import { RoleManagement } from './pages/RoleManagement';
 import { MenuManagement } from './pages/MenuManagement';
 import { MenuAccessManagement } from './pages/MenuAccessManagement';
+import FacultyManagement from './pages/FacultyManagement';
+import FacultyDepartmentMapping from './pages/FacultyDepartmentMapping';
 import DepartmentManagement from './pages/DepartmentManagement';
 import SubjectManagement from './pages/SubjectManagement';
 import SubjectDepartmentMapping from './pages/SubjectDepartmentMapping';
@@ -54,6 +56,8 @@ const componentMap = {
   RoleManagement,
   MenuManagement,
   MenuAccessManagement,
+  FacultyManagement,
+  FacultyDepartmentMapping,
   DepartmentManagement,
   SubjectManagement,
   SubjectDepartmentMapping,
@@ -117,7 +121,10 @@ function ProtectedRoutes() {
         <Route path="/role-management" element={<RoleManagement />} />
         <Route path="/menu-management" element={<MenuManagement />} />
         <Route path="/menu-access-management" element={<MenuAccessManagement />} />
+        <Route path="/faculty-management" element={<FacultyManagement />} />
+        <Route path="/faculty" element={<Navigate to="/faculty-management" replace />} />
         <Route path="/department-management" element={<DepartmentManagement />} />
+        <Route path="/faculty-department-mapping" element={<FacultyDepartmentMapping />} />
         <Route path="/subject-management" element={<SubjectManagement />} />
         <Route path="/subject-department-mapping" element={<SubjectDepartmentMapping />} />
         <Route path="/student-acceptance-criteria" element={<ThresholdManagement />} />
