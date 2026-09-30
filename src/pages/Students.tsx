@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -7,12 +7,31 @@ import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Users, Plus, Edit, Trash2, Search, Loader2, RefreshCw, UserPlus, Eye, X } from 'lucide-react';
-import { studentsAPI } from '../services/api';
+import { studentsAPI, facultyAPI, facultyDepartmentAPI } from '../services/api';
 import { buildAcademicSemesterOptions } from '../lib/semester';
 import PaginationControls, { DEFAULT_PAGINATION, paginationFromDrf } from '../components/PaginationControls';
 import toast from 'react-hot-toast';
 
 type AcademicType = 'HSC' | 'DIPLOMA';
+
+interface Faculty {
+  id: number;
+  faculty_name: string;
+  faculty_shortname: string;
+}
+
+interface Department {
+  id: number;
+  department_name: string;
+  department_shortname: string;
+}
+
+interface DepartmentChoice {
+  department_id: number;
+  priority: number;
+  department_name?: string;
+  department_shortname?: string;
+}
 
 interface Student {
   id: number;
@@ -27,6 +46,9 @@ interface Student {
   hsc?: number;
   diploma?: number;
   created_at: string;
+  faculty_id?: number | null;
+  faculty_name?: string | null;
+  department_choices?: DepartmentChoice[];
 }
 
 // Default password for new student accounts.
@@ -43,7 +65,9 @@ const createEmptyFormData = () => ({
   ssc: '',
   academic_type: 'HSC' as AcademicType,
   hsc: '',
-  diploma: ''
+  diploma: '',
+  faculty_id: null as number | null,
+  department_choices: [] as DepartmentChoice[],
 });
 
 // Last name, symbols/spaces stripped — used for the fallback email.
@@ -72,12 +96,234 @@ const buildStudentPayload = (formData: ReturnType<typeof createEmptyFormData>) =
   email: formData.email.trim() || NOT_ENTERED_EMAIL,
   hsc: formData.academic_type === 'HSC' ? formData.hsc : '0',
   diploma: formData.academic_type === 'DIPLOMA' ? formData.diploma : '0',
+  // Only send faculty_id if selected; send department_choices array
+  faculty_id: formData.faculty_id || undefined,
+  department_choices: formData.department_choices.map(({ department_id, priority }) => ({
+    department_id,
+    priority,
+  })),
 });
 
 interface StudentsProps {
   gradientClass: string;
 }
 
+// ─── Department Priority Selector ──────────────────────────────────────────────
+interface DeptSelectorProps {
+  faculties: Faculty[];
+  facultyId: number | null;
+  departmentChoices: DepartmentChoice[];
+  onFacultyChange: (id: number | null) => void;
+  onChoicesChange: (choices: DepartmentChoice[]) => void;
+  loadingFaculties: boolean;
+}
+
+const PRIORITY_SYMBOLS = ['①', '②', '③'];
+
+function DepartmentPrioritySelector({
+  faculties,
+  facultyId,
+  departmentChoices,
+  onFacultyChange,
+  onChoicesChange,
+  loadingFaculties,
+}: DeptSelectorProps) {
+  const [depts, setDepts] = useState<Department[]>([]);
+  const [loadingDepts, setLoadingDepts] = useState(false);
+  const [selectedDeptId, setSelectedDeptId] = useState<string>('');
+
+  // Load departments when faculty changes
+  const loadDepartments = useCallback(async (fId: number) => {
+    setLoadingDepts(true);
+    setDepts([]);
+    try {
+      const res = await facultyDepartmentAPI.getFacultyDepartments(fId);
+      const mapping = res?.data || res;
+      const deptList: Department[] = mapping?.departments || [];
+      setDepts(deptList);
+    } catch {
+      setDepts([]);
+    } finally {
+      setLoadingDepts(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (facultyId) {
+      loadDepartments(facultyId);
+    } else {
+      setDepts([]);
+    }
+    setSelectedDeptId('');
+  }, [facultyId, loadDepartments]);
+
+  const handleFacultySelect = (value: string) => {
+    const id = value ? Number(value) : null;
+    onFacultyChange(id);
+    onChoicesChange([]); // Reset choices when faculty changes
+    setSelectedDeptId('');
+  };
+
+  const handleAddDept = (deptIdToAdd?: number) => {
+    const id = deptIdToAdd ?? (selectedDeptId ? Number(selectedDeptId) : null);
+    if (!id) return;
+    if (departmentChoices.some(c => c.department_id === id)) {
+      toast.error('This department is already selected');
+      return;
+    }
+    if (departmentChoices.length >= 3) {
+      toast.error('Maximum 3 department choices allowed');
+      return;
+    }
+    const dept = depts.find(d => d.id === id);
+    const newChoices: DepartmentChoice[] = [
+      ...departmentChoices,
+      {
+        department_id: id,
+        priority: departmentChoices.length + 1,
+        department_name: dept?.department_name,
+        department_shortname: dept?.department_shortname,
+      },
+    ];
+    onChoicesChange(newChoices);
+    setSelectedDeptId('');
+  };
+
+  const handleRemoveDept = (deptId: number) => {
+    const filtered = departmentChoices.filter(c => c.department_id !== deptId);
+    // Re-assign priorities sequentially starting at 1
+    const reindexed = filtered.map((c, i) => ({ ...c, priority: i + 1 }));
+    onChoicesChange(reindexed);
+  };
+
+  // Departments that are not yet selected (available to add)
+  const availableDepts = depts.filter(d => !departmentChoices.some(c => c.department_id === d.id));
+  const maxReached = departmentChoices.length >= 3;
+
+  return (
+    <div className="space-y-3">
+      {/* Faculty Selection */}
+      <div className="space-y-1">
+        <Label htmlFor="faculty_select" className="text-sm font-medium text-gray-700">Faculty *</Label>
+        {loadingFaculties ? (
+          <div className="flex items-center gap-2 text-sm text-gray-500 py-1.5">
+            <Loader2 className="h-4 w-4 animate-spin text-blue-600" /> Loading faculties…
+          </div>
+        ) : (
+          <Select
+            value={facultyId ? String(facultyId) : ''}
+            onValueChange={handleFacultySelect}
+          >
+            <SelectTrigger id="faculty_select" className="w-full bg-white">
+              <SelectValue placeholder="Select faculty first" />
+            </SelectTrigger>
+            <SelectContent>
+              {faculties.map(f => (
+                <SelectItem key={f.id} value={String(f.id)}>
+                  {f.faculty_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
+
+      {/* Department Selection — only active after faculty is selected */}
+      {facultyId ? (
+        <div className="space-y-1">
+          <Label htmlFor="dept_select" className="text-sm font-medium text-gray-700">
+            Department Choice
+            <span className="ml-1 text-xs text-gray-500">(max 3 choices)</span>
+          </Label>
+          {loadingDepts ? (
+            <div className="flex items-center gap-2 text-sm text-gray-500 py-1.5">
+              <Loader2 className="h-4 w-4 animate-spin text-blue-600" /> Loading departments…
+            </div>
+          ) : depts.length === 0 ? (
+            <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
+              No departments mapped to this faculty.
+            </p>
+          ) : maxReached ? (
+            <div className="rounded-md border border-gray-200 bg-gray-100 p-2 text-xs text-gray-600">
+              Maximum 3 department choices selected. Remove a choice to select another.
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Select
+                value={selectedDeptId}
+                onValueChange={(val) => {
+                  setSelectedDeptId(val);
+                  handleAddDept(Number(val));
+                }}
+                disabled={maxReached}
+              >
+                <SelectTrigger id="dept_select" className="flex-1 bg-white">
+                  <SelectValue placeholder={`Select choice ${departmentChoices.length + 1}…`} />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableDepts.map(d => (
+                    <SelectItem key={d.id} value={String(d.id)}>
+                      {d.department_name} ({d.department_shortname})
+                    </SelectItem>
+                  ))}
+                  {availableDepts.length === 0 && (
+                    <div className="px-3 py-2 text-sm text-gray-400">All available departments selected</div>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {/* Selected Department Preferences List */}
+      {departmentChoices.length > 0 && (
+        <div className="space-y-1.5 pt-1">
+          <Label className="text-sm font-medium text-gray-700">Selected Department Preferences</Label>
+          <div className="rounded-md border border-blue-200 bg-white p-2 space-y-1.5 shadow-xs">
+            {departmentChoices.map(choice => {
+              const symbol = PRIORITY_SYMBOLS[choice.priority - 1] || `${choice.priority}.`;
+              return (
+                <div
+                  key={choice.department_id}
+                  className="flex items-center justify-between gap-2 rounded-md bg-slate-50 border border-gray-200 px-3 py-2 text-sm"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <span className="text-lg font-bold text-blue-600 shrink-0 leading-none">
+                      {symbol}
+                    </span>
+                    <span className="font-medium text-gray-800 break-words leading-snug">
+                      {choice.department_name || `Department #${choice.department_id}`}
+                      {choice.department_shortname && (
+                        <span className="ml-1.5 text-xs text-gray-500 font-normal">
+                          ({choice.department_shortname})
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 shrink-0"
+                    onClick={() => handleRemoveDept(choice.department_id)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-xs text-gray-500">
+            {departmentChoices.length}/3 choices selected — ordered by priority (1 = highest)
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Students Component ────────────────────────────────────────────────────
 export function Students({ gradientClass }: StudentsProps) {
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -90,7 +336,11 @@ export function Students({ gradientClass }: StudentsProps) {
   const [pagination, setPagination] = useState(DEFAULT_PAGINATION);
   const [totalCount, setTotalCount] = useState(0);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  
+
+  // Faculties for the selector
+  const [faculties, setFaculties] = useState<Faculty[]>([]);
+  const [loadingFaculties, setLoadingFaculties] = useState(false);
+
   // Form states
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -98,7 +348,7 @@ export function Students({ gradientClass }: StudentsProps) {
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Form data
   const [formData, setFormData] = useState(createEmptyFormData());
   // Password auto-fills from last name until the admin edits it manually.
@@ -107,13 +357,30 @@ export function Students({ gradientClass }: StudentsProps) {
   // Only current and next year semesters are valid for new student registration.
   const semesterOptions = buildAcademicSemesterOptions({ previousYears: 0, nextYears: 1 });
 
+  // Load faculties once
+  useEffect(() => {
+    const loadFaculties = async () => {
+      setLoadingFaculties(true);
+      try {
+        const res = await facultyAPI.getAllFaculties();
+        const list: Faculty[] = res?.data || res?.results || res || [];
+        setFaculties(list);
+      } catch {
+        toast.error('Failed to load faculties');
+      } finally {
+        setLoadingFaculties(false);
+      }
+    };
+    loadFaculties();
+  }, []);
+
   const handleAcademicTypeChange = (value: string) => {
     const academicType = value as AcademicType;
     setFormData(prev => ({
       ...prev,
       academic_type: academicType,
       hsc: academicType === 'HSC' ? prev.hsc : '',
-      diploma: academicType === 'DIPLOMA' ? prev.diploma : ''
+      diploma: academicType === 'DIPLOMA' ? prev.diploma : '',
     }));
   };
 
@@ -137,12 +404,11 @@ export function Students({ gradientClass }: StudentsProps) {
         search: appliedSearch || undefined,
         date_filter: appliedDateFilter === 'today' ? 'today' : undefined,
       });
-      
+
       let studentsData = [];
       if (Array.isArray(response)) {
         studentsData = response;
       } else if (response && Array.isArray(response.students)) {
-        // Handle the new API format with 'students' array
         studentsData = response.students;
       } else if (response && Array.isArray(response.results)) {
         studentsData = response.results;
@@ -152,17 +418,16 @@ export function Students({ gradientClass }: StudentsProps) {
         console.warn('Unexpected API response format:', response);
         studentsData = [];
       }
-      
+
       const nextPagination = paginationFromDrf(response, page);
       const count = nextPagination.count || studentsData.length;
-      
+
       setStudents(studentsData);
       setPagination(nextPagination);
       setTotalCount(count);
     } catch (error) {
       console.error('Error loading students:', error);
       toast.error('Failed to load students: ' + ((error as any)?.message || 'Unknown error'));
-      // Reset to empty array on error
       setStudents([]);
       setPagination(DEFAULT_PAGINATION);
       setTotalCount(0);
@@ -189,8 +454,16 @@ export function Students({ gradientClass }: StudentsProps) {
 
   const handleAddStudent = async () => {
     const academicScore = formData.academic_type === 'DIPLOMA' ? formData.diploma : formData.hsc;
-    if (!formData.username || !formData.password || !formData.full_name || !formData.department_shortname || !formData.registration_semester || !formData.ssc || !academicScore) {
+    if (!formData.username || !formData.password || !formData.full_name || !formData.registration_semester || !formData.ssc || !academicScore) {
       toast.error('Please fill in all required fields');
+      return;
+    }
+    if (!formData.faculty_id) {
+      toast.error('Please select a faculty');
+      return;
+    }
+    if (!formData.department_choices || formData.department_choices.length === 0) {
+      toast.error('Please select at least one department choice');
       return;
     }
 
@@ -198,8 +471,7 @@ export function Students({ gradientClass }: StudentsProps) {
     try {
       await studentsAPI.createStudent(buildStudentPayload(formData));
       toast.success('Student added successfully!');
-      
-      // Reset form and close dialog
+
       setFormData(createEmptyFormData());
       setShowAddDialog(false);
       setPage(1);
@@ -214,28 +486,30 @@ export function Students({ gradientClass }: StudentsProps) {
 
   const handleEditStudent = async () => {
     const academicScore = formData.academic_type === 'DIPLOMA' ? formData.diploma : formData.hsc;
-    if (!editingStudent || !formData.username || !formData.full_name || !formData.email || !formData.department_shortname || !formData.registration_semester || !formData.ssc || !academicScore) {
+    if (!editingStudent || !formData.username || !formData.full_name || !formData.email || !formData.registration_semester || !formData.ssc || !academicScore) {
       toast.error('Please fill in all required fields');
+      return;
+    }
+    if (formData.faculty_id && (!formData.department_choices || formData.department_choices.length === 0)) {
+      toast.error('Please select at least one department choice for the selected faculty');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      // Don't send password if it's empty (optional for updates)
       const studentPayload = buildStudentPayload(formData);
       const updateData = studentPayload.password
         ? studentPayload
         : { ...studentPayload, password: undefined };
-        
+
       const response = await studentsAPI.updateStudent(editingStudent.id, updateData);
       const updatedStudent = response?.data || response;
-      
-      setStudents(prev => 
+
+      setStudents(prev =>
         Array.isArray(prev) ? prev.map(s => s.id === editingStudent.id ? { ...s, ...updatedStudent } : s) : []
       );
       toast.success('Student updated successfully!');
-      
-      // Reset form and close dialog
+
       setFormData(createEmptyFormData());
       setEditingStudent(null);
       setShowEditDialog(false);
@@ -265,10 +539,10 @@ export function Students({ gradientClass }: StudentsProps) {
   const openEditDialog = (student: Student) => {
     const academicType = getStudentAcademicType(student);
     setEditingStudent(student);
-    setPasswordAuto(false); // Editing: keep existing password unless typed.
+    setPasswordAuto(false);
     setFormData({
       username: student.username || '',
-      password: '', // Don't populate password for security
+      password: '',
       f_id: student.f_id || '',
       full_name: student.full_name || '',
       email: student.email || '',
@@ -277,7 +551,14 @@ export function Students({ gradientClass }: StudentsProps) {
       ssc: student.ssc ? student.ssc.toString() : '',
       academic_type: academicType,
       hsc: student.hsc ? student.hsc.toString() : '',
-      diploma: student.diploma ? student.diploma.toString() : ''
+      diploma: student.diploma ? student.diploma.toString() : '',
+      faculty_id: student.faculty_id ?? null,
+      department_choices: (student.department_choices || []).map(c => ({
+        department_id: c.department_id,
+        priority: c.priority,
+        department_name: c.department_name,
+        department_shortname: c.department_shortname,
+      })),
     });
     setShowEditDialog(true);
   };
@@ -293,9 +574,159 @@ export function Students({ gradientClass }: StudentsProps) {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     });
   };
+
+  // Shared student form fields (used in both Add and Edit dialogs)
+  const renderStudentFormFields = (idPrefix: string) => (
+    <>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor={`${idPrefix}_username`}>Applicant ID *</Label>
+          <Input
+            id={`${idPrefix}_username`}
+            value={formData.username}
+            onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
+            placeholder="APP001"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`${idPrefix}_full_name`}>Full Name *</Label>
+          <Input
+            id={`${idPrefix}_full_name`}
+            value={formData.full_name}
+            onChange={(e) => {
+              const full_name = e.target.value;
+              setFormData(prev => ({
+                ...prev,
+                full_name,
+                password: passwordAuto ? DEFAULT_STUDENT_PASSWORD : prev.password,
+              }));
+            }}
+            placeholder="John Doe"
+          />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor={`${idPrefix}_email`}>Email</Label>
+          <Input
+            id={`${idPrefix}_email`}
+            type="email"
+            value={formData.email}
+            onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+            placeholder="Optional — auto-filled if blank"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`${idPrefix}_registration_semester`}>Registration Semester *</Label>
+          <Select
+            value={formData.registration_semester}
+            onValueChange={(value) => setFormData(prev => ({ ...prev, registration_semester: value }))}
+          >
+            <SelectTrigger id={`${idPrefix}_registration_semester`}>
+              <SelectValue placeholder="Select registration semester" />
+            </SelectTrigger>
+            <SelectContent>
+              {semesterOptions.map((semester) => (
+                <SelectItem key={semester} value={semester}>
+                  {semester}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Faculty → Department Priority Section */}
+      <div className="rounded-lg border border-blue-200 bg-blue-50/40 p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-semibold text-blue-900">Faculty &amp; Department Choices *</h4>
+          <span className="text-xs text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded-full font-medium">
+            Priority-based (1–3)
+          </span>
+        </div>
+        <DepartmentPrioritySelector
+          faculties={faculties}
+          facultyId={formData.faculty_id}
+          departmentChoices={formData.department_choices}
+          loadingFaculties={loadingFaculties}
+          onFacultyChange={(id) => setFormData(prev => ({ ...prev, faculty_id: id }))}
+          onChoicesChange={(choices) => setFormData(prev => ({ ...prev, department_choices: choices }))}
+        />
+      </div>
+      {idPrefix === 'add' ? (
+        <div className="space-y-2">
+          <Label htmlFor="add_password">Password *</Label>
+          <Input
+            id="add_password"
+            type="text"
+            value={formData.password}
+            onChange={(e) => {
+              setPasswordAuto(false);
+              setFormData(prev => ({ ...prev, password: e.target.value }));
+            }}
+            placeholder="Defaults to 123"
+          />
+          <p className="text-xs text-gray-500">Defaults to 123. Edit to override.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <Label htmlFor="edit_password">New Password (optional)</Label>
+          <Input
+            id="edit_password"
+            type="password"
+            value={formData.password}
+            onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+            placeholder="Leave blank to keep current password"
+          />
+        </div>
+      )}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="space-y-2">
+          <Label htmlFor={`${idPrefix}_ssc`}>SSC GPA *</Label>
+          <Input
+            id={`${idPrefix}_ssc`}
+            type="number"
+            value={formData.ssc}
+            onChange={(e) => setFormData(prev => ({ ...prev, ssc: e.target.value }))}
+            placeholder="5.00"
+            min="0"
+            max="5"
+            step="0.01"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`${idPrefix}_academic_type`}>Academic Type *</Label>
+          <Select value={formData.academic_type} onValueChange={handleAcademicTypeChange}>
+            <SelectTrigger id={`${idPrefix}_academic_type`}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="HSC">HSC</SelectItem>
+              <SelectItem value="DIPLOMA">Diploma</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`${idPrefix}_academic_score`}>
+            {formData.academic_type === 'DIPLOMA' ? 'Diploma CGPA *' : 'HSC GPA *'}
+          </Label>
+          <Input
+            id={`${idPrefix}_academic_score`}
+            type="number"
+            value={formData.academic_type === 'DIPLOMA' ? formData.diploma : formData.hsc}
+            onChange={(e) => handleAcademicScoreChange(e.target.value)}
+            placeholder={formData.academic_type === 'DIPLOMA' ? '4.00' : '5.00'}
+            min="0"
+            max={formData.academic_type === 'DIPLOMA' ? '4' : '5'}
+            step="0.01"
+          />
+        </div>
+      </div>
+    </>
+  );
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -304,7 +735,7 @@ export function Students({ gradientClass }: StudentsProps) {
         <CardHeader className="pb-2 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
           <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-800">
             <Users className="h-5 w-5 text-blue-600" />
-            Search & Actions
+            Search &amp; Actions
           </CardTitle>
         </CardHeader>
         <CardContent className="px-4 pt-2 pb-4 sm:px-6 sm:pt-3 sm:pb-6">
@@ -320,9 +751,7 @@ export function Students({ gradientClass }: StudentsProps) {
                     value={draftSearch}
                     onChange={(e) => setDraftSearch(e.target.value)}
                     onKeyDown={(event) => {
-                      if (event.key === 'Enter') {
-                        handleSearch();
-                      }
+                      if (event.key === 'Enter') handleSearch();
                     }}
                     className="pl-10"
                   />
@@ -379,7 +808,7 @@ export function Students({ gradientClass }: StudentsProps) {
                     Add Student
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-h-[92vh] w-[min(96vw,28rem)] !max-w-[min(96vw,28rem)] overflow-y-auto">
+                <DialogContent className="max-h-[92vh] w-[min(96vw,52rem)] !max-w-[min(96vw,52rem)] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Add New Student</DialogTitle>
                     <DialogDescription>
@@ -387,129 +816,7 @@ export function Students({ gradientClass }: StudentsProps) {
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="username">Applicant ID *</Label>
-                      <Input
-                        id="username"
-                        value={formData.username}
-                        onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
-                        placeholder="APP001"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="full_name">Full Name *</Label>
-                      <Input
-                        id="full_name"
-                        value={formData.full_name}
-                        onChange={(e) => {
-                          const full_name = e.target.value;
-                          setFormData(prev => ({
-                            ...prev,
-                            full_name,
-                            password: passwordAuto ? DEFAULT_STUDENT_PASSWORD : prev.password,
-                          }));
-                        }}
-                        placeholder="John Doe"
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          value={formData.email}
-                          onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                          placeholder="Optional — auto-filled if blank"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="department_shortname">Department *</Label>
-                        <Input
-                          id="department_shortname"
-                          value={formData.department_shortname}
-                          onChange={(e) => setFormData(prev => ({ ...prev, department_shortname: e.target.value }))}
-                          placeholder="CSE"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="registration_semester">Registration Semester *</Label>
-                      <Select
-                        value={formData.registration_semester}
-                        onValueChange={(value) => setFormData(prev => ({ ...prev, registration_semester: value }))}
-                      >
-                        <SelectTrigger id="registration_semester">
-                          <SelectValue placeholder="Select registration semester" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {semesterOptions.map((semester) => (
-                            <SelectItem key={semester} value={semester}>
-                              {semester}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="password">Password *</Label>
-                      <Input
-                        id="password"
-                        type="text"
-                        value={formData.password}
-                        onChange={(e) => {
-                          setPasswordAuto(false);
-                          setFormData(prev => ({ ...prev, password: e.target.value }));
-                        }}
-                        placeholder="Defaults to 123"
-                      />
-                      <p className="text-xs text-gray-500">Defaults to 123. Edit to override.</p>
-                    </div>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                      <div className="space-y-2">
-                        <Label htmlFor="ssc">SSC GPA *</Label>
-                        <Input
-                          id="ssc"
-                          type="number"
-                          value={formData.ssc}
-                          onChange={(e) => setFormData(prev => ({ ...prev, ssc: e.target.value }))}
-                          placeholder="5.00"
-                          min="0"
-                          max="5"
-                          step="0.01"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="academic_type">Academic Type *</Label>
-                        <Select
-                          value={formData.academic_type}
-                          onValueChange={handleAcademicTypeChange}
-                        >
-                          <SelectTrigger id="academic_type">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="HSC">HSC</SelectItem>
-                            <SelectItem value="DIPLOMA">Diploma</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="academic_score">
-                          {formData.academic_type === 'DIPLOMA' ? 'Diploma CGPA *' : 'HSC GPA *'}
-                        </Label>
-                        <Input
-                          id="academic_score"
-                          type="number"
-                          value={formData.academic_type === 'DIPLOMA' ? formData.diploma : formData.hsc}
-                          onChange={(e) => handleAcademicScoreChange(e.target.value)}
-                          placeholder={formData.academic_type === 'DIPLOMA' ? '4.00' : '5.00'}
-                          min="0"
-                          max={formData.academic_type === 'DIPLOMA' ? '4' : '5'}
-                          step="0.01"
-                        />
-                      </div>
-                    </div>
+                    {renderStudentFormFields('add')}
                     <div className="grid grid-cols-1 gap-2 pt-4 sm:grid-cols-2">
                       <Button
                         variant="outline"
@@ -638,9 +945,26 @@ export function Students({ gradientClass }: StudentsProps) {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge variant="outline" className="text-xs">
-                        {student.department_shortname || 'N/A'}
-                      </Badge>
+                      {student.department_choices && student.department_choices.length > 0 ? (
+                        <div className="space-y-1">
+                          {student.department_choices
+                            .sort((a, b) => a.priority - b.priority)
+                            .map(c => (
+                              <div key={c.department_id} className="flex items-center gap-1">
+                                <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[9px] font-bold text-white">
+                                  {c.priority}
+                                </span>
+                                <Badge variant="outline" className="text-xs">
+                                  {c.department_shortname || `Dept#${c.department_id}`}
+                                </Badge>
+                              </div>
+                            ))}
+                        </div>
+                      ) : (
+                        <Badge variant="outline" className="text-xs">
+                          {student.department_shortname || 'N/A'}
+                        </Badge>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Badge variant="secondary" className="text-xs">
@@ -705,7 +1029,7 @@ export function Students({ gradientClass }: StudentsProps) {
 
       {/* Edit Student Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-h-[92vh] w-[min(96vw,28rem)] !max-w-[min(96vw,28rem)] overflow-y-auto">
+        <DialogContent className="max-h-[92vh] w-[min(96vw,52rem)] !max-w-[min(96vw,52rem)] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Student</DialogTitle>
             <DialogDescription>
@@ -713,118 +1037,7 @@ export function Students({ gradientClass }: StudentsProps) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit_username">Applicant ID *</Label>
-              <Input
-                id="edit_username"
-                value={formData.username}
-                onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
-                placeholder="APP001"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit_full_name">Full Name *</Label>
-              <Input
-                id="edit_full_name"
-                value={formData.full_name}
-                onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
-                placeholder="John Doe"
-              />
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="edit_email">Email *</Label>
-                <Input
-                  id="edit_email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                  placeholder="student@example.com"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit_department_shortname">Department *</Label>
-                <Input
-                  id="edit_department_shortname"
-                  value={formData.department_shortname}
-                  onChange={(e) => setFormData(prev => ({ ...prev, department_shortname: e.target.value }))}
-                  placeholder="CSE"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit_registration_semester">Registration Semester *</Label>
-              <Select
-                value={formData.registration_semester}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, registration_semester: value }))}
-              >
-                <SelectTrigger id="edit_registration_semester">
-                  <SelectValue placeholder="Select registration semester" />
-                </SelectTrigger>
-                <SelectContent>
-                  {semesterOptions.map((semester) => (
-                    <SelectItem key={semester} value={semester}>
-                      {semester}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit_password">New Password (optional)</Label>
-              <Input
-                id="edit_password"
-                type="password"
-                value={formData.password}
-                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                placeholder="Leave blank to keep current password"
-              />
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="edit_ssc">SSC GPA *</Label>
-                <Input
-                  id="edit_ssc"
-                  type="number"
-                  value={formData.ssc}
-                  onChange={(e) => setFormData(prev => ({ ...prev, ssc: e.target.value }))}
-                  placeholder="5.00"
-                  min="0"
-                  max="5"
-                  step="0.01"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit_academic_type">Academic Type *</Label>
-                <Select
-                  value={formData.academic_type}
-                  onValueChange={handleAcademicTypeChange}
-                >
-                  <SelectTrigger id="edit_academic_type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="HSC">HSC</SelectItem>
-                    <SelectItem value="DIPLOMA">Diploma</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit_academic_score">
-                  {formData.academic_type === 'DIPLOMA' ? 'Diploma CGPA *' : 'HSC GPA *'}
-                </Label>
-                <Input
-                  id="edit_academic_score"
-                  type="number"
-                  value={formData.academic_type === 'DIPLOMA' ? formData.diploma : formData.hsc}
-                  onChange={(e) => handleAcademicScoreChange(e.target.value)}
-                  placeholder={formData.academic_type === 'DIPLOMA' ? '4.00' : '5.00'}
-                  min="0"
-                  max={formData.academic_type === 'DIPLOMA' ? '4' : '5'}
-                  step="0.01"
-                />
-              </div>
-            </div>
+            {renderStudentFormFields('edit')}
             <div className="grid grid-cols-1 gap-2 pt-4 sm:grid-cols-2">
               <Button
                 variant="outline"
@@ -858,7 +1071,7 @@ export function Students({ gradientClass }: StudentsProps) {
 
       {/* View Student Dialog */}
       <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
-        <DialogContent className="max-h-[92vh] w-[min(96vw,42rem)] !max-w-[min(96vw,42rem)] overflow-y-auto">
+        <DialogContent className="max-h-[92vh] w-[min(96vw,52rem)] !max-w-[min(96vw,52rem)] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Student Details</DialogTitle>
             <DialogDescription>
@@ -884,14 +1097,45 @@ export function Students({ gradientClass }: StudentsProps) {
                     <p className="break-words text-sm font-medium text-gray-900">@{viewingStudent.username}</p>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-sm font-medium text-gray-600">Department</Label>
-                    <Badge variant="outline">{viewingStudent.department_shortname || 'Not Specified'}</Badge>
-                  </div>
-                  <div className="space-y-1">
                     <Label className="text-sm font-medium text-gray-600">Registration Semester</Label>
                     <Badge variant="secondary">{viewingStudent.registration_semester || 'Not Specified'}</Badge>
                   </div>
                 </div>
+              </div>
+
+              {/* Faculty & Department Choices */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-800">Department Preferences</h3>
+                {viewingStudent.faculty_name && (
+                  <div className="space-y-1">
+                    <Label className="text-sm font-medium text-gray-600">Faculty</Label>
+                    <Badge variant="outline" className="text-sm">{viewingStudent.faculty_name}</Badge>
+                  </div>
+                )}
+                {viewingStudent.department_choices && viewingStudent.department_choices.length > 0 ? (
+                  <div className="rounded-md border border-gray-200 bg-gray-50 p-2 space-y-1">
+                    {viewingStudent.department_choices
+                      .sort((a, b) => a.priority - b.priority)
+                      .map(c => (
+                        <div key={c.department_id} className="flex items-center gap-2 bg-white border border-gray-100 rounded-md px-3 py-2">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
+                            {c.priority}
+                          </span>
+                          <span className="text-sm text-gray-800">
+                            {c.department_name || `Dept #${c.department_id}`}
+                            {c.department_shortname && (
+                              <span className="ml-1 text-xs text-gray-500">({c.department_shortname})</span>
+                            )}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <Label className="text-sm font-medium text-gray-600">Department</Label>
+                    <Badge variant="outline">{viewingStudent.department_shortname || 'Not Specified'}</Badge>
+                  </div>
+                )}
               </div>
 
               {/* Contact Information */}
