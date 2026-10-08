@@ -3,6 +3,8 @@ import { formatReportDate } from "../lib/diu-report-pdf";
 import { formatSemesterLabel } from "../lib/semester";
 import {
   formatReportNumber,
+  getVivaTotalMarks,
+  getVivaObtainedMarks,
   type StudentAdmissionDetailReport,
 } from "../lib/student-report";
 
@@ -63,8 +65,8 @@ export function StudentAdmissionReportContent({
   const totalWrittenMarks = report.written_summary.total_marks || 50;
   const obtainedWrittenMarks = report.written_summary.obtained_marks || 0;
 
-  const totalVivaMarks = report.viva.total_marks || 20;
-  const obtainedVivaMarks = report.final_result.viva_marks || 0;
+  const totalVivaMarks = getVivaTotalMarks(report);
+  const obtainedVivaMarks = getVivaObtainedMarks(report);
 
   const distribution = report.final_result.distribution_percentages || {
     written: 90,

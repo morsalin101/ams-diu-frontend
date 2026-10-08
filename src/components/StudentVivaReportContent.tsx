@@ -3,6 +3,8 @@ import { formatReportDate } from "../lib/diu-report-pdf";
 import { formatSemesterLabel } from "../lib/semester";
 import {
   formatReportNumber,
+  getVivaTotalMarks,
+  getVivaObtainedMarks,
   type StudentAdmissionDetailReport,
 } from "../lib/student-report";
 
@@ -47,9 +49,9 @@ export function StudentVivaReportContent({ report }: StudentVivaReportContentPro
   const examDate = formatDateOnly(
     report.written_exam.exam_date || report.written_exam.schedule_start_time,
   );
-  const totalVivaMarks = report.viva.total_marks || 20;
-  const obtainedVivaMarks = report.final_result.viva_marks || 0;
-  const rubricRows = report.viva.rubric_rows || [];
+  const rubricRows = report.viva?.rubric_rows || [];
+  const totalVivaMarks = getVivaTotalMarks(report);
+  const obtainedVivaMarks = getVivaObtainedMarks(report);
 
   return (
     <div className="w-full text-slate-900">

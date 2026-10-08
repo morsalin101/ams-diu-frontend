@@ -8,6 +8,8 @@ import {
   formatReportNumber,
   formatAnswerDisplay,
   formatCorrectAnswersDisplay,
+  getVivaTotalMarks,
+  getVivaObtainedMarks,
   type StudentAdmissionDetailReport,
 } from "./student-report";
 
@@ -252,6 +254,10 @@ export async function downloadIndividualTestReportPdf(report: StudentAdmissionDe
 
   // Row 2
   doc.setFont("helvetica", "normal");
+  const vivaTotalMarks = getVivaTotalMarks(report);
+  const vivaObtainedMarks = getVivaObtainedMarks(report);
+
+  doc.setFont("helvetica", "normal");
   doc.text("Exam Time", col1X, y);
   doc.text(":", col1X + 85, y);
   doc.setFont("helvetica", "bold");
@@ -261,7 +267,7 @@ export async function downloadIndividualTestReportPdf(report: StudentAdmissionDe
   doc.text("Total Marks", col2X, y);
   doc.text(":", col2X + 85, y);
   doc.setFont("helvetica", "bold");
-  doc.text(formatReportNumber(report.viva.total_marks || 20), col2X + 95, y);
+  doc.text(formatReportNumber(vivaTotalMarks), col2X + 95, y);
   y += 16;
 
   // --- Result Summary ---
@@ -311,8 +317,8 @@ export async function downloadIndividualTestReportPdf(report: StudentAdmissionDe
     ],
     [
       "Viva [2]",
-      formatReportNumber(report.viva.total_marks || 20),
-      formatReportNumber(report.final_result.viva_marks || 0),
+      formatReportNumber(vivaTotalMarks),
+      formatReportNumber(vivaObtainedMarks),
       formatReportNumber(vivaWeight),
       formatReportNumber(report.final_result.viva_contribution || 0),
     ],
@@ -578,6 +584,9 @@ export async function downloadIndividualVivaReportPdf(report: StudentAdmissionDe
   doc.text(report.viva.room || "KT-205", col2X + 100, y);
   y += 14;
 
+  const vivaTotalMarks = getVivaTotalMarks(report);
+  const vivaObtainedMarks = getVivaObtainedMarks(report);
+
   // Line 3
   doc.setFont("helvetica", "normal");
   doc.text("Exam Time", col1X, y);
@@ -589,7 +598,7 @@ export async function downloadIndividualVivaReportPdf(report: StudentAdmissionDe
   doc.text("Total Marks", col2X, y);
   doc.text(":", col2X + 90, y);
   doc.setFont("helvetica", "bold");
-  doc.text(formatReportNumber(report.viva.total_marks || 20), col2X + 100, y);
+  doc.text(formatReportNumber(vivaTotalMarks), col2X + 100, y);
   y += 20;
 
   // Result Summary
@@ -611,15 +620,15 @@ export async function downloadIndividualVivaReportPdf(report: StudentAdmissionDe
 
   if (vivaBody.length === 0) {
     vivaBody.push(
-      ["Viva Assessment", formatReportNumber(report.viva.total_marks || 20), formatReportNumber(report.final_result.viva_marks || 0)],
+      ["Viva Assessment", formatReportNumber(vivaTotalMarks), formatReportNumber(vivaObtainedMarks)],
     );
   }
 
   // Final Score Row
   vivaBody.push([
     { content: "Final Score", styles: { fontStyle: "bold" as const } },
-    { content: formatReportNumber(report.viva.total_marks || 20), styles: { fontStyle: "bold" as const, halign: "center" as const } },
-    { content: formatReportNumber(report.final_result.viva_marks || 0), styles: { fontStyle: "bold" as const, halign: "center" as const } },
+    { content: formatReportNumber(vivaTotalMarks), styles: { fontStyle: "bold" as const, halign: "center" as const } },
+    { content: formatReportNumber(vivaObtainedMarks), styles: { fontStyle: "bold" as const, halign: "center" as const } },
   ]);
 
   autoTable(doc, {
@@ -670,7 +679,7 @@ export async function downloadIndividualVivaReportPdf(report: StudentAdmissionDe
   doc.setFontSize(13);
   doc.setTextColor(15, 23, 42);
   doc.text(
-    `Final Score: ${formatReportNumber(report.final_result.viva_marks || 0)}/${formatReportNumber(report.viva.total_marks || 20)}`,
+    `Final Score: ${formatReportNumber(vivaObtainedMarks)}/${formatReportNumber(vivaTotalMarks)}`,
     pageWidth / 2,
     boxY + 27,
     { align: "center" },

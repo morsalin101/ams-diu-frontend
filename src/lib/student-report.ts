@@ -174,11 +174,26 @@ function getWrittenTotalMarks(report: StudentAdmissionDetailReport) {
   return Number(report.written_summary.total_marks || 0);
 }
 
-function getVivaTotalMarks(report: StudentAdmissionDetailReport) {
-  return report.viva.rubric_rows.reduce(
+export function getVivaTotalMarks(report: StudentAdmissionDetailReport) {
+  const rubricTotal = (report.viva?.rubric_rows || []).reduce(
     (total, row) => total + Number(row.max_marks || 0),
     0,
   );
+  if (rubricTotal > 0) {
+    return rubricTotal;
+  }
+  return Number(report.viva?.total_marks) || 20;
+}
+
+export function getVivaObtainedMarks(report: StudentAdmissionDetailReport) {
+  if (report.final_result?.viva_marks !== undefined && report.final_result?.viva_marks !== null) {
+    return Number(report.final_result.viva_marks);
+  }
+  const rubricAwarded = (report.viva?.rubric_rows || []).reduce(
+    (total, row) => total + Number(row.awarded_marks || 0),
+    0,
+  );
+  return rubricAwarded;
 }
 
 function buildWeightedComponentEquation({
