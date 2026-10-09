@@ -1061,6 +1061,49 @@ export const subjectDepartmentAPI = {
   },
 };
 
+// Subject Priority Mapping API endpoints
+export const subjectPriorityAPI = {
+  // Get all department subject priorities
+  getAllPriorities: async () => {
+    try {
+      const response = await api.get('/api/subject-priorities/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get subject priorities for a specific department
+  getDepartmentPriorities: async (departmentId) => {
+    try {
+      const response = await api.get(`/api/subject-priorities/department/${departmentId}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Save/update sequential subject priorities for a department
+  saveDepartmentPriorities: async (data) => {
+    try {
+      const response = await api.post('/api/subject-priorities/save/', data);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Reset/delete all subject priorities for a department
+  deleteDepartmentPriorities: async (departmentId) => {
+    try {
+      const response = await api.delete(`/api/subject-priorities/department/${departmentId}/delete/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+};
+
 // Faculty-Department Mapping API endpoints
 export const facultyDepartmentAPI = {
   // Get all mappings

@@ -24,6 +24,7 @@ import FacultyDepartmentMapping from './pages/FacultyDepartmentMapping';
 import DepartmentManagement from './pages/DepartmentManagement';
 import SubjectManagement from './pages/SubjectManagement';
 import SubjectDepartmentMapping from './pages/SubjectDepartmentMapping';
+import SubjectPriorityMapping from './pages/SubjectPriorityMapping';
 import { BlockedQuestions } from './pages/BlockedQuestions';
 import { PublishedExams } from './pages/PublishedExams';
 import { Results } from './pages/Results';
@@ -61,6 +62,7 @@ const componentMap = {
   DepartmentManagement,
   SubjectManagement,
   SubjectDepartmentMapping,
+  SubjectPriorityMapping,
   BlockedQuestions,
   PublishedExams,
   Results,
@@ -127,6 +129,7 @@ function ProtectedRoutes() {
         <Route path="/faculty-department-mapping" element={<FacultyDepartmentMapping />} />
         <Route path="/subject-management" element={<SubjectManagement />} />
         <Route path="/subject-department-mapping" element={<SubjectDepartmentMapping />} />
+        <Route path="/subject-priority-mapping" element={<SubjectPriorityMapping />} />
         <Route path="/student-acceptance-criteria" element={<ThresholdManagement />} />
         <Route path="/threshold-management" element={<Navigate to="/student-acceptance-criteria" replace />} />
         <Route path="/viva-rubrics-management" element={<VivaManagement />} />
