@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Users, UserPlus, Edit, Trash2, Loader2, RefreshCw, Eye, EyeOff } from 'lucide-react';
-import { usersAPI, roleAPI, departmentAPI } from '../services/api';
+import { usersAPI, roleAPI, departmentAPI, facultyAPI } from '../services/api';
 import toast from 'react-hot-toast';
 
 interface User {
@@ -25,6 +25,13 @@ interface User {
     department_name: string;
     department_shortname: string;
   };
+  access_type: string;
+  is_global_access: boolean;
+  faculty_details?: {
+    id: number;
+    faculty_name: string;
+    faculty_shortname: string;
+  };
 }
 
 interface UsersManagementProps {
@@ -35,6 +42,7 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<{ id: number; role_name: string }[]>([]);
   const [departments, setDepartments] = useState<{ id: number; department_name: string; department_shortname: string }[]>([]);
+  const [faculties, setFaculties] = useState<{ id: number; faculty_name: string; faculty_shortname: string }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showUserDialog, setShowUserDialog] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -46,7 +54,10 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
     email: '',
     password: '',
     role_id: 2, // Default to superadmin
-    department_id: 0
+    department_id: 0,
+    faculty_id: 0,
+    access_type: 'none',
+    is_global_access: false
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -55,6 +66,7 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
     loadUsers();
     loadRoles();
     loadDepartments();
+    loadFaculties();
   }, []);
 
   const loadRoles = async () => {
@@ -80,6 +92,18 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
     }
   };
 
+  const loadFaculties = async () => {
+    try {
+      const response = await facultyAPI.getAllFaculties();
+      if (response.success && response.data) {
+        setFaculties(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading faculties:', error);
+      toast.error('Failed to load faculties');
+    }
+  };
+
   const loadUsers = async () => {
     setIsLoading(true);
     try {
@@ -101,8 +125,11 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
       username: '',
       email: '',
       password: '',
-      role_id: 2,
-      department_id: departments.length > 0 ? departments[0].id : 0
+      role_id: roles.length > 0 ? roles[0].id : 2,
+      department_id: departments.length > 0 ? departments[0].id : 0,
+      faculty_id: faculties.length > 0 ? faculties[0].id : 0,
+      access_type: 'none',
+      is_global_access: false
     });
     setShowUserDialog(true);
   };
@@ -114,7 +141,10 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
       email: user.email,
       password: '',
       role_id: user.role_details.id,
-      department_id: user.department_details?.id || (departments.length > 0 ? departments[0].id : 0)
+      department_id: user.department_details?.id || (departments.length > 0 ? departments[0].id : 0),
+      faculty_id: user.faculty_details?.id || (faculties.length > 0 ? faculties[0].id : 0),
+      access_type: user.access_type || 'none',
+      is_global_access: user.is_global_access || false
     });
     setShowUserDialog(true);
   };
@@ -140,13 +170,21 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
           username: formData.username,
           email: formData.email,
           role_id: formData.role_id,
+          access_type: formData.access_type,
+          is_global_access: formData.is_global_access,
+          ...(formData.access_type === 'department' && { department_id: formData.department_id }),
+          ...(formData.access_type === 'faculty' && { faculty_id: formData.faculty_id }),
           ...(formData.password.trim() && { password: formData.password })
         };
         await usersAPI.updateUser(editingUser.id, updateData);
         toast.success('User updated successfully!');
       } else {
         // Create user
-        await usersAPI.createUser(formData);
+        await usersAPI.createUser({
+          ...formData,
+          department_id: formData.access_type === 'department' ? formData.department_id : null,
+          faculty_id: formData.access_type === 'faculty' ? formData.faculty_id : null,
+        });
         toast.success('User created successfully!');
       }
       
@@ -396,26 +434,6 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="department">Department</Label>
-              <Select
-                value={formData.department_id.toString()}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, department_id: parseInt(value) }))}
-                disabled={isSubmitting}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select department" />
-                </SelectTrigger>
-                <SelectContent>
-                  {departments.map((department) => (
-                    <SelectItem key={department.id} value={department.id.toString()}>
-                      {department.department_shortname} - {department.department_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="role">Role</Label>
               <Select
                 value={formData.role_id.toString()}
@@ -434,6 +452,86 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="flex items-center space-x-2 py-2">
+              <input
+                type="checkbox"
+                id="is_global_access"
+                checked={formData.is_global_access}
+                onChange={(e) => setFormData(prev => ({ ...prev, is_global_access: e.target.checked }))}
+                disabled={isSubmitting}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <Label htmlFor="is_global_access" className="font-medium cursor-pointer">
+                Global Access (Overrides all other restrictions)
+              </Label>
+            </div>
+
+            {!formData.is_global_access && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="access_type">Access Scope</Label>
+                  <Select
+                    value={formData.access_type}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, access_type: value }))}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select access type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value="faculty">Faculty Level</SelectItem>
+                      <SelectItem value="department">Department Level</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {formData.access_type === 'faculty' && (
+                  <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
+                    <Label htmlFor="faculty">Faculty</Label>
+                    <Select
+                      value={formData.faculty_id.toString()}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, faculty_id: parseInt(value) }))}
+                      disabled={isSubmitting}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select faculty" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {faculties.map((faculty) => (
+                          <SelectItem key={faculty.id} value={faculty.id.toString()}>
+                            {faculty.faculty_shortname} - {faculty.faculty_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {formData.access_type === 'department' && (
+                  <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
+                    <Label htmlFor="department">Department</Label>
+                    <Select
+                      value={formData.department_id.toString()}
+                      onValueChange={(value) => setFormData(prev => ({ ...prev, department_id: parseInt(value) }))}
+                      disabled={isSubmitting}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {departments.map((department) => (
+                          <SelectItem key={department.id} value={department.id.toString()}>
+                            {department.department_shortname} - {department.department_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </>
+            )}
 
             <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-4">
               <Button 
