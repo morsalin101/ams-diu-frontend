@@ -207,12 +207,8 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
       return;
     }
 
-    if (formScope === 'faculty' && !formData.faculty) {
+    if (!formData.faculty) {
       toast.error('Please select a faculty');
-      return;
-    }
-    if (formScope === 'department' && !formData.department) {
-      toast.error('Please select a department');
       return;
     }
 
@@ -229,18 +225,13 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
 
     try {
       const distributionData: any = {
+        faculty: parseInt(formData.faculty),
         ssc: parseInt(formData.ssc),
         hsc: parseInt(formData.hsc),
         diploma: parseInt(formData.hsc),
         main_marks: parseInt(formData.main_marks),
         viva_marks: parseInt(formData.viva_marks),
       };
-
-      if (formScope === 'faculty') {
-        distributionData.faculty = parseInt(formData.faculty);
-      } else {
-        distributionData.department = parseInt(formData.department);
-      }
 
       const data =
         await marksDistributionAPI.createMarksDistribution(distributionData);
@@ -664,84 +655,34 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
           <DialogHeader>
             <DialogTitle>Create Marks Distribution</DialogTitle>
             <DialogDescription>
-              Set marks distribution for a faculty or department. Total must equal 100%.
+              Set marks distribution for a faculty. All departments under this faculty share this distribution. Total must equal 100%.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Scope Selection */}
             <div className="space-y-2">
-              <Label>Scope Type</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  variant={formScope === 'faculty' ? 'default' : 'outline'}
-                  onClick={() => setFormScope('faculty')}
-                  className="flex items-center gap-1.5"
-                >
-                  <GraduationCap className="w-4 h-4" />
-                  Faculty Level
-                </Button>
-                <Button
-                  type="button"
-                  variant={formScope === 'department' ? 'default' : 'outline'}
-                  onClick={() => setFormScope('department')}
-                  className="flex items-center gap-1.5"
-                >
-                  <Building2 className="w-4 h-4" />
-                  Department Level
-                </Button>
-              </div>
+              <Label htmlFor="create-faculty">Faculty *</Label>
+              <Select
+                value={formData.faculty}
+                onValueChange={value =>
+                  setFormData({ ...formData, faculty: value })
+                }
+              >
+                <SelectTrigger id="create-faculty">
+                  <SelectValue placeholder="Select faculty" />
+                </SelectTrigger>
+                <SelectContent>
+                  {faculties.map(fac => (
+                    <SelectItem key={fac.id} value={fac.id.toString()}>
+                      {fac.faculty_code} - {fac.faculty_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <p className="text-xs text-muted-foreground mt-1">
-                {formScope === 'faculty'
-                  ? 'All departments under this faculty share this distribution (recommended).'
-                  : 'Specific distribution override solely for this department.'}
+                Marks distribution configured for this faculty will automatically apply to all constituent departments.
               </p>
             </div>
-
-            {formScope === 'faculty' ? (
-              <div className="space-y-2">
-                <Label htmlFor="create-faculty">Faculty</Label>
-                <Select
-                  value={formData.faculty}
-                  onValueChange={value =>
-                    setFormData({ ...formData, faculty: value })
-                  }
-                >
-                  <SelectTrigger id="create-faculty">
-                    <SelectValue placeholder="Select faculty" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {faculties.map(fac => (
-                      <SelectItem key={fac.id} value={fac.id.toString()}>
-                        {fac.faculty_code} - {fac.faculty_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Label htmlFor="create-department">Department</Label>
-                <Select
-                  value={formData.department}
-                  onValueChange={value =>
-                    setFormData({ ...formData, department: value })
-                  }
-                >
-                  <SelectTrigger id="create-department">
-                    <SelectValue placeholder="Select department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map(dept => (
-                      <SelectItem key={dept.id} value={dept.id.toString()}>
-                        {dept.department_shortname || dept.department_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

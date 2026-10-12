@@ -197,26 +197,17 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
       return;
     }
 
-    if (formScope === 'faculty' && !formData.faculty) {
+    if (!formData.faculty) {
       toast.error('Please select a faculty');
-      return;
-    }
-    if (formScope === 'department' && !formData.department) {
-      toast.error('Please select a department');
       return;
     }
 
     try {
       const rubricData: any = {
+        faculty: parseInt(formData.faculty),
         rubrics: formData.rubrics,
         marks: parseInt(formData.marks),
       };
-
-      if (formScope === 'faculty') {
-        rubricData.faculty = parseInt(formData.faculty);
-      } else {
-        rubricData.department = parseInt(formData.department);
-      }
 
       const data = await vivaRubricsAPI.createRubrics(rubricData);
 
@@ -242,28 +233,18 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
       return;
     }
 
-    if (formScope === 'faculty' && !formData.faculty) {
+    if (!formData.faculty) {
       toast.error('Please select a faculty');
-      return;
-    }
-    if (formScope === 'department' && !formData.department) {
-      toast.error('Please select a department');
       return;
     }
 
     try {
       const rubricData: any = {
+        faculty: parseInt(formData.faculty),
+        department: null,
         rubrics: formData.rubrics,
         marks: parseInt(formData.marks),
       };
-
-      if (formScope === 'faculty') {
-        rubricData.faculty = parseInt(formData.faculty);
-        rubricData.department = null;
-      } else {
-        rubricData.department = parseInt(formData.department);
-        rubricData.faculty = null;
-      }
 
       const data = await vivaRubricsAPI.updateRubrics(
         editingRubrics.id,
@@ -316,23 +297,12 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
 
   const openEditDialog = (rubric: VivaRubrics) => {
     setEditingRubrics(rubric);
-    if (rubric.faculty) {
-      setFormScope('faculty');
-      setFormData({
-        faculty: rubric.faculty.toString(),
-        department: '',
-        rubrics: rubric.rubrics,
-        marks: rubric.marks.toString(),
-      });
-    } else {
-      setFormScope('department');
-      setFormData({
-        faculty: '',
-        department: rubric.department?.toString() || '',
-        rubrics: rubric.rubrics,
-        marks: rubric.marks.toString(),
-      });
-    }
+    setFormData({
+      faculty: rubric.faculty?.toString() || '',
+      department: '',
+      rubrics: rubric.rubrics,
+      marks: rubric.marks.toString(),
+    });
     setShowEditDialog(true);
   };
 
@@ -657,79 +627,29 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Scope Selection */}
             <div className="space-y-2">
-              <Label>Scope Type</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  variant={formScope === 'faculty' ? 'default' : 'outline'}
-                  onClick={() => setFormScope('faculty')}
-                  className="flex items-center gap-1.5"
-                >
-                  <GraduationCap className="w-4 h-4" />
-                  Faculty Level
-                </Button>
-                <Button
-                  type="button"
-                  variant={formScope === 'department' ? 'default' : 'outline'}
-                  onClick={() => setFormScope('department')}
-                  className="flex items-center gap-1.5"
-                >
-                  <Building2 className="w-4 h-4" />
-                  Department Level
-                </Button>
-              </div>
+              <Label htmlFor="create-faculty">Faculty *</Label>
+              <Select
+                value={formData.faculty}
+                onValueChange={value =>
+                  setFormData({ ...formData, faculty: value })
+                }
+              >
+                <SelectTrigger id="create-faculty">
+                  <SelectValue placeholder="Select faculty" />
+                </SelectTrigger>
+                <SelectContent>
+                  {faculties.map(fac => (
+                    <SelectItem key={fac.id} value={fac.id.toString()}>
+                      {fac.faculty_code} - {fac.faculty_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <p className="text-xs text-muted-foreground mt-1">
-                {formScope === 'faculty'
-                  ? 'All departments under this faculty inherit these rubrics unless overridden.'
-                  : 'Specific rubric applied solely to this selected department.'}
+                Rubrics configured for this faculty will be shared across all constituent departments.
               </p>
             </div>
-
-            {formScope === 'faculty' ? (
-              <div className="space-y-2">
-                <Label htmlFor="create-faculty">Faculty</Label>
-                <Select
-                  value={formData.faculty}
-                  onValueChange={value =>
-                    setFormData({ ...formData, faculty: value })
-                  }
-                >
-                  <SelectTrigger id="create-faculty">
-                    <SelectValue placeholder="Select faculty" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {faculties.map(fac => (
-                      <SelectItem key={fac.id} value={fac.id.toString()}>
-                        {fac.faculty_code} - {fac.faculty_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Label htmlFor="create-department">Department</Label>
-                <Select
-                  value={formData.department}
-                  onValueChange={value =>
-                    setFormData({ ...formData, department: value })
-                  }
-                >
-                  <SelectTrigger id="create-department">
-                    <SelectValue placeholder="Select department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map(dept => (
-                      <SelectItem key={dept.id} value={dept.id.toString()}>
-                        {dept.department_shortname || dept.department_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
 
             <div className="space-y-2">
               <Label htmlFor="create-rubrics">Rubrics Criterion</Label>
@@ -788,74 +708,26 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
           </DialogHeader>
 
           <form onSubmit={handleEdit} className="space-y-4">
-            {/* Scope Selection */}
             <div className="space-y-2">
-              <Label>Scope Type</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  variant={formScope === 'faculty' ? 'default' : 'outline'}
-                  onClick={() => setFormScope('faculty')}
-                  className="flex items-center gap-1.5"
-                >
-                  <GraduationCap className="w-4 h-4" />
-                  Faculty Level
-                </Button>
-                <Button
-                  type="button"
-                  variant={formScope === 'department' ? 'default' : 'outline'}
-                  onClick={() => setFormScope('department')}
-                  className="flex items-center gap-1.5"
-                >
-                  <Building2 className="w-4 h-4" />
-                  Department Level
-                </Button>
-              </div>
+              <Label htmlFor="edit-faculty">Faculty *</Label>
+              <Select
+                value={formData.faculty}
+                onValueChange={value =>
+                  setFormData({ ...formData, faculty: value })
+                }
+              >
+                <SelectTrigger id="edit-faculty">
+                  <SelectValue placeholder="Select faculty" />
+                </SelectTrigger>
+                <SelectContent>
+                  {faculties.map(fac => (
+                    <SelectItem key={fac.id} value={fac.id.toString()}>
+                      {fac.faculty_code} - {fac.faculty_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-
-            {formScope === 'faculty' ? (
-              <div className="space-y-2">
-                <Label htmlFor="edit-faculty">Faculty</Label>
-                <Select
-                  value={formData.faculty}
-                  onValueChange={value =>
-                    setFormData({ ...formData, faculty: value })
-                  }
-                >
-                  <SelectTrigger id="edit-faculty">
-                    <SelectValue placeholder="Select faculty" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {faculties.map(fac => (
-                      <SelectItem key={fac.id} value={fac.id.toString()}>
-                        {fac.faculty_code} - {fac.faculty_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Label htmlFor="edit-department">Department</Label>
-                <Select
-                  value={formData.department}
-                  onValueChange={value =>
-                    setFormData({ ...formData, department: value })
-                  }
-                >
-                  <SelectTrigger id="edit-department">
-                    <SelectValue placeholder="Select department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map(dept => (
-                      <SelectItem key={dept.id} value={dept.id.toString()}>
-                        {dept.department_shortname || dept.department_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
 
             <div className="space-y-2">
               <Label htmlFor="edit-rubrics">Rubrics Criterion</Label>

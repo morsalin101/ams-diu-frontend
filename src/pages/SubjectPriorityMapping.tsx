@@ -59,6 +59,7 @@ export default function SubjectPriorityMapping() {
   const [availableSubjects, setAvailableSubjects] = useState<AvailableSubject[]>([]);
   const [selectedSubjectToAdd, setSelectedSubjectToAdd] = useState<string>('');
   const [allOverviews, setAllOverviews] = useState<DepartmentPriorityOverview[]>([]);
+  const [parentFaculty, setParentFaculty] = useState<{ id: number; name: string; code: string } | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -122,9 +123,11 @@ export default function SubjectPriorityMapping() {
       if (res?.success && res?.data) {
         setPriorities(res.data.priorities || []);
         setAvailableSubjects(res.data.available_subjects || []);
+        setParentFaculty(res.data.parent_faculty || null);
       } else {
         setPriorities([]);
         setAvailableSubjects([]);
+        setParentFaculty(null);
       }
       setSelectedSubjectToAdd('');
       setHasChanges(false);
@@ -415,6 +418,11 @@ export default function SubjectPriorityMapping() {
                   <p className="text-blue-700">
                     Department Code: <span className="font-mono font-medium">{selectedDepartmentObj.department_shortname}</span>
                   </p>
+                  {parentFaculty && (
+                    <p className="text-purple-700 font-medium">
+                      Parent Faculty: <span className="font-semibold">{parentFaculty.name} ({parentFaculty.code})</span>
+                    </p>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -444,7 +452,7 @@ export default function SubjectPriorityMapping() {
                     <SelectContent>
                       {unassignedSubjects.map((sub) => (
                         <SelectItem key={sub.id} value={sub.id.toString()}>
-                          {sub.subject_name} {sub.is_department_subject && "★ (Dept Syllabus)"}
+                          {sub.subject_name} {sub.is_department_subject && "★ (Faculty Syllabus)"}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -469,7 +477,7 @@ export default function SubjectPriorityMapping() {
                       className="w-full border-dashed border-gray-300 text-gray-700 hover:border-[#2E3094] hover:text-[#2E3094]"
                     >
                       <Sparkles className="w-3.5 h-3.5 mr-1.5 text-amber-500" />
-                      Add All Mapped Department Subjects
+                      Add All Mapped Faculty Subjects
                     </Button>
                   </div>
                 )}

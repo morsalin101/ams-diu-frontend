@@ -76,7 +76,8 @@ interface AssignmentSemesterError {
     username: string;
     f_id: string;
     full_name: string;
-    registration_semester: string;
+    registration_semester?: string;
+    reason?: string;
   }>;
 }
 
@@ -480,14 +481,13 @@ export function StudentAssignmentDialog({
                       <Button
                         type="button"
                         size="sm"
-                        disabled={isDepartmentUser}
                         variant={examType === 'CENTRAL' ? 'default' : 'ghost'}
                         onClick={() => {
                           setExamType('CENTRAL');
                           onClearAssignmentError?.();
                           onAssignmentFormChange({ ...assignmentForm, schedule_id: '' });
                         }}
-                        title={isDepartmentUser ? 'Central exams require faculty or global access' : 'Central / Faculty-wide Exam'}
+                        title="Central / Faculty-wide Exam"
                         className={`h-7 px-2.5 text-xs font-medium rounded ${
                           examType === 'CENTRAL'
                             ? 'bg-purple-700 text-white shadow'
@@ -614,7 +614,7 @@ export function StudentAssignmentDialog({
                       <ul className="text-sm text-red-700 space-y-1 max-h-32 overflow-y-auto">
                         {assignmentError.mismatched_students!.map((student) => (
                           <li key={student.id}>
-                            • {student.full_name} ({student.f_id}) — {student.registration_semester}
+                            • {student.full_name} ({student.f_id}) {student.reason ? `— ${student.reason}` : (student.registration_semester ? `— ${student.registration_semester}` : '')}
                           </li>
                         ))}
                       </ul>

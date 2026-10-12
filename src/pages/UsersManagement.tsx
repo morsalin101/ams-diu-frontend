@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -6,8 +6,9 @@ import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
-import { Users, UserPlus, Edit, Trash2, Loader2, RefreshCw, Eye, EyeOff } from 'lucide-react';
+import { Users, UserPlus, Edit, Trash2, Loader2, RefreshCw, Eye, EyeOff, Search, Filter, X, RotateCcw } from 'lucide-react';
 import { usersAPI, roleAPI, departmentAPI, facultyAPI, facultyDepartmentAPI } from '../services/api';
+import PaginationControls from '../components/PaginationControls';
 import toast from 'react-hot-toast';
 
 interface FacultyDepartmentMapping {
@@ -57,6 +58,15 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
+  // Search and structured filter state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState('ALL');
+  const [accessScopeFilter, setAccessScopeFilter] = useState('ALL');
+  const [facultyFilter, setFacultyFilter] = useState('ALL');
+  const [departmentFilter, setDepartmentFilter] = useState('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 15;
+
   // Form state
   const [formData, setFormData] = useState({
     username: '',
@@ -70,7 +80,6 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    loadUsers();
     loadRoles();
     loadDepartments();
     loadFaculties();
@@ -125,10 +134,42 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
     }
   };
 
+  const availableFilterDepartments = useMemo(() => {
+    if (facultyFilter === 'ALL') return departments;
+    const facId = parseInt(facultyFilter);
+    const mapping = facultyMappings.find(m => (m as any).faculty_id === facId || m.faculty === facId);
+    if (!mapping || !mapping.department_ids) return departments;
+    return departments.filter(d => mapping.department_ids.includes(d.id));
+  }, [facultyFilter, departments, facultyMappings]);
+
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setRoleFilter('ALL');
+    setAccessScopeFilter('ALL');
+    setFacultyFilter('ALL');
+    setDepartmentFilter('ALL');
+    setCurrentPage(1);
+  };
+
+  const hasActiveFilters = Boolean(
+    searchTerm.trim() ||
+    roleFilter !== 'ALL' ||
+    accessScopeFilter !== 'ALL' ||
+    facultyFilter !== 'ALL' ||
+    departmentFilter !== 'ALL'
+  );
+
   const loadUsers = async () => {
     setIsLoading(true);
     try {
-      const response = await usersAPI.getAllUsers();
+      const params: Record<string, string> = {};
+      if (searchTerm.trim()) params.search = searchTerm.trim();
+      if (roleFilter !== 'ALL') params.role = roleFilter;
+      if (accessScopeFilter !== 'ALL') params.access_type = accessScopeFilter;
+      if (facultyFilter !== 'ALL') params.faculty = facultyFilter;
+      if (departmentFilter !== 'ALL') params.department = departmentFilter;
+
+      const response = await usersAPI.getAllUsers(params);
       if (response.success) {
         setUsers(response.data);
       }
@@ -139,6 +180,78 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
       setIsLoading(false);
     }
   };
+
+  // Sync users from backend when search/filters change with debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadUsers();
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchTerm, roleFilter, accessScopeFilter, facultyFilter, departmentFilter]);
+
+  // Reset page when search or filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, roleFilter, accessScopeFilter, departmentFilter]);
+
+  // Reset department if no longer valid under selected faculty
+  useEffect(() => {
+    if (facultyFilter !== 'ALL' && departmentFilter !== 'ALL') {
+      const exists = availableFilterDepartments.some(d => d.id.toString() === departmentFilter);
+      if (!exists) {
+        setDepartmentFilter('ALL');
+      }
+    }
+    setCurrentPage(1);
+  }, [facultyFilter]);
+
+  const filteredUsers = useMemo(() => {
+    return users.filter((user) => {
+      if (searchTerm.trim()) {
+        const q = searchTerm.trim().toLowerCase();
+        const matchesUsername = (user.username || '').toLowerCase().includes(q);
+        const matchesEmail = (user.email || '').toLowerCase().includes(q);
+        const matchesId = user.id.toString().includes(q);
+        if (!matchesUsername && !matchesEmail && !matchesId) return false;
+      }
+      if (roleFilter !== 'ALL') {
+        const userRoleId = user.role_details?.id?.toString();
+        const userRoleName = user.role_details?.role_name?.toLowerCase();
+        if (userRoleId !== roleFilter && userRoleName !== roleFilter.toLowerCase()) {
+          return false;
+        }
+      }
+      if (accessScopeFilter !== 'ALL') {
+        const access = (user.access_type || '').toUpperCase();
+        if (accessScopeFilter === 'GLOBAL') {
+          if (!user.is_global_access && access !== 'GLOBAL' && user.role_details?.role_name !== 'superadmin') {
+            return false;
+          }
+        } else if (accessScopeFilter === 'FACULTY') {
+          if (access !== 'FACULTY') return false;
+        } else if (accessScopeFilter === 'DEPARTMENT') {
+          if (access !== 'DEPARTMENT') return false;
+        }
+      }
+      if (facultyFilter !== 'ALL') {
+        if (user.faculty_details?.id?.toString() !== facultyFilter) {
+          return false;
+        }
+      }
+      if (departmentFilter !== 'ALL') {
+        if (user.department_details?.id?.toString() !== departmentFilter) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [users, searchTerm, roleFilter, accessScopeFilter, facultyFilter, departmentFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredUsers.slice(start, start + pageSize);
+  }, [filteredUsers, currentPage, pageSize]);
 
   const handleCreateUser = () => {
     setEditingUser(null);
@@ -311,6 +424,141 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
         </CardContent>
       </Card>
 
+      {/* Search and Filters Card */}
+      <Card className="border border-slate-200 shadow-sm bg-white">
+        <CardContent className="p-4 sm:p-5 space-y-4">
+          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Search users by name, username, email, or ID..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 pr-8 h-10 border-slate-300 focus:border-indigo-500 focus:ring-indigo-500"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {hasActiveFilters && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleResetFilters}
+                className="text-slate-600 hover:text-red-600 hover:border-red-300 flex items-center gap-1.5 h-10 whitespace-nowrap"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Reset Filters
+              </Button>
+            )}
+          </div>
+
+          {/* Filter Dropdowns Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1 border-t border-slate-100">
+            {/* Role Filter */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-500 flex items-center gap-1">
+                <Filter className="h-3 w-3" /> Role
+              </label>
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger className="h-9 text-xs bg-slate-50/50">
+                  <SelectValue placeholder="All Roles" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Roles</SelectItem>
+                  {roles.map((r) => (
+                    <SelectItem key={r.id} value={r.id.toString()}>
+                      {r.role_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Access Scope Filter */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-500">Access Scope</label>
+              <Select value={accessScopeFilter} onValueChange={setAccessScopeFilter}>
+                <SelectTrigger className="h-9 text-xs bg-slate-50/50">
+                  <SelectValue placeholder="All Scopes" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Scopes</SelectItem>
+                  <SelectItem value="GLOBAL">Global Scope</SelectItem>
+                  <SelectItem value="FACULTY">Faculty Scope</SelectItem>
+                  <SelectItem value="DEPARTMENT">Department Scope</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Faculty Filter */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-500">Faculty</label>
+              <Select value={facultyFilter} onValueChange={setFacultyFilter}>
+                <SelectTrigger className="h-9 text-xs bg-slate-50/50">
+                  <SelectValue placeholder="All Faculties" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Faculties</SelectItem>
+                  {faculties.map((f) => (
+                    <SelectItem key={f.id} value={f.id.toString()}>
+                      {f.faculty_shortname || f.faculty_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Department Filter */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-500">Department</label>
+              <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                <SelectTrigger className="h-9 text-xs bg-slate-50/50">
+                  <SelectValue placeholder="All Departments" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Departments</SelectItem>
+                  {availableFilterDepartments.map((d) => (
+                    <SelectItem key={d.id} value={d.id.toString()}>
+                      {d.department_shortname || d.department_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Active Filter Badges & Count */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs text-slate-500">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span>Showing <strong>{filteredUsers.length}</strong> of <strong>{users.length}</strong> users</span>
+              {hasActiveFilters && (
+                <Badge variant="secondary" className="bg-indigo-50 text-indigo-700 text-[11px] font-normal py-0">
+                  Filtered
+                </Badge>
+              )}
+            </div>
+            {hasActiveFilters && (
+              <span className="text-[11px] text-slate-400">
+                {searchTerm && `• Search: "${searchTerm}" `}
+                {roleFilter !== 'ALL' && `• Role: ${roles.find(r => r.id.toString() === roleFilter)?.role_name || roleFilter} `}
+                {accessScopeFilter !== 'ALL' && `• Scope: ${accessScopeFilter} `}
+                {facultyFilter !== 'ALL' && `• Faculty: ${faculties.find(f => f.id.toString() === facultyFilter)?.faculty_shortname || facultyFilter} `}
+                {departmentFilter !== 'ALL' && `• Dept: ${departments.find(d => d.id.toString() === departmentFilter)?.department_shortname || departmentFilter} `}
+              </span>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Users Table */}
       {isLoading ? (
         <div className="flex justify-center items-center py-12">
@@ -329,12 +577,22 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
             Add User
           </Button>
         </Card>
+      ) : filteredUsers.length === 0 ? (
+        <Card className="p-8 text-center border-dashed">
+          <Filter className="h-10 w-10 mx-auto mb-3 text-slate-400" />
+          <h3 className="text-base font-semibold text-slate-800 mb-1">No matching users</h3>
+          <p className="text-sm text-slate-500 mb-4">No user accounts match the current search or filter criteria.</p>
+          <Button variant="outline" size="sm" onClick={handleResetFilters} className="mx-auto">
+            <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+            Clear All Filters
+          </Button>
+        </Card>
       ) : (
         <Card className="border-2 border-gray-200">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
-              All Users
+              All Users ({filteredUsers.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -352,7 +610,7 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((user) => (
+                  {paginatedUsers.map((user) => (
                     <tr key={user.id} className="border-b hover:bg-gray-50 transition-colors">
                       <td className="p-4">
                         <div className="flex items-center gap-3">
@@ -449,6 +707,20 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            <PaginationControls
+              pagination={{
+                count: filteredUsers.length,
+                current_page: currentPage,
+                total_pages: totalPages,
+                page_size: pageSize,
+                has_next: currentPage < totalPages,
+                has_previous: currentPage > 1,
+              }}
+              onPageChange={(p) => setCurrentPage(p)}
+              itemLabel="users"
+            />
           </CardContent>
         </Card>
       )}

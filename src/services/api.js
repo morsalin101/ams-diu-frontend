@@ -578,9 +578,9 @@ export const authAPI = {
 // Users API endpoints
 export const usersAPI = {
   // Get all users
-  getAllUsers: async () => {
+  getAllUsers: async (params = {}) => {
     try {
-      const response = await api.get('/api/users/');
+      const response = await api.get('/api/users/', { params });
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
