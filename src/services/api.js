@@ -1061,6 +1061,59 @@ export const subjectDepartmentAPI = {
   },
 };
 
+// Subject-Faculty Mapping API endpoints
+export const subjectFacultyAPI = {
+  // Get all mappings
+  getAllMappings: async () => {
+    try {
+      const response = await api.get('/api/subject-faculties/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Create mapping
+  createMapping: async (mappingData) => {
+    try {
+      const response = await api.post('/api/subject-faculties/create/', mappingData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Update mapping
+  updateMapping: async (mappingId, mappingData) => {
+    try {
+      const response = await api.put(`/api/subject-faculties/${mappingId}/update/`, mappingData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Delete mapping
+  deleteMapping: async (mappingId) => {
+    try {
+      const response = await api.delete(`/api/subject-faculties/${mappingId}/delete/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get subjects for a specific faculty
+  getFacultySubjects: async (facultyId) => {
+    try {
+      const response = await api.get(`/api/subject-faculties/faculty/${facultyId}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+};
+
 // Subject Priority Mapping API endpoints
 export const subjectPriorityAPI = {
   // Get all department subject priorities
@@ -1367,6 +1420,26 @@ export const vivaRubricsAPI = {
     }
   },
 
+  // Get viva rubrics by department
+  getRubricsByDepartment: async (departmentId) => {
+    try {
+      const response = await api.get(`/api/rubrics/department/${departmentId}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get viva rubrics by faculty
+  getRubricsByFaculty: async (facultyId) => {
+    try {
+      const response = await api.get(`/api/rubrics/faculty/${facultyId}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
   // Delete viva rubrics
   deleteRubrics: async (rubricsId) => {
     try {
@@ -1400,6 +1473,16 @@ export const marksDistributionAPI = {
     }
   },
 
+  // Update marks distribution
+  updateMarksDistribution: async (distributionId, distributionData) => {
+    try {
+      const response = await api.put(`/api/marks-distribution/${distributionId}/update/`, distributionData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
   // Delete marks distribution
   deleteMarksDistribution: async (distributionId) => {
     try {
@@ -1414,6 +1497,16 @@ export const marksDistributionAPI = {
   getByDepartment: async (departmentId) => {
     try {
       const response = await api.get(`/api/marks-distribution/department/${departmentId}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  // Get marks distribution by faculty
+  getByFaculty: async (facultyId) => {
+    try {
+      const response = await api.get(`/api/marks-distribution/faculty/${facultyId}/`);
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;

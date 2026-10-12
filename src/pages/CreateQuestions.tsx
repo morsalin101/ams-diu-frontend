@@ -9,7 +9,7 @@ import { Settings, Building, Loader2, FileText, Plus, Trash2, Save, RefreshCw, A
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Textarea } from '../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { examAPI, subjectAPI, subjectDepartmentAPI } from '../services/api';
+import { examAPI, subjectAPI, subjectDepartmentAPI, subjectFacultyAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { buildAcademicSemesterOptions } from '../lib/semester';
@@ -112,33 +112,43 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
     }
   }, [user]);
 
-  // Load subjects for user's department
+  // Load subjects for user's department or faculty
   const loadDepartmentSubjects = async (departmentId: number) => {
     try {
       setIsLoadingSubjects(true);
       const response = await subjectDepartmentAPI.getDepartmentSubjects(departmentId);
       
+      let subjectIds: number[] = [];
       if (response && (response.success !== false)) {
         const data = response.data || response;
-        
-        // Handle the response format: {department_id, subject_ids, subjects}
         if (data.subject_ids && data.subject_ids.length > 0) {
-          // Get all subjects and filter by the subject_ids
-          const allSubjectsResponse = await subjectAPI.getAllSubjects();
-          const allSubjects = allSubjectsResponse.success ? allSubjectsResponse.data : allSubjectsResponse;
-          
-          const filteredSubjects = allSubjects.filter((subject: any) => 
-            data.subject_ids.includes(subject.id)
-          );
-          
-          setDepartmentSubjects(filteredSubjects);
-        } else {
-          // No subjects mapped to this department
-          setDepartmentSubjects([]);
-          toast.success('No subjects mapped to your department');
+          subjectIds = data.subject_ids;
         }
+      }
+
+      // If department has no mapped subjects, fallback to user's assigned faculty
+      if (subjectIds.length === 0 && (user?.faculty_details?.id || user?.faculty_id)) {
+        const facultyId = user.faculty_details?.id || user.faculty_id;
+        try {
+          const facRes = await subjectFacultyAPI.getFacultySubjects(facultyId);
+          if (facRes && facRes.success && facRes.data?.subject_ids) {
+            subjectIds = facRes.data.subject_ids;
+          }
+        } catch {
+          // ignore fallback error
+        }
+      }
+
+      if (subjectIds.length > 0) {
+        const allSubjectsResponse = await subjectAPI.getAllSubjects();
+        const allSubjects = allSubjectsResponse.success ? allSubjectsResponse.data : allSubjectsResponse;
+        const filteredSubjects = allSubjects.filter((subject: any) => 
+          subjectIds.includes(subject.id)
+        );
+        setDepartmentSubjects(filteredSubjects);
       } else {
-        throw new Error(response.message || 'Invalid response format');
+        setDepartmentSubjects([]);
+        toast.success('No subjects mapped to your department or faculty');
       }
     } catch (error: any) {
       console.error('Error loading department subjects:', error);

@@ -41,7 +41,7 @@ import {
 } from 'lucide-react';
 import { usePermissions } from '../hooks/usePermissions';
 import toast from 'react-hot-toast';
-import { marksDistributionAPI, departmentAPI } from '../services/api';
+import { marksDistributionAPI, departmentAPI, facultyAPI } from '../services/api';
 
 interface MarksDistributionProps {
   gradientClass: string;
@@ -49,9 +49,12 @@ interface MarksDistributionProps {
 
 interface MarksDistribution {
   id: number;
-  department: number;
-  department_name: string;
-  department_shortname: string;
+  department?: number | null;
+  department_name?: string;
+  department_shortname?: string;
+  faculty?: number | null;
+  faculty_name?: string;
+  faculty_code?: string;
   ssc: number;
   hsc: number;
   diploma: number;
@@ -65,7 +68,13 @@ const getAcademicWeight = (distribution: MarksDistribution) =>
 interface Department {
   id: number;
   department_name: string;
-  department_shortname: string;
+  department_shortname?: string;
+}
+
+interface Faculty {
+  id: number;
+  faculty_name: string;
+  faculty_code: string;
 }
 
 export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
@@ -77,15 +86,20 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
     MarksDistribution[]
   >([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [faculties, setFaculties] = useState<Faculty[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [scopeFilter, setScopeFilter] = useState<'all' | 'faculty' | 'department'>('all');
   const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [facultyFilter, setFacultyFilter] = useState('all');
 
   // Dialog states
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   // Form states
+  const [formScope, setFormScope] = useState<'faculty' | 'department'>('faculty');
   const [formData, setFormData] = useState({
+    faculty: '',
     department: '',
     ssc: '',
     hsc: '',
@@ -97,13 +111,13 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
   useEffect(() => {
     if (canRead()) {
       loadMarksDistribution();
-      loadDepartments();
+      loadDepartmentsAndFaculties();
     }
   }, []);
 
   useEffect(() => {
     filterDistributions();
-  }, [distributions, searchTerm, departmentFilter]);
+  }, [distributions, searchTerm, scopeFilter, departmentFilter, facultyFilter]);
 
   const filterDistributions = () => {
     let filtered = distributions;
@@ -113,15 +127,31 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(
         dist =>
-          dist.department_name.toLowerCase().includes(term) ||
-          dist.department_shortname.toLowerCase().includes(term),
+          (dist.department_name && dist.department_name.toLowerCase().includes(term)) ||
+          (dist.department_shortname && dist.department_shortname.toLowerCase().includes(term)) ||
+          (dist.faculty_name && dist.faculty_name.toLowerCase().includes(term)) ||
+          (dist.faculty_code && dist.faculty_code.toLowerCase().includes(term)),
+      );
+    }
+
+    // Scope filter
+    if (scopeFilter === 'faculty') {
+      filtered = filtered.filter(dist => Boolean(dist.faculty));
+    } else if (scopeFilter === 'department') {
+      filtered = filtered.filter(dist => Boolean(dist.department));
+    }
+
+    // Faculty filter
+    if (facultyFilter !== 'all') {
+      filtered = filtered.filter(
+        dist => dist.faculty?.toString() === facultyFilter,
       );
     }
 
     // Department filter
     if (departmentFilter !== 'all') {
       filtered = filtered.filter(
-        dist => dist.department.toString() === departmentFilter,
+        dist => dist.department?.toString() === departmentFilter,
       );
     }
 
@@ -134,9 +164,9 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
       const data = await marksDistributionAPI.getAllMarksDistribution();
 
       if (data.success) {
-        setDistributions(data.marks_distribution);
+        setDistributions(data.marks_distribution || []);
         toast.success(
-          data.message || `Loaded ${data.count} marks distribution records`,
+          data.message || `Loaded ${(data.marks_distribution || []).length} marks distribution records`,
         );
       } else {
         throw new Error(data.message || 'Failed to load marks distribution');
@@ -150,16 +180,22 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
     }
   };
 
-  const loadDepartments = async () => {
+  const loadDepartmentsAndFaculties = async () => {
     try {
-      const data = await departmentAPI.getAllDepartments();
-      if (data.success) {
-        // Handle the new API response format with 'data' array
-        setDepartments(data.data || []);
+      const [deptRes, facRes] = await Promise.all([
+        departmentAPI.getAllDepartments(),
+        facultyAPI.getAllFaculties(),
+      ]);
+
+      if (deptRes.success) {
+        setDepartments(deptRes.data || deptRes.departments || []);
+      }
+      if (facRes.success) {
+        setFaculties(facRes.data || facRes.faculties || []);
       }
     } catch (error: any) {
-      console.error('Error loading departments:', error);
-      toast.error('Failed to load departments');
+      console.error('Error loading departments or faculties:', error);
+      toast.error('Failed to load faculties/departments');
     }
   };
 
@@ -168,6 +204,15 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
 
     if (!canWrite()) {
       toast.error('You do not have permission to create marks distribution');
+      return;
+    }
+
+    if (formScope === 'faculty' && !formData.faculty) {
+      toast.error('Please select a faculty');
+      return;
+    }
+    if (formScope === 'department' && !formData.department) {
+      toast.error('Please select a department');
       return;
     }
 
@@ -183,14 +228,19 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
     }
 
     try {
-      const distributionData = {
-        department: parseInt(formData.department),
+      const distributionData: any = {
         ssc: parseInt(formData.ssc),
         hsc: parseInt(formData.hsc),
         diploma: parseInt(formData.hsc),
         main_marks: parseInt(formData.main_marks),
         viva_marks: parseInt(formData.viva_marks),
       };
+
+      if (formScope === 'faculty') {
+        distributionData.faculty = parseInt(formData.faculty);
+      } else {
+        distributionData.department = parseInt(formData.department);
+      }
 
       const data =
         await marksDistributionAPI.createMarksDistribution(distributionData);
@@ -241,6 +291,7 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
 
   const resetForm = () => {
     setFormData({
+      faculty: '',
       department: '',
       ssc: '',
       hsc: '',
@@ -248,6 +299,7 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
       main_marks: '',
       viva_marks: '',
     });
+    setFormScope('faculty');
   };
 
   const handleCreateDialog = () => {
@@ -287,6 +339,9 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
     );
   }
 
+  const facultyDistCount = distributions.filter(d => Boolean(d.faculty)).length;
+  const deptDistCount = distributions.filter(d => Boolean(d.department)).length;
+
   return (
     <div className="p-4 space-y-6 sm:p-6">
       {/* Stats */}
@@ -311,12 +366,12 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Departments</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {new Set(distributions.map(d => d.department)).size}
+                <p className="text-sm font-medium text-gray-600">Faculty-Level (Shared)</p>
+                <p className="text-2xl font-bold text-purple-600">
+                  {facultyDistCount}
                 </p>
               </div>
-              <Building2 className="w-8 h-8 text-green-500" />
+              <GraduationCap className="w-8 h-8 text-purple-500" />
             </div>
           </CardContent>
         </Card>
@@ -325,22 +380,12 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Avg Main Marks
-                </p>
-                <p className="text-2xl font-bold text-purple-600">
-                  {distributions.length > 0
-                    ? Math.round(
-                        distributions.reduce(
-                          (sum, d) => sum + d.main_marks,
-                          0,
-                        ) / distributions.length,
-                      )
-                    : 0}
-                  %
+                <p className="text-sm font-medium text-gray-600">Department Overrides</p>
+                <p className="text-2xl font-bold text-emerald-600">
+                  {deptDistCount}
                 </p>
               </div>
-              <Target className="w-8 h-8 text-purple-500" />
+              <Building2 className="w-8 h-8 text-emerald-500" />
             </div>
           </CardContent>
         </Card>
@@ -352,11 +397,11 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
                 <p className="text-sm font-medium text-gray-600">
                   Filtered Results
                 </p>
-                <p className="text-2xl font-bold text-orange-600">
+                <p className="text-2xl font-bold text-amber-600">
                   {filteredDistributions.length}
                 </p>
               </div>
-              <Search className="w-8 h-8 text-orange-500" />
+              <Search className="w-8 h-8 text-amber-500" />
             </div>
           </CardContent>
         </Card>
@@ -370,63 +415,100 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
             Filters & Search
           </CardTitle>
         </CardHeader>
-        <CardContent className="px-4 pt-2 pb-3 sm:px-5">
-          <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-end">
-            <div className="relative flex-1">
-              <Label htmlFor="marks-search" className="block mb-1">
+        <CardContent className="px-4 pt-3 pb-4 sm:px-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 items-end">
+            <div className="relative">
+              <Label htmlFor="marks-search" className="block mb-2">
                 Search
               </Label>
-              <Search className="absolute w-4 h-4 text-gray-400 left-3 top-7" />
+              <Search className="absolute w-4 h-4 text-gray-400 left-3 top-9" />
               <Input
                 id="marks-search"
-                placeholder="Search departments..."
+                placeholder="Search faculty or dept..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
 
-            <div className="w-full sm:w-48">
-              <Label htmlFor="dept-filter" className="block mb-2">
-                Department
-              </Label>
+            <div>
+              <Label className="block mb-2">Scope Filter</Label>
               <Select
-                value={departmentFilter}
-                onValueChange={setDepartmentFilter}
+                value={scopeFilter}
+                onValueChange={(val: any) => setScopeFilter(val)}
               >
-                <SelectTrigger id="dept-filter">
-                  <SelectValue placeholder="All Departments" />
+                <SelectTrigger>
+                  <SelectValue placeholder="All Scopes" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Departments</SelectItem>
-                  {departments &&
-                    departments.map(dept => (
-                      <SelectItem key={dept.id} value={dept.id.toString()}>
-                        {dept.department_shortname} - {dept.department_name}
-                      </SelectItem>
-                    ))}
+                  <SelectItem value="all">All Scopes</SelectItem>
+                  <SelectItem value="faculty">Faculty-Level (Shared)</SelectItem>
+                  <SelectItem value="department">Department-Specific</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="block mb-2">Faculty Filter</Label>
+              <Select
+                value={facultyFilter}
+                onValueChange={setFacultyFilter}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All Faculties" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Faculties</SelectItem>
+                  {faculties.map(fac => (
+                    <SelectItem key={fac.id} value={fac.id.toString()}>
+                      {fac.faculty_code} - {fac.faculty_name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div className="flex gap-2">
-              <Button
-                onClick={loadMarksDistribution}
-                disabled={isLoading}
-                variant="outline"
-                size="sm"
-              >
-                <RefreshCw
-                  className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
-                />
-              </Button>
+              <div className="flex-1">
+                <Label className="block mb-2">Department Filter</Label>
+                <Select
+                  value={departmentFilter}
+                  onValueChange={setDepartmentFilter}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Departments" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {departments.map(dept => (
+                      <SelectItem key={dept.id} value={dept.id.toString()}>
+                        {dept.department_shortname || dept.department_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-              {canWrite() && (
-                <Button onClick={handleCreateDialog} size="sm">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Distribution
+              <div className="flex items-end gap-1">
+                <Button
+                  onClick={loadMarksDistribution}
+                  disabled={isLoading}
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10 shrink-0"
+                >
+                  <RefreshCw
+                    className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
+                  />
                 </Button>
-              )}
+
+                {canWrite() && (
+                  <Button onClick={handleCreateDialog} className="h-10 shrink-0">
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </CardContent>
@@ -460,98 +542,118 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
               </CardContent>
             </Card>
           ) : (
-            filteredDistributions.map(distribution => (
-              <Card
-                key={distribution.id}
-                className="transition-shadow hover:shadow-md"
-              >
-                <CardContent className="p-6">
-                  <div className="flex flex-col gap-4 lg:flex-row">
-                    {/* Distribution Content */}
-                    <div className="flex-1 space-y-4">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge
-                          variant="outline"
-                          className="text-blue-700 border-blue-200 bg-blue-50"
-                        >
-                          <Building2 className="w-3 h-3 mr-1" />
-                          {distribution.department_shortname}
-                        </Badge>
-                        <Badge
-                          variant="outline"
-                          className="text-green-700 border-green-200 bg-green-50"
-                        >
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Total:{' '}
-                          {distribution.ssc +
-                            getAcademicWeight(distribution) +
-                            distribution.main_marks +
-                            distribution.viva_marks}
-                          %
-                        </Badge>
-                      </div>
+            filteredDistributions.map(distribution => {
+              const isFacultyScope = Boolean(distribution.faculty);
 
-                      <div>
-                        <h3 className="mb-2 font-medium text-gray-900">
-                          {distribution.department_name}
-                        </h3>
+              return (
+                <Card
+                  key={distribution.id}
+                  className="transition-shadow hover:shadow-md border-l-4"
+                  style={{
+                    borderLeftColor: isFacultyScope ? '#9333ea' : '#3b82f6',
+                  }}
+                >
+                  <CardContent className="p-6">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+                      {/* Distribution Content */}
+                      <div className="flex-1 space-y-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {isFacultyScope ? (
+                            <Badge
+                              variant="outline"
+                              className="text-purple-700 border-purple-300 bg-purple-50 font-semibold flex items-center gap-1"
+                            >
+                              <GraduationCap className="w-3.5 h-3.5" />
+                              Faculty Level (Shared): {distribution.faculty_code || distribution.faculty_name}
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="text-blue-700 border-blue-300 bg-blue-50 font-semibold flex items-center gap-1"
+                            >
+                              <Building2 className="w-3.5 h-3.5" />
+                              Department: {distribution.department_shortname || distribution.department_name}
+                            </Badge>
+                          )}
 
-                        {/* Marks Distribution Grid */}
-                        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                          <div className="p-3 rounded-lg bg-blue-50">
-                            <p className="text-sm font-medium text-blue-700">
-                              SSC
-                            </p>
-                            <p className="text-lg font-bold text-blue-600">
-                              {distribution.ssc}%
-                            </p>
-                          </div>
-                          <div className="p-3 rounded-lg bg-green-50">
-                            <p className="text-sm font-medium text-green-700">
-                              HSC/Diploma
-                            </p>
-                            <p className="text-lg font-bold text-green-600">
-                              {getAcademicWeight(distribution)}%
-                            </p>
-                          </div>
-                          <div className="p-3 rounded-lg bg-purple-50">
-                            <p className="text-sm font-medium text-purple-700">
-                              Main Marks
-                            </p>
-                            <p className="text-lg font-bold text-purple-600">
-                              {distribution.main_marks}%
-                            </p>
-                          </div>
-                          <div className="p-3 rounded-lg bg-indigo-50">
-                            <p className="text-sm font-medium text-indigo-700">
-                              Viva Marks
-                            </p>
-                            <p className="text-lg font-bold text-indigo-600">
-                              {distribution.viva_marks}%
-                            </p>
+                          <Badge
+                            variant="outline"
+                            className="text-green-700 border-green-200 bg-green-50"
+                          >
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Total:{' '}
+                            {distribution.ssc +
+                              getAcademicWeight(distribution) +
+                              distribution.main_marks +
+                              distribution.viva_marks}
+                            %
+                          </Badge>
+                        </div>
+
+                        <div>
+                          <h3 className="mb-2 font-medium text-gray-900">
+                            {isFacultyScope
+                              ? `All departments under Faculty: ${distribution.faculty_name || distribution.faculty_code}`
+                              : distribution.department_name}
+                          </h3>
+
+                          {/* Marks Distribution Grid */}
+                          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                            <div className="p-3 rounded-lg bg-blue-50 border border-blue-100">
+                              <p className="text-xs font-medium text-blue-700 uppercase tracking-wider">
+                                SSC
+                              </p>
+                              <p className="text-xl font-bold text-blue-600 mt-0.5">
+                                {distribution.ssc}%
+                              </p>
+                            </div>
+                            <div className="p-3 rounded-lg bg-green-50 border border-green-100">
+                              <p className="text-xs font-medium text-green-700 uppercase tracking-wider">
+                                HSC / Diploma
+                              </p>
+                              <p className="text-xl font-bold text-green-600 mt-0.5">
+                                {getAcademicWeight(distribution)}%
+                              </p>
+                            </div>
+                            <div className="p-3 rounded-lg bg-purple-50 border border-purple-100">
+                              <p className="text-xs font-medium text-purple-700 uppercase tracking-wider">
+                                Exam Marks
+                              </p>
+                              <p className="text-xl font-bold text-purple-600 mt-0.5">
+                                {distribution.main_marks}%
+                              </p>
+                            </div>
+                            <div className="p-3 rounded-lg bg-indigo-50 border border-indigo-100">
+                              <p className="text-xs font-medium text-indigo-700 uppercase tracking-wider">
+                                Viva Marks
+                              </p>
+                              <p className="text-xl font-bold text-indigo-600 mt-0.5">
+                                {distribution.viva_marks}%
+                              </p>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Actions */}
-                    {canWrite() && (
-                      <div className="flex gap-2 lg:flex-col">
-                        <Button
-                          onClick={() => handleDelete(distribution.id)}
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 text-red-600 lg:flex-none hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                      {/* Actions */}
+                      {canWrite() && (
+                        <div className="flex gap-2 lg:flex-row">
+                          <Button
+                            onClick={() => handleDelete(distribution.id)}
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Delete
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
           )}
         </div>
       )}
@@ -562,32 +664,84 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
           <DialogHeader>
             <DialogTitle>Create Marks Distribution</DialogTitle>
             <DialogDescription>
-              Set marks distribution for a department. Total must equal 100%.
+              Set marks distribution for a faculty or department. Total must equal 100%.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Scope Selection */}
             <div className="space-y-2">
-              <Label htmlFor="create-department">Department</Label>
-              <Select
-                value={formData.department}
-                onValueChange={value =>
-                  setFormData({ ...formData, department: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select department" />
-                </SelectTrigger>
-                <SelectContent>
-                  {departments &&
-                    departments.map(dept => (
-                      <SelectItem key={dept.id} value={dept.id.toString()}>
-                        {dept.department_shortname} - {dept.department_name}
+              <Label>Scope Type</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={formScope === 'faculty' ? 'default' : 'outline'}
+                  onClick={() => setFormScope('faculty')}
+                  className="flex items-center gap-1.5"
+                >
+                  <GraduationCap className="w-4 h-4" />
+                  Faculty Level
+                </Button>
+                <Button
+                  type="button"
+                  variant={formScope === 'department' ? 'default' : 'outline'}
+                  onClick={() => setFormScope('department')}
+                  className="flex items-center gap-1.5"
+                >
+                  <Building2 className="w-4 h-4" />
+                  Department Level
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {formScope === 'faculty'
+                  ? 'All departments under this faculty share this distribution (recommended).'
+                  : 'Specific distribution override solely for this department.'}
+              </p>
+            </div>
+
+            {formScope === 'faculty' ? (
+              <div className="space-y-2">
+                <Label htmlFor="create-faculty">Faculty</Label>
+                <Select
+                  value={formData.faculty}
+                  onValueChange={value =>
+                    setFormData({ ...formData, faculty: value })
+                  }
+                >
+                  <SelectTrigger id="create-faculty">
+                    <SelectValue placeholder="Select faculty" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {faculties.map(fac => (
+                      <SelectItem key={fac.id} value={fac.id.toString()}>
+                        {fac.faculty_code} - {fac.faculty_name}
                       </SelectItem>
                     ))}
-                </SelectContent>
-              </Select>
-            </div>
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="create-department">Department</Label>
+                <Select
+                  value={formData.department}
+                  onValueChange={value =>
+                    setFormData({ ...formData, department: value })
+                  }
+                >
+                  <SelectTrigger id="create-department">
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map(dept => (
+                      <SelectItem key={dept.id} value={dept.id.toString()}>
+                        {dept.department_shortname || dept.department_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -599,7 +753,7 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
                   onChange={e =>
                     setFormData({ ...formData, ssc: e.target.value })
                   }
-                  placeholder="SSC marks"
+                  placeholder="SSC weight"
                   min="0"
                   max="100"
                   required
@@ -615,7 +769,7 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
                   onChange={e =>
                     setFormData({ ...formData, hsc: e.target.value })
                   }
-                  placeholder="Academic marks"
+                  placeholder="HSC weight"
                   min="0"
                   max="100"
                   required
@@ -633,7 +787,7 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
                   onChange={e =>
                     setFormData({ ...formData, main_marks: e.target.value })
                   }
-                  placeholder="Main marks"
+                  placeholder="Exam weight"
                   min="0"
                   max="100"
                   required
@@ -649,7 +803,7 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
                   onChange={e =>
                     setFormData({ ...formData, viva_marks: e.target.value })
                   }
-                  placeholder="Viva marks"
+                  placeholder="Viva weight"
                   min="0"
                   max="100"
                   required
@@ -658,21 +812,21 @@ export function MarksDistribution({ gradientClass }: MarksDistributionProps) {
             </div>
 
             {/* Total Display */}
-            <div className="p-3 rounded-lg bg-gray-50">
+            <div className="p-3 rounded-lg bg-gray-50 border border-gray-100">
               <div className="flex items-center justify-between">
-                <span className="font-medium">Total:</span>
+                <span className="font-medium text-sm">Total Weight:</span>
                 <span className={`font-bold text-lg ${getTotalColor()}`}>
                   {calculateTotal()}%
                 </span>
               </div>
               {calculateTotal() !== 100 && (
-                <p className="mt-1 text-sm text-red-600">
+                <p className="mt-1 text-xs text-red-600 font-medium">
                   Total must equal 100% (currently {calculateTotal()}%)
                 </p>
               )}
             </div>
 
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 pt-2">
               <Button
                 type="button"
                 variant="outline"

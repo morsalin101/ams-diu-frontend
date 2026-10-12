@@ -7,8 +7,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Users, UserPlus, Edit, Trash2, Loader2, RefreshCw, Eye, EyeOff } from 'lucide-react';
-import { usersAPI, roleAPI, departmentAPI, facultyAPI } from '../services/api';
+import { usersAPI, roleAPI, departmentAPI, facultyAPI, facultyDepartmentAPI } from '../services/api';
 import toast from 'react-hot-toast';
+
+interface FacultyDepartmentMapping {
+  id: number;
+  faculty: number;
+  faculty_name: string;
+  faculty_shortname: string;
+  department_ids: number[];
+}
 
 interface User {
   id: number;
@@ -43,6 +51,7 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
   const [roles, setRoles] = useState<{ id: number; role_name: string }[]>([]);
   const [departments, setDepartments] = useState<{ id: number; department_name: string; department_shortname: string }[]>([]);
   const [faculties, setFaculties] = useState<{ id: number; faculty_name: string; faculty_shortname: string }[]>([]);
+  const [facultyMappings, setFacultyMappings] = useState<FacultyDepartmentMapping[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showUserDialog, setShowUserDialog] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -53,11 +62,9 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
     username: '',
     email: '',
     password: '',
-    role_id: 2, // Default to superadmin
-    department_id: 0,
-    faculty_id: 0,
-    access_type: 'none',
-    is_global_access: false
+    role_id: 2,
+    selected_faculty: 'ALL', // 'ALL' or faculty id string
+    selected_department: 'ALL' // 'ALL' or department id string
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -67,7 +74,21 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
     loadRoles();
     loadDepartments();
     loadFaculties();
+    loadFacultyMappings();
   }, []);
+
+  const loadFacultyMappings = async () => {
+    try {
+      const response = await facultyDepartmentAPI.getAllMappings();
+      if (Array.isArray(response)) {
+        setFacultyMappings(response);
+      } else if (response?.success && response?.data) {
+        setFacultyMappings(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading faculty mappings:', error);
+    }
+  };
 
   const loadRoles = async () => {
     try {
@@ -126,25 +147,43 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
       email: '',
       password: '',
       role_id: roles.length > 0 ? roles[0].id : 2,
-      department_id: departments.length > 0 ? departments[0].id : 0,
-      faculty_id: faculties.length > 0 ? faculties[0].id : 0,
-      access_type: 'none',
-      is_global_access: false
+      selected_faculty: 'ALL',
+      selected_department: 'ALL'
     });
     setShowUserDialog(true);
   };
 
   const handleEditUser = (user: User) => {
     setEditingUser(user);
+    let initFaculty = 'ALL';
+    let initDepartment = 'ALL';
+
+    const normalizedAccess = (user.access_type || '').toUpperCase();
+    if (user.is_global_access || normalizedAccess === 'GLOBAL' || user.role_details?.role_name === 'superadmin') {
+      initFaculty = 'ALL';
+      initDepartment = 'ALL';
+    } else if (normalizedAccess === 'FACULTY' && user.faculty_details?.id) {
+      initFaculty = user.faculty_details.id.toString();
+      initDepartment = 'ALL';
+    } else if (normalizedAccess === 'DEPARTMENT' && user.department_details?.id) {
+      initDepartment = user.department_details.id.toString();
+      if (user.faculty_details?.id) {
+        initFaculty = user.faculty_details.id.toString();
+      } else {
+        const foundMapping = facultyMappings.find(m => m.department_ids?.includes(user.department_details!.id));
+        if (foundMapping) {
+          initFaculty = ((foundMapping as any).faculty_id || foundMapping.faculty).toString();
+        }
+      }
+    }
+
     setFormData({
       username: user.username,
       email: user.email,
       password: '',
       role_id: user.role_details.id,
-      department_id: user.department_details?.id || (departments.length > 0 ? departments[0].id : 0),
-      faculty_id: user.faculty_details?.id || (faculties.length > 0 ? faculties[0].id : 0),
-      access_type: user.access_type || 'none',
-      is_global_access: user.is_global_access || false
+      selected_faculty: initFaculty,
+      selected_department: initDepartment
     });
     setShowUserDialog(true);
   };
@@ -164,27 +203,31 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
 
     setIsSubmitting(true);
     try {
+      const isGlobal = formData.selected_faculty === 'ALL';
+      const isFacultyScope = !isGlobal && formData.selected_department === 'ALL';
+      const isDepartmentScope = !isGlobal && formData.selected_department !== 'ALL';
+
+      const access_type = isGlobal ? 'GLOBAL' : (isFacultyScope ? 'FACULTY' : 'DEPARTMENT');
+      const is_global_access = isGlobal;
+      const faculty_id = isGlobal ? null : parseInt(formData.selected_faculty);
+      const department_id = isDepartmentScope ? parseInt(formData.selected_department) : null;
+
+      const payload: any = {
+        username: formData.username,
+        email: formData.email,
+        role_id: formData.role_id,
+        access_type,
+        is_global_access,
+        faculty_id,
+        department_id,
+        ...(formData.password.trim() ? { password: formData.password } : {})
+      };
+
       if (editingUser) {
-        // Update user
-        const updateData = {
-          username: formData.username,
-          email: formData.email,
-          role_id: formData.role_id,
-          access_type: formData.access_type,
-          is_global_access: formData.is_global_access,
-          ...(formData.access_type === 'department' && { department_id: formData.department_id }),
-          ...(formData.access_type === 'faculty' && { faculty_id: formData.faculty_id }),
-          ...(formData.password.trim() && { password: formData.password })
-        };
-        await usersAPI.updateUser(editingUser.id, updateData);
+        await usersAPI.updateUser(editingUser.id, payload);
         toast.success('User updated successfully!');
       } else {
-        // Create user
-        await usersAPI.createUser({
-          ...formData,
-          department_id: formData.access_type === 'department' ? formData.department_id : null,
-          faculty_id: formData.access_type === 'faculty' ? formData.faculty_id : null,
-        });
+        await usersAPI.createUser(payload);
         toast.success('User created successfully!');
       }
       
@@ -221,6 +264,14 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
       minute: '2-digit'
     });
   };
+
+  const selectedFacultyId = formData.selected_faculty !== 'ALL' ? parseInt(formData.selected_faculty) : null;
+  const activeMapping = selectedFacultyId
+    ? facultyMappings.find(m => (m.faculty === selectedFacultyId || (m as any).faculty_id === selectedFacultyId))
+    : null;
+  const availableDepartments = selectedFacultyId && activeMapping
+    ? departments.filter(d => activeMapping.department_ids?.includes(d.id))
+    : departments;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -293,8 +344,9 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
                   <tr>
                     <th className="text-left p-4 font-semibold text-gray-700">User</th>
                     <th className="text-left p-4 font-semibold text-gray-700">Email</th>
-                    <th className="text-left p-4 font-semibold text-gray-700">Department</th>
                     <th className="text-left p-4 font-semibold text-gray-700">Role</th>
+                    <th className="text-left p-4 font-semibold text-gray-700">Access Scope</th>
+                    <th className="text-left p-4 font-semibold text-gray-700">Department</th>
                     <th className="text-left p-4 font-semibold text-gray-700">Created</th>
                     <th className="text-right p-4 font-semibold text-gray-700">Actions</th>
                   </tr>
@@ -315,25 +367,54 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
                       </td>
                       <td className="p-4 text-gray-700">{user.email}</td>
                       <td className="p-4">
+                        <Badge 
+                          variant={user.role_details?.role_name === 'superadmin' ? 'default' : 'secondary'}
+                          className={user.role_details?.role_name === 'superadmin' 
+                            ? 'bg-green-500 hover:bg-green-600' 
+                            : 'bg-gray-500 hover:bg-gray-600'
+                          }
+                        >
+                          {user.role_details?.role_name || 'No Role'}
+                        </Badge>
+                      </td>
+                      <td className="p-4">
+                        {(() => {
+                          const access = (user.access_type || '').toUpperCase();
+                          if (user.is_global_access || access === 'GLOBAL' || user.role_details?.role_name === 'superadmin') {
+                            return <Badge className="bg-purple-600 hover:bg-purple-700 text-white">Global Scope</Badge>;
+                          }
+                          if (access === 'FACULTY') {
+                            return (
+                              <Badge className="bg-blue-600 hover:bg-blue-700 text-white">
+                                Faculty: {user.faculty_details?.faculty_shortname || user.faculty_details?.faculty_name || 'Assigned'}
+                              </Badge>
+                            );
+                          }
+                          if (access === 'DEPARTMENT') {
+                            return (
+                              <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                                Dept Level
+                              </Badge>
+                            );
+                          }
+                          return <Badge variant="outline">Unrestricted</Badge>;
+                        })()}
+                      </td>
+                      <td className="p-4">
                         {user.department_details ? (
                           <div>
                             <p className="font-medium text-gray-800">{user.department_details.department_shortname}</p>
                             <p className="text-xs text-gray-500">{user.department_details.department_name}</p>
                           </div>
                         ) : (
-                          <span className="text-gray-500">{user.department || 'N/A'}</span>
+                          <span className="text-gray-500">
+                            {user.department || (user.is_global_access || (user.access_type || '').toUpperCase() === 'GLOBAL' || user.role_details?.role_name === 'superadmin' 
+                              ? 'All (Global)' 
+                              : (user.access_type || '').toUpperCase() === 'FACULTY' 
+                              ? 'All (Faculty)' 
+                              : 'N/A')}
+                          </span>
                         )}
-                      </td>
-                      <td className="p-4">
-                        <Badge 
-                          variant={user.role_details.role_name === 'superadmin' ? 'default' : 'secondary'}
-                          className={user.role_details.role_name === 'superadmin' 
-                            ? 'bg-green-500 hover:bg-green-600' 
-                            : 'bg-gray-500 hover:bg-gray-600'
-                          }
-                        >
-                          {user.role_details.role_name}
-                        </Badge>
                       </td>
                       <td className="p-4 text-sm text-gray-600">
                         {formatDate(user.created_at)}
@@ -380,7 +461,7 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
               {editingUser ? 'Edit User' : 'Create New User'}
             </DialogTitle>
             <DialogDescription>
-              {editingUser ? 'Update user information and role' : 'Add a new user to the system'}
+              {editingUser ? 'Update user information and access scope' : 'Add a new user with faculty or department access'}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -440,7 +521,7 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
                 onValueChange={(value) => setFormData(prev => ({ ...prev, role_id: parseInt(value) }))}
                 disabled={isSubmitting}
               >
-                <SelectTrigger>
+                <SelectTrigger id="role">
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent>
@@ -453,85 +534,68 @@ export function UsersManagement({ gradientClass }: UsersManagementProps) {
               </Select>
             </div>
 
-            <div className="flex items-center space-x-2 py-2">
-              <input
-                type="checkbox"
-                id="is_global_access"
-                checked={formData.is_global_access}
-                onChange={(e) => setFormData(prev => ({ ...prev, is_global_access: e.target.checked }))}
+            {/* Coordinated Faculty Field */}
+            <div className="space-y-2">
+              <Label htmlFor="faculty_scope">Faculty Scope</Label>
+              <Select
+                value={formData.selected_faculty}
+                onValueChange={(value) => {
+                  setFormData(prev => ({
+                    ...prev,
+                    selected_faculty: value,
+                    selected_department: 'ALL'
+                  }));
+                }}
                 disabled={isSubmitting}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <Label htmlFor="is_global_access" className="font-medium cursor-pointer">
-                Global Access (Overrides all other restrictions)
-              </Label>
+              >
+                <SelectTrigger id="faculty_scope">
+                  <SelectValue placeholder="Select faculty" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Faculties (Global Access)</SelectItem>
+                  {faculties.map((faculty) => (
+                    <SelectItem key={faculty.id} value={faculty.id.toString()}>
+                      {faculty.faculty_shortname} - {faculty.faculty_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            {!formData.is_global_access && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="access_type">Access Scope</Label>
-                  <Select
-                    value={formData.access_type}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, access_type: value }))}
-                    disabled={isSubmitting}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select access type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      <SelectItem value="faculty">Faculty Level</SelectItem>
-                      <SelectItem value="department">Department Level</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {formData.access_type === 'faculty' && (
-                  <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
-                    <Label htmlFor="faculty">Faculty</Label>
-                    <Select
-                      value={formData.faculty_id.toString()}
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, faculty_id: parseInt(value) }))}
-                      disabled={isSubmitting}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select faculty" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {faculties.map((faculty) => (
-                          <SelectItem key={faculty.id} value={faculty.id.toString()}>
-                            {faculty.faculty_shortname} - {faculty.faculty_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {formData.access_type === 'department' && (
-                  <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
-                    <Label htmlFor="department">Department</Label>
-                    <Select
-                      value={formData.department_id.toString()}
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, department_id: parseInt(value) }))}
-                      disabled={isSubmitting}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select department" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {departments.map((department) => (
-                          <SelectItem key={department.id} value={department.id.toString()}>
-                            {department.department_shortname} - {department.department_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </>
-            )}
+            {/* Coordinated Department Field */}
+            <div className="space-y-2">
+              <Label htmlFor="department_scope">Department Scope</Label>
+              <Select
+                value={formData.selected_department}
+                onValueChange={(value) => {
+                  setFormData(prev => ({ ...prev, selected_department: value }));
+                }}
+                disabled={isSubmitting || formData.selected_faculty === 'ALL'}
+              >
+                <SelectTrigger id="department_scope">
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">
+                    {formData.selected_faculty === 'ALL'
+                      ? 'All Departments (Global Scope)'
+                      : 'All Departments in Faculty (Faculty Scope)'}
+                  </SelectItem>
+                  {availableDepartments.map((department) => (
+                    <SelectItem key={department.id} value={department.id.toString()}>
+                      {department.department_shortname} - {department.department_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500">
+                {formData.selected_faculty === 'ALL'
+                  ? 'Global Scope: User has access across all faculties and all departments.'
+                  : formData.selected_department === 'ALL'
+                  ? 'Faculty Scope: User automatically receives access to all departments in this faculty.'
+                  : 'Department Scope: User is strictly restricted to this single department.'}
+              </p>
+            </div>
 
             <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-4">
               <Button 

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '../components/ui/card';
@@ -32,17 +31,17 @@ import {
   Edit,
   Trash2,
   Building2,
-  FileText,
+  GraduationCap,
   AlertTriangle,
   Loader2,
-  CheckCircle,
   Save,
   X,
   Filter,
+  Layers,
 } from 'lucide-react';
 import { usePermissions } from '../hooks/usePermissions';
 import toast from 'react-hot-toast';
-import { vivaRubricsAPI, departmentAPI } from '../services/api';
+import { vivaRubricsAPI, departmentAPI, facultyAPI } from '../services/api';
 
 interface VivaManagementProps {
   gradientClass: string;
@@ -50,9 +49,12 @@ interface VivaManagementProps {
 
 interface VivaRubrics {
   id: number;
-  department: number;
-  department_name: string;
-  department_shortname: string;
+  department?: number | null;
+  department_name?: string;
+  department_shortname?: string;
+  faculty?: number | null;
+  faculty_name?: string;
+  faculty_code?: string;
   rubrics: string;
   marks: number;
 }
@@ -60,7 +62,13 @@ interface VivaRubrics {
 interface Department {
   id: number;
   department_name: string;
-  department_shortname: string;
+  department_shortname?: string;
+}
+
+interface Faculty {
+  id: number;
+  faculty_name: string;
+  faculty_code: string;
 }
 
 export function VivaManagement({ gradientClass }: VivaManagementProps) {
@@ -70,19 +78,22 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
   const [rubrics, setRubrics] = useState<VivaRubrics[]>([]);
   const [filteredRubrics, setFilteredRubrics] = useState<VivaRubrics[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [faculties, setFaculties] = useState<Faculty[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [scopeFilter, setScopeFilter] = useState<'all' | 'faculty' | 'department'>('all');
   const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [facultyFilter, setFacultyFilter] = useState('all');
 
   // Dialog states
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const [editingRubrics, setEditingRubrics] = useState<VivaRubrics | null>(
-    null,
-  );
+  const [editingRubrics, setEditingRubrics] = useState<VivaRubrics | null>(null);
 
   // Form states
+  const [formScope, setFormScope] = useState<'faculty' | 'department'>('faculty');
   const [formData, setFormData] = useState({
+    faculty: '',
     department: '',
     rubrics: '',
     marks: '',
@@ -91,13 +102,13 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
   useEffect(() => {
     if (canRead()) {
       loadRubrics();
-      loadDepartments();
+      loadDepartmentsAndFaculties();
     }
   }, []);
 
   useEffect(() => {
     filterRubrics();
-  }, [rubrics, searchTerm, departmentFilter]);
+  }, [rubrics, searchTerm, scopeFilter, departmentFilter, facultyFilter]);
 
   const filterRubrics = () => {
     let filtered = rubrics;
@@ -108,15 +119,31 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
       filtered = filtered.filter(
         rubric =>
           rubric.rubrics.toLowerCase().includes(term) ||
-          rubric.department_name.toLowerCase().includes(term) ||
-          rubric.department_shortname.toLowerCase().includes(term),
+          (rubric.department_name && rubric.department_name.toLowerCase().includes(term)) ||
+          (rubric.department_shortname && rubric.department_shortname.toLowerCase().includes(term)) ||
+          (rubric.faculty_name && rubric.faculty_name.toLowerCase().includes(term)) ||
+          (rubric.faculty_code && rubric.faculty_code.toLowerCase().includes(term)),
+      );
+    }
+
+    // Scope filter
+    if (scopeFilter === 'faculty') {
+      filtered = filtered.filter(rubric => Boolean(rubric.faculty));
+    } else if (scopeFilter === 'department') {
+      filtered = filtered.filter(rubric => Boolean(rubric.department));
+    }
+
+    // Faculty filter
+    if (facultyFilter !== 'all') {
+      filtered = filtered.filter(
+        rubric => rubric.faculty?.toString() === facultyFilter,
       );
     }
 
     // Department filter
     if (departmentFilter !== 'all') {
       filtered = filtered.filter(
-        rubric => rubric.department.toString() === departmentFilter,
+        rubric => rubric.department?.toString() === departmentFilter,
       );
     }
 
@@ -129,8 +156,8 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
       const data = await vivaRubricsAPI.getAllRubrics();
 
       if (data.success) {
-        setRubrics(data.rubrics);
-        toast.success(data.message || `Loaded ${data.count} viva rubrics`);
+        setRubrics(data.rubrics || []);
+        toast.success(data.message || `Loaded ${(data.rubrics || []).length} viva rubrics`);
       } else {
         throw new Error(data.message || 'Failed to load viva rubrics');
       }
@@ -143,16 +170,22 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
     }
   };
 
-  const loadDepartments = async () => {
+  const loadDepartmentsAndFaculties = async () => {
     try {
-      const data = await departmentAPI.getAllDepartments();
-      if (data.success) {
-        // Handle the new API response format with 'data' array
-        setDepartments(data.data || []);
+      const [deptRes, facRes] = await Promise.all([
+        departmentAPI.getAllDepartments(),
+        facultyAPI.getAllFaculties(),
+      ]);
+
+      if (deptRes.success) {
+        setDepartments(deptRes.data || deptRes.departments || []);
+      }
+      if (facRes.success) {
+        setFaculties(facRes.data || facRes.faculties || []);
       }
     } catch (error: any) {
-      console.error('Error loading departments:', error);
-      toast.error('Failed to load departments');
+      console.error('Error loading departments or faculties:', error);
+      toast.error('Failed to load faculties/departments');
     }
   };
 
@@ -164,12 +197,26 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
       return;
     }
 
+    if (formScope === 'faculty' && !formData.faculty) {
+      toast.error('Please select a faculty');
+      return;
+    }
+    if (formScope === 'department' && !formData.department) {
+      toast.error('Please select a department');
+      return;
+    }
+
     try {
-      const rubricData = {
-        department: parseInt(formData.department),
+      const rubricData: any = {
         rubrics: formData.rubrics,
         marks: parseInt(formData.marks),
       };
+
+      if (formScope === 'faculty') {
+        rubricData.faculty = parseInt(formData.faculty);
+      } else {
+        rubricData.department = parseInt(formData.department);
+      }
 
       const data = await vivaRubricsAPI.createRubrics(rubricData);
 
@@ -195,12 +242,28 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
       return;
     }
 
+    if (formScope === 'faculty' && !formData.faculty) {
+      toast.error('Please select a faculty');
+      return;
+    }
+    if (formScope === 'department' && !formData.department) {
+      toast.error('Please select a department');
+      return;
+    }
+
     try {
-      const rubricData = {
-        department: parseInt(formData.department),
+      const rubricData: any = {
         rubrics: formData.rubrics,
         marks: parseInt(formData.marks),
       };
+
+      if (formScope === 'faculty') {
+        rubricData.faculty = parseInt(formData.faculty);
+        rubricData.department = null;
+      } else {
+        rubricData.department = parseInt(formData.department);
+        rubricData.faculty = null;
+      }
 
       const data = await vivaRubricsAPI.updateRubrics(
         editingRubrics.id,
@@ -253,20 +316,34 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
 
   const openEditDialog = (rubric: VivaRubrics) => {
     setEditingRubrics(rubric);
-    setFormData({
-      department: rubric.department.toString(),
-      rubrics: rubric.rubrics,
-      marks: rubric.marks.toString(),
-    });
+    if (rubric.faculty) {
+      setFormScope('faculty');
+      setFormData({
+        faculty: rubric.faculty.toString(),
+        department: '',
+        rubrics: rubric.rubrics,
+        marks: rubric.marks.toString(),
+      });
+    } else {
+      setFormScope('department');
+      setFormData({
+        faculty: '',
+        department: rubric.department?.toString() || '',
+        rubrics: rubric.rubrics,
+        marks: rubric.marks.toString(),
+      });
+    }
     setShowEditDialog(true);
   };
 
   const resetForm = () => {
     setFormData({
+      faculty: '',
       department: '',
       rubrics: '',
       marks: '',
     });
+    setFormScope('faculty');
   };
 
   const handleCreateDialog = () => {
@@ -291,20 +368,19 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
     );
   }
 
+  const facultyRubricsCount = rubrics.filter(r => Boolean(r.faculty)).length;
+  const deptRubricsCount = rubrics.filter(r => Boolean(r.department)).length;
+
   return (
     <div className="p-4 space-y-6 sm:p-6">
       {/* Stats */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Total Rubrics
-                </p>
-                <p className="text-2xl font-bold text-blue-600">
-                  {rubrics.length}
-                </p>
+                <p className="text-sm font-medium text-gray-600">Total Rubrics</p>
+                <p className="text-2xl font-bold text-blue-600">{rubrics.length}</p>
               </div>
               <Award className="w-8 h-8 text-blue-500" />
             </div>
@@ -315,12 +391,10 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Departments</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {new Set(rubrics.map(r => r.department)).size}
-                </p>
+                <p className="text-sm font-medium text-gray-600">Faculty-Level (Shared)</p>
+                <p className="text-2xl font-bold text-purple-600">{facultyRubricsCount}</p>
               </div>
-              <Building2 className="w-8 h-8 text-green-500" />
+              <GraduationCap className="w-8 h-8 text-purple-500" />
             </div>
           </CardContent>
         </Card>
@@ -329,14 +403,22 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Filtered Results
-                </p>
-                <p className="text-2xl font-bold text-purple-600">
-                  {filteredRubrics.length}
-                </p>
+                <p className="text-sm font-medium text-gray-600">Department Overrides</p>
+                <p className="text-2xl font-bold text-emerald-600">{deptRubricsCount}</p>
               </div>
-              <Search className="w-8 h-8 text-purple-500" />
+              <Building2 className="w-8 h-8 text-emerald-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Filtered Results</p>
+                <p className="text-2xl font-bold text-amber-600">{filteredRubrics.length}</p>
+              </div>
+              <Search className="w-8 h-8 text-amber-500" />
             </div>
           </CardContent>
         </Card>
@@ -350,63 +432,100 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
             Filters & Search
           </CardTitle>
         </CardHeader>
-        <CardContent className="px-4 pt-2 pb-3 sm:px-5">
-          <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:items-end">
-            <div className="relative flex-1">
+        <CardContent className="px-4 pt-3 pb-4 sm:px-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 items-end">
+            <div className="relative">
               <Label htmlFor="viva-search" className="block mb-2">
                 Search
               </Label>
-              <Search className="absolute w-4 h-4 text-gray-400 transform left-3 top-8 -translate-y-0" />
+              <Search className="absolute w-4 h-4 text-gray-400 left-3 top-9" />
               <Input
                 id="viva-search"
-                placeholder="Search rubrics or departments..."
+                placeholder="Search rubrics, faculty, dept..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
 
-            <div className="w-full sm:w-48">
-              <Label htmlFor="dept-filter" className="block mb-2">
-                Department
-              </Label>
+            <div>
+              <Label className="block mb-2">Scope Filter</Label>
               <Select
-                value={departmentFilter}
-                onValueChange={setDepartmentFilter}
+                value={scopeFilter}
+                onValueChange={(val: any) => setScopeFilter(val)}
               >
-                <SelectTrigger id="dept-filter">
-                  <SelectValue placeholder="All Departments" />
+                <SelectTrigger>
+                  <SelectValue placeholder="All Scopes" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Departments</SelectItem>
-                  {departments &&
-                    departments.map(dept => (
-                      <SelectItem key={dept.id} value={dept.id.toString()}>
-                        {dept.department_shortname} - {dept.department_name}
-                      </SelectItem>
-                    ))}
+                  <SelectItem value="all">All Scopes</SelectItem>
+                  <SelectItem value="faculty">Faculty-Level (Shared)</SelectItem>
+                  <SelectItem value="department">Department-Specific</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="block mb-2">Faculty Filter</Label>
+              <Select
+                value={facultyFilter}
+                onValueChange={setFacultyFilter}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All Faculties" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Faculties</SelectItem>
+                  {faculties.map(fac => (
+                    <SelectItem key={fac.id} value={fac.id.toString()}>
+                      {fac.faculty_code} - {fac.faculty_name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div className="flex gap-2">
-              <Button
-                onClick={loadRubrics}
-                disabled={isLoading}
-                variant="outline"
-                size="sm"
-              >
-                <RefreshCw
-                  className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
-                />
-              </Button>
+              <div className="flex-1">
+                <Label className="block mb-2">Department Filter</Label>
+                <Select
+                  value={departmentFilter}
+                  onValueChange={setDepartmentFilter}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Departments" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {departments.map(dept => (
+                      <SelectItem key={dept.id} value={dept.id.toString()}>
+                        {dept.department_shortname || dept.department_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-              {canWrite() && (
-                <Button onClick={handleCreateDialog} size="sm">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Rubrics
+              <div className="flex items-end gap-1">
+                <Button
+                  onClick={loadRubrics}
+                  disabled={isLoading}
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10 shrink-0"
+                >
+                  <RefreshCw
+                    className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
+                  />
                 </Button>
-              )}
+
+                {canWrite() && (
+                  <Button onClick={handleCreateDialog} className="h-10 shrink-0">
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </CardContent>
@@ -440,69 +559,89 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
               </CardContent>
             </Card>
           ) : (
-            filteredRubrics.map(rubric => (
-              <Card
-                key={rubric.id}
-                className="transition-shadow hover:shadow-md"
-              >
-                <CardContent className="p-6">
-                  <div className="flex flex-col gap-4 lg:flex-row">
-                    {/* Rubric Content */}
-                    <div className="flex-1 space-y-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge
-                          variant="outline"
-                          className="text-blue-700 border-blue-200 bg-blue-50"
-                        >
-                          <Building2 className="w-3 h-3 mr-1" />
-                          {rubric.department_shortname}
-                        </Badge>
-                        <Badge
-                          variant="outline"
-                          className="text-green-700 border-green-200 bg-green-50"
-                        >
-                          <Award className="w-3 h-3 mr-1" />
-                          {rubric.marks} marks
-                        </Badge>
+            filteredRubrics.map(rubric => {
+              const isFacultyScope = Boolean(rubric.faculty);
+
+              return (
+                <Card
+                  key={rubric.id}
+                  className="transition-shadow hover:shadow-md border-l-4"
+                  style={{
+                    borderLeftColor: isFacultyScope ? '#9333ea' : '#3b82f6',
+                  }}
+                >
+                  <CardContent className="p-6">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+                      {/* Rubric Content */}
+                      <div className="flex-1 space-y-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {isFacultyScope ? (
+                            <Badge
+                              variant="outline"
+                              className="text-purple-700 border-purple-300 bg-purple-50 font-semibold flex items-center gap-1"
+                            >
+                              <GraduationCap className="w-3.5 h-3.5" />
+                              Faculty Level (Shared): {rubric.faculty_code || rubric.faculty_name}
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="text-blue-700 border-blue-300 bg-blue-50 font-semibold flex items-center gap-1"
+                            >
+                              <Building2 className="w-3.5 h-3.5" />
+                              Department: {rubric.department_shortname || rubric.department_name}
+                            </Badge>
+                          )}
+
+                          <Badge
+                            variant="outline"
+                            className="text-emerald-700 border-emerald-200 bg-emerald-50"
+                          >
+                            <Award className="w-3 h-3 mr-1" />
+                            {rubric.marks} marks
+                          </Badge>
+                        </div>
+
+                        <div>
+                          <h3 className="text-base font-semibold text-gray-900">
+                            {rubric.rubrics}
+                          </h3>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {isFacultyScope
+                              ? `Applies to all departments under ${rubric.faculty_name || rubric.faculty_code}`
+                              : `Specific to ${rubric.department_name}`}
+                          </p>
+                        </div>
                       </div>
 
-                      <div>
-                        <h3 className="mb-1 font-medium text-gray-900">
-                          {rubric.rubrics}
-                        </h3>
-                        <p className="text-sm text-gray-600">
-                          {rubric.department_name}
-                        </p>
-                      </div>
+                      {/* Actions */}
+                      {canWrite() && (
+                        <div className="flex gap-2 lg:flex-row">
+                          <Button
+                            onClick={() => openEditDialog(rubric)}
+                            variant="outline"
+                            size="sm"
+                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                          >
+                            <Edit className="w-4 h-4 mr-1" />
+                            Edit
+                          </Button>
+                          <Button
+                            onClick={() => handleDelete(rubric.id)}
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Delete
+                          </Button>
+                        </div>
+                      )}
                     </div>
-
-                    {/* Actions */}
-                    {canWrite() && (
-                      <div className="flex gap-2 lg:flex-col">
-                        <Button
-                          onClick={() => openEditDialog(rubric)}
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 text-blue-600 lg:flex-none hover:text-blue-700 hover:bg-blue-50"
-                        >
-                          <Edit className="w-4 h-4 mr-2" />
-                          Edit
-                        </Button>
-                        <Button
-                          onClick={() => handleDelete(rubric.id)}
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 text-red-600 lg:flex-none hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                  </CardContent>
+                </Card>
+              );
+            })
           )}
         </div>
       )}
@@ -513,42 +652,94 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
           <DialogHeader>
             <DialogTitle>Create Viva Rubrics</DialogTitle>
             <DialogDescription>
-              Add new viva rubrics for a department.
+              Define viva assessment criteria at Faculty or Department level.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Scope Selection */}
             <div className="space-y-2">
-              <Label htmlFor="create-department">Department</Label>
-              <Select
-                value={formData.department}
-                onValueChange={value =>
-                  setFormData({ ...formData, department: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select department" />
-                </SelectTrigger>
-                <SelectContent>
-                  {departments &&
-                    departments.map(dept => (
-                      <SelectItem key={dept.id} value={dept.id.toString()}>
-                        {dept.department_shortname} - {dept.department_name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              <Label>Scope Type</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={formScope === 'faculty' ? 'default' : 'outline'}
+                  onClick={() => setFormScope('faculty')}
+                  className="flex items-center gap-1.5"
+                >
+                  <GraduationCap className="w-4 h-4" />
+                  Faculty Level
+                </Button>
+                <Button
+                  type="button"
+                  variant={formScope === 'department' ? 'default' : 'outline'}
+                  onClick={() => setFormScope('department')}
+                  className="flex items-center gap-1.5"
+                >
+                  <Building2 className="w-4 h-4" />
+                  Department Level
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {formScope === 'faculty'
+                  ? 'All departments under this faculty inherit these rubrics unless overridden.'
+                  : 'Specific rubric applied solely to this selected department.'}
+              </p>
             </div>
 
+            {formScope === 'faculty' ? (
+              <div className="space-y-2">
+                <Label htmlFor="create-faculty">Faculty</Label>
+                <Select
+                  value={formData.faculty}
+                  onValueChange={value =>
+                    setFormData({ ...formData, faculty: value })
+                  }
+                >
+                  <SelectTrigger id="create-faculty">
+                    <SelectValue placeholder="Select faculty" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {faculties.map(fac => (
+                      <SelectItem key={fac.id} value={fac.id.toString()}>
+                        {fac.faculty_code} - {fac.faculty_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="create-department">Department</Label>
+                <Select
+                  value={formData.department}
+                  onValueChange={value =>
+                    setFormData({ ...formData, department: value })
+                  }
+                >
+                  <SelectTrigger id="create-department">
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map(dept => (
+                      <SelectItem key={dept.id} value={dept.id.toString()}>
+                        {dept.department_shortname || dept.department_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-2">
-              <Label htmlFor="create-rubrics">Rubrics</Label>
+              <Label htmlFor="create-rubrics">Rubrics Criterion</Label>
               <Input
                 id="create-rubrics"
                 value={formData.rubrics}
                 onChange={e =>
                   setFormData({ ...formData, rubrics: e.target.value })
                 }
-                placeholder="Enter rubrics name"
+                placeholder="e.g. Technical Communication & Problem Solving"
                 required
               />
             </div>
@@ -562,13 +753,13 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
                 onChange={e =>
                   setFormData({ ...formData, marks: e.target.value })
                 }
-                placeholder="Enter marks"
+                placeholder="Enter marks (e.g. 10)"
                 min="1"
                 required
               />
             </div>
 
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 pt-2">
               <Button
                 type="button"
                 variant="outline"
@@ -592,35 +783,82 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
           <DialogHeader>
             <DialogTitle>Edit Viva Rubrics</DialogTitle>
             <DialogDescription>
-              Update the viva rubrics information.
+              Update rubric criterion or assigned scope.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleEdit} className="space-y-4">
+            {/* Scope Selection */}
             <div className="space-y-2">
-              <Label htmlFor="edit-department">Department</Label>
-              <Select
-                value={formData.department}
-                onValueChange={value =>
-                  setFormData({ ...formData, department: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select department" />
-                </SelectTrigger>
-                <SelectContent>
-                  {departments &&
-                    departments.map(dept => (
-                      <SelectItem key={dept.id} value={dept.id.toString()}>
-                        {dept.department_shortname} - {dept.department_name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              <Label>Scope Type</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={formScope === 'faculty' ? 'default' : 'outline'}
+                  onClick={() => setFormScope('faculty')}
+                  className="flex items-center gap-1.5"
+                >
+                  <GraduationCap className="w-4 h-4" />
+                  Faculty Level
+                </Button>
+                <Button
+                  type="button"
+                  variant={formScope === 'department' ? 'default' : 'outline'}
+                  onClick={() => setFormScope('department')}
+                  className="flex items-center gap-1.5"
+                >
+                  <Building2 className="w-4 h-4" />
+                  Department Level
+                </Button>
+              </div>
             </div>
 
+            {formScope === 'faculty' ? (
+              <div className="space-y-2">
+                <Label htmlFor="edit-faculty">Faculty</Label>
+                <Select
+                  value={formData.faculty}
+                  onValueChange={value =>
+                    setFormData({ ...formData, faculty: value })
+                  }
+                >
+                  <SelectTrigger id="edit-faculty">
+                    <SelectValue placeholder="Select faculty" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {faculties.map(fac => (
+                      <SelectItem key={fac.id} value={fac.id.toString()}>
+                        {fac.faculty_code} - {fac.faculty_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="edit-department">Department</Label>
+                <Select
+                  value={formData.department}
+                  onValueChange={value =>
+                    setFormData({ ...formData, department: value })
+                  }
+                >
+                  <SelectTrigger id="edit-department">
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map(dept => (
+                      <SelectItem key={dept.id} value={dept.id.toString()}>
+                        {dept.department_shortname || dept.department_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-2">
-              <Label htmlFor="edit-rubrics">Rubrics</Label>
+              <Label htmlFor="edit-rubrics">Rubrics Criterion</Label>
               <Input
                 id="edit-rubrics"
                 value={formData.rubrics}
@@ -647,7 +885,7 @@ export function VivaManagement({ gradientClass }: VivaManagementProps) {
               />
             </div>
 
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 pt-2">
               <Button
                 type="button"
                 variant="outline"
