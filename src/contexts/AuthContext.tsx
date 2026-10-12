@@ -37,6 +37,14 @@ interface User {
     department_name: string;
     department_shortname: string;
   };
+  access_type?: string;
+  is_global_access?: boolean;
+  faculty_details?: {
+    id: number;
+    faculty_name: string;
+    faculty_shortname: string;
+  };
+  faculty_id?: number;
 }
 
 interface AuthContextType {
