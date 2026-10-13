@@ -134,6 +134,9 @@ const AllResults: React.FC = () => {
   // Filters
   const [draftSearch, setDraftSearch] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
+  const [semesterOptions, setSemesterOptions] = useState<string[]>([]);
+  const [draftFilterSemester, setDraftFilterSemester] = useState<string>('all');
+  const [appliedFilterSemester, setAppliedFilterSemester] = useState<string>('all');
   const [draftFilterExamId, setDraftFilterExamId] = useState<string>('all');
   const [appliedFilterExamId, setAppliedFilterExamId] = useState<string>('all');
   const [draftFilterDepartmentId, setDraftFilterDepartmentId] = useState<string>('all');
@@ -172,6 +175,7 @@ const AllResults: React.FC = () => {
     activeTab,
     page,
     appliedSearch,
+    appliedFilterSemester,
     appliedFilterExamId,
     appliedFilterDepartmentId,
     appliedFilterFacultyId,
@@ -180,9 +184,30 @@ const AllResults: React.FC = () => {
 
   const loadInitialData = async () => {
     try {
-      await Promise.all([loadDepartments(), loadFaculties(), loadExams()]);
+      await Promise.all([loadDepartments(), loadFaculties(), loadExams(), loadSemesterOptions()]);
     } catch (error) {
       console.error('Error loading initial lookup data:', error);
+    }
+  };
+
+  const loadSemesterOptions = async () => {
+    try {
+      const params: any = {};
+      if (isDepartmentUser && user?.department_details?.id) {
+        params.department_id = user.department_details.id;
+      } else if (draftFilterDepartmentId && draftFilterDepartmentId !== 'all') {
+        params.department_id = draftFilterDepartmentId;
+      }
+      if (isFacultyUser && user?.faculty_details?.id) {
+        params.faculty_id = user.faculty_details.id;
+      } else if (draftFilterFacultyId && draftFilterFacultyId !== 'all') {
+        params.faculty_id = draftFilterFacultyId;
+      }
+      const response = await admissionResultsAPI.getSemesterOptions(params);
+      const sems = response?.semesters || [];
+      setSemesterOptions(sems);
+    } catch (error: any) {
+      console.error('Error loading semester options:', error);
     }
   };
 
@@ -227,6 +252,7 @@ const AllResults: React.FC = () => {
       params.result_status = activeTab;
 
       if (appliedSearch) params.search = appliedSearch;
+      if (appliedFilterSemester && appliedFilterSemester !== 'all') params.semester = appliedFilterSemester;
       if (appliedFilterExamId && appliedFilterExamId !== 'all') params.exam_id = appliedFilterExamId;
 
       // Access-scope enforcement
@@ -270,6 +296,7 @@ const AllResults: React.FC = () => {
   const handleSearch = () => {
     setPage(1);
     setAppliedSearch(draftSearch.trim());
+    setAppliedFilterSemester(draftFilterSemester);
     setAppliedFilterExamId(draftFilterExamId);
     setAppliedFilterDepartmentId(draftFilterDepartmentId);
     setAppliedFilterFacultyId(draftFilterFacultyId);
@@ -279,6 +306,8 @@ const AllResults: React.FC = () => {
   const handleClearFilters = () => {
     setDraftSearch('');
     setAppliedSearch('');
+    setDraftFilterSemester('all');
+    setAppliedFilterSemester('all');
     setDraftFilterExamId('all');
     setAppliedFilterExamId('all');
     setDraftFilterDepartmentId('all');
@@ -455,6 +484,7 @@ const AllResults: React.FC = () => {
 
   const hasAppliedFilters =
     appliedSearch ||
+    appliedFilterSemester !== 'all' ||
     appliedFilterExamId !== 'all' ||
     appliedFilterDepartmentId !== 'all' ||
     appliedFilterFacultyId !== 'all';
@@ -568,7 +598,7 @@ const AllResults: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="px-4 pt-3.5 pb-4 sm:px-5">
-          <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-2 xl:grid-cols-5">
             {/* Search */}
             <div className="min-w-0 space-y-1.5 md:col-span-2 xl:col-span-1">
               <label className="text-xs font-semibold uppercase text-gray-600">Search</label>
@@ -584,6 +614,24 @@ const AllResults: React.FC = () => {
                   className="pl-9 h-9 text-sm"
                 />
               </div>
+            </div>
+
+            {/* Semester Filter */}
+            <div className="min-w-0 space-y-1.5">
+              <label className="text-xs font-semibold uppercase text-gray-600">Semester</label>
+              <Select value={draftFilterSemester} onValueChange={setDraftFilterSemester}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="All Semesters" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Semesters</SelectItem>
+                  {semesterOptions.map((sem) => (
+                    <SelectItem key={sem} value={sem}>
+                      {sem}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Exam Filter */}
@@ -657,7 +705,7 @@ const AllResults: React.FC = () => {
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-2 md:col-span-2 xl:col-span-4 justify-end pt-1">
+            <div className="flex items-center gap-2 md:col-span-2 xl:col-span-5 justify-end pt-1">
               <Button
                 onClick={handleSearch}
                 disabled={isLoading}

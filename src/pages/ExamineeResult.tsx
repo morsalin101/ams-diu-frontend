@@ -102,7 +102,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
   }, [topCandidateCount]);
 
   useEffect(() => {
-    if (!hasReadAccess || !department?.id) {
+    if (!hasReadAccess || isDepartmentLoading) {
       return;
     }
 
@@ -110,9 +110,8 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
 
     const loadSemesterOptions = async () => {
       try {
-        const response = await admissionResultsAPI.getSemesterOptions({
-          department_id: department.id,
-        });
+        const params: any = department?.id ? { department_id: department.id } : {};
+        const response = await admissionResultsAPI.getSemesterOptions(params);
         const semesters = response?.semesters || [];
 
         if (!isMounted) {
@@ -137,7 +136,7 @@ export function ExamineeResult({ gradientClass = "" }: ExamineeResultProps) {
     return () => {
       isMounted = false;
     };
-  }, [hasReadAccess, department?.id, selectedSemester]);
+  }, [hasReadAccess, department?.id, isDepartmentLoading, selectedSemester]);
 
   useEffect(() => {
     if (!hasReadAccess || !department?.id || !selectedSemester) {

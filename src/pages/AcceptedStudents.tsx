@@ -374,19 +374,13 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
     let isMounted = true;
 
     const loadSemesterOptions = async () => {
-      if (!department?.id) {
-        setSemesterOptions([]);
-        setSelectedSemester("");
-        setResults([]);
-        setSummary(DEFAULT_SUMMARY);
-        setConfigurationMissing(false);
+      if (isDepartmentLoading) {
         return;
       }
 
       try {
-        const response = await admissionResultsAPI.getSemesterOptions({
-          department_id: department.id,
-        });
+        const params: any = department?.id ? { department_id: department.id } : {};
+        const response = await admissionResultsAPI.getSemesterOptions(params);
         const semesters = response?.semesters || [];
 
         if (!isMounted) {
@@ -434,7 +428,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
     return () => {
       isMounted = false;
     };
-  }, [hasReadAccess, department?.id]);
+  }, [hasReadAccess, department?.id, isDepartmentLoading]);
 
   useEffect(() => {
     setResults([]);
