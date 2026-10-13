@@ -10,6 +10,13 @@ import { Badge } from './ui/badge';
 import { UserPlus, Search, Loader2, Users, FileText } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
+interface DepartmentChoice {
+  department_id: number;
+  priority: number;
+  department_name?: string;
+  department_shortname?: string;
+}
+
 interface Student {
   id: number;
   username: string;
@@ -17,6 +24,7 @@ interface Student {
   full_name: string;
   email: string;
   department_shortname?: string;
+  department_choices?: DepartmentChoice[];
   registration_semester: string;
   ssc?: number;
   hsc?: number;
@@ -154,11 +162,18 @@ export function StudentAssignmentDialog({
     const username = student.username || '';
     const formId = student.f_id || '';
     const registrationSemester = student.registration_semester || '';
+    const deptShortname = student.department_shortname || '';
+    const choicesText = (student.department_choices || [])
+      .map(c => `${c.department_shortname || ''} ${c.department_name || ''}`)
+      .join(' ');
+
     const matchesSearch = !studentSearchTerm || 
       fullName.toLowerCase().includes(searchText) ||
       username.toLowerCase().includes(searchText) ||
       formId.toLowerCase().includes(searchText) ||
-      registrationSemester.toLowerCase().includes(searchText);
+      registrationSemester.toLowerCase().includes(searchText) ||
+      deptShortname.toLowerCase().includes(searchText) ||
+      choicesText.toLowerCase().includes(searchText);
 
     const matchesSemester =
       semesterFilter === 'all' || registrationSemester === semesterFilter;
@@ -368,7 +383,29 @@ export function StudentAssignmentDialog({
                             <TableCell className="font-medium whitespace-nowrap">{student.full_name}</TableCell>
                             <TableCell className="font-mono text-sm whitespace-nowrap">{student.f_id}</TableCell>
                             <TableCell className="text-gray-600 whitespace-nowrap">@{student.username}</TableCell>
-                            <TableCell className="text-gray-600 whitespace-nowrap">{student.department_shortname || 'N/A'}</TableCell>
+                            <TableCell className="text-gray-600 whitespace-nowrap">
+                              {student.department_choices && student.department_choices.length > 0 ? (
+                                <div className="flex flex-wrap items-center gap-1">
+                                  {student.department_choices
+                                    .slice()
+                                    .sort((a, b) => (a.priority || 0) - (b.priority || 0))
+                                    .map((choice) => (
+                                      <span
+                                        key={choice.department_id}
+                                        className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-800 border border-slate-200"
+                                        title={`Priority ${choice.priority}: ${choice.department_name || choice.department_shortname || ''}`}
+                                      >
+                                        <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-blue-600 text-[9px] font-bold text-white">
+                                          {choice.priority}
+                                        </span>
+                                        <span>{choice.department_shortname || `Dept#${choice.department_id}`}</span>
+                                      </span>
+                                    ))}
+                                </div>
+                              ) : (
+                                <span>{student.department_shortname || 'N/A'}</span>
+                              )}
+                            </TableCell>
                             <TableCell className="text-gray-600 whitespace-nowrap">{student.registration_semester || 'N/A'}</TableCell>
                             <TableCell className="text-center text-xs text-gray-500">
                               {new Date(student.created_at).toLocaleDateString()}

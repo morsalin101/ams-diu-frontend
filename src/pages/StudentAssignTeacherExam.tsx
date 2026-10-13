@@ -38,6 +38,13 @@ const sortAssignmentsByLatest = (list: StudentAssignment[]) =>
     return bTime - aTime;
   });
 
+interface DepartmentChoice {
+  department_id: number;
+  priority: number;
+  department_name?: string;
+  department_shortname?: string;
+}
+
 interface StudentAssignment {
   id: number;
   student: number;
@@ -49,6 +56,8 @@ interface StudentAssignment {
   student_full_name: string;
   student_f_id: string;
   student_registration_semester: string;
+  student_department_shortname?: string;
+  student_department_choices?: DepartmentChoice[];
   teacher_username: string;
   exam_department: string;
   exam_semester: string;
@@ -61,6 +70,7 @@ interface Student {
   full_name: string;
   email: string;
   department_shortname?: string;
+  department_choices?: DepartmentChoice[];
   registration_semester: string;
   ssc?: number;
   hsc?: number;

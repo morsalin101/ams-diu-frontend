@@ -174,43 +174,50 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
     return examConfig.duration_minutes;
   };
 
-  // Load subjects for a department
+  // Load subjects for a department (inherited via parent faculty)
   const loadDepartmentSubjects = async (departmentId: number) => {
     try {
       setIsLoadingSubjects(true);
       const response = await subjectDepartmentAPI.getDepartmentSubjects(departmentId);
       
-      let subjectIds: number[] = [];
+      let subjectList: any[] = [];
       if (response && (response.success !== false)) {
         const data = response.data || response;
-        if (data.subject_ids && data.subject_ids.length > 0) {
-          subjectIds = data.subject_ids;
+        if (data.subjects && Array.isArray(data.subjects) && data.subjects.length > 0) {
+          subjectList = data.subjects;
+        } else if (data.subject_ids && data.subject_ids.length > 0) {
+          const allSubjectsResponse = await subjectAPI.getAllSubjects();
+          const allSubjects = allSubjectsResponse.success ? allSubjectsResponse.data : allSubjectsResponse;
+          subjectList = (allSubjects || []).filter((subject: any) => 
+            data.subject_ids.includes(subject.id)
+          );
         }
       }
 
       // If department has no mapped subjects, fallback to user's assigned faculty
-      if (subjectIds.length === 0 && (user?.faculty_details?.id || user?.faculty_id)) {
+      if (subjectList.length === 0 && (user?.faculty_details?.id || user?.faculty_id)) {
         const facultyId = user.faculty_details?.id || user.faculty_id;
         try {
           const facRes = await subjectFacultyAPI.getFacultySubjects(facultyId);
-          if (facRes && facRes.success && facRes.data?.subject_ids) {
-            subjectIds = facRes.data.subject_ids;
+          if (facRes && facRes.success && facRes.data) {
+            if (facRes.data.subjects && Array.isArray(facRes.data.subjects)) {
+              subjectList = facRes.data.subjects;
+            } else if (facRes.data.subject_ids) {
+              const allSubjectsResponse = await subjectAPI.getAllSubjects();
+              const allSubjects = allSubjectsResponse.success ? allSubjectsResponse.data : allSubjectsResponse;
+              subjectList = (allSubjects || []).filter((s: any) => facRes.data.subject_ids.includes(s.id));
+            }
           }
         } catch {
           // ignore fallback error
         }
       }
 
-      if (subjectIds.length > 0) {
-        const allSubjectsResponse = await subjectAPI.getAllSubjects();
-        const allSubjects = allSubjectsResponse.success ? allSubjectsResponse.data : allSubjectsResponse;
-        const filteredSubjects = allSubjects.filter((subject: any) => 
-          subjectIds.includes(subject.id)
-        );
-        setDepartmentSubjects(filteredSubjects);
+      if (subjectList.length > 0) {
+        setDepartmentSubjects(subjectList);
       } else {
         setDepartmentSubjects([]);
-        toast('No subjects mapped to this department');
+        toast('No subjects mapped to this department or its faculty');
       }
     } catch (error: any) {
       console.error('Error loading department subjects:', error);
@@ -364,7 +371,9 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
         faculty: chosenFaculty ? chosenFaculty.faculty_shortname : examConfig.faculty,
         questions: generatedQuestions.map(q => ({
           ...q,
-          department_shortname: chosenDept?.department_shortname || ''
+          department_shortname: examType === 'SCHEDULED'
+            ? (chosenDept?.department_shortname || q.department_shortname || '')
+            : (q.department_shortname || chosenFaculty?.faculty_shortname || '')
         })),
       };
 
@@ -489,6 +498,8 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
 
   const handleRefillMissingQuestions = async () => {
     const effectiveDeptId = examType === 'SCHEDULED' ? (selectedDepartmentId || user?.department_details?.id) : undefined;
+    const effectiveFacId = examType === 'CENTRAL' ? (selectedFacultyId || user?.faculty_details?.id) : undefined;
+    const chosenFaculty = facultyList.find(f => f.id === effectiveFacId);
 
     if (missingQuestionSlots.length === 0) {
       toast('No missing questions to regenerate');
@@ -506,7 +517,10 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
       for (const slot of slotsToFill) {
         try {
           const response = await examAPI.regenerateQuestion({
+            exam_type: examType,
             department_id: effectiveDeptId,
+            faculty_id: effectiveFacId,
+            faculty: chosenFaculty ? chosenFaculty.faculty_shortname : examConfig.faculty,
             subject: slot.subject,
             marks: slot.marks,
             language: examConfig.language,
@@ -549,6 +563,8 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
 
   const handleRegenerateQuestion = async (question: Question) => {
     const effectiveDeptId = examType === 'SCHEDULED' ? (selectedDepartmentId || user?.department_details?.id) : undefined;
+    const effectiveFacId = examType === 'CENTRAL' ? (selectedFacultyId || user?.faculty_details?.id) : undefined;
+    const chosenFaculty = facultyList.find(f => f.id === effectiveFacId);
 
     if (examSaved) {
       toast.error('Saved exams cannot be regenerated from this draft view.');
@@ -558,7 +574,10 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
     try {
       setRegeneratingQuestionId(question.id);
       const response = await examAPI.regenerateQuestion({
+        exam_type: examType,
         department_id: effectiveDeptId,
+        faculty_id: effectiveFacId,
+        faculty: chosenFaculty ? chosenFaculty.faculty_shortname : examConfig.faculty,
         subject: question.subject,
         marks: question.marks,
         language: examConfig.language,
@@ -682,6 +701,10 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
                     setExamType('SCHEDULED');
                     setSelectedSubjects([]);
                     setGeneratedQuestions([]);
+                    setMissingQuestionSlots([]);
+                    setExcludedQuestions([]);
+                    setShowQuestions(false);
+                    setExamSaved(false);
                   }}
                   className={`h-7 px-3 text-xs font-medium rounded ${
                     examType === 'SCHEDULED'
@@ -700,6 +723,10 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
                     setExamType('CENTRAL');
                     setSelectedSubjects([]);
                     setGeneratedQuestions([]);
+                    setMissingQuestionSlots([]);
+                    setExcludedQuestions([]);
+                    setShowQuestions(false);
+                    setExamSaved(false);
                   }}
                   title={isDepartmentUser ? 'Central exams require faculty or global access' : 'Central / Faculty-wide Exam'}
                   className={`h-7 px-3 text-xs font-medium rounded ${
@@ -727,6 +754,10 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
                     setSelectedDepartmentId(Number(val));
                     setSelectedSubjects([]);
                     setGeneratedQuestions([]);
+                    setMissingQuestionSlots([]);
+                    setExcludedQuestions([]);
+                    setShowQuestions(false);
+                    setExamSaved(false);
                   }}
                   disabled={!isSuperAdmin && Boolean(user?.department_details?.id)}
                 >
@@ -751,6 +782,10 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
                     setSelectedFacultyId(Number(val));
                     setSelectedSubjects([]);
                     setGeneratedQuestions([]);
+                    setMissingQuestionSlots([]);
+                    setExcludedQuestions([]);
+                    setShowQuestions(false);
+                    setExamSaved(false);
                   }}
                   disabled={!isSuperAdmin && Boolean(user?.faculty_details?.id && !user?.department_details?.id)}
                 >
@@ -900,7 +935,11 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
               <div className="py-8 text-center text-gray-500">
                 <BookOpen className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                 <p className="mb-2 font-medium">No subjects available</p>
-                <p className="text-sm">No subjects are mapped to your department</p>
+                <p className="text-sm">
+                  {examType === 'CENTRAL'
+                    ? 'No subjects are mapped to the selected faculty'
+                    : 'No subjects are mapped to your department'}
+                </p>
               </div>
             )}
           </div>

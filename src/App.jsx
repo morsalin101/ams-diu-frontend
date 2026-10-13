@@ -129,6 +129,7 @@ function ProtectedRoutes() {
         <Route path="/faculty-department-mapping" element={<FacultyDepartmentMapping />} />
         <Route path="/subject-management" element={<SubjectManagement />} />
         <Route path="/subject-department-mapping" element={<SubjectDepartmentMapping />} />
+        <Route path="/subject-faculty-mapping" element={<Navigate to="/subject-department-mapping" replace />} />
         <Route path="/subject-priority-mapping" element={<SubjectPriorityMapping />} />
         <Route path="/student-acceptance-criteria" element={<ThresholdManagement />} />
         <Route path="/threshold-management" element={<Navigate to="/student-acceptance-criteria" replace />} />

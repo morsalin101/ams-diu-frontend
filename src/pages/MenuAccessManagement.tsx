@@ -123,7 +123,7 @@ export function MenuAccessManagement() {
         { id: 9, label: 'Menu Access Management', link: '/menu-access-management', icon: 'Key', parent_id: null, order_index: 9, is_active: true },
         { id: 10, label: 'Department Management', link: '/department-management', icon: 'Building', parent_id: null, order_index: 10, is_active: true },
         { id: 11, label: 'Subject Management', link: '/subject-management', icon: 'BookOpen', parent_id: null, order_index: 11, is_active: true },
-        { id: 12, label: 'Subject Department Mapping', link: '/subject-department-mapping', icon: 'Layers', parent_id: null, order_index: 12, is_active: true }
+        { id: 12, label: 'Subject Faculty Mapping', link: '/subject-department-mapping', icon: 'Layers', parent_id: null, order_index: 12, is_active: true }
       ];
       
       setAllMenus(fallbackMenus);
