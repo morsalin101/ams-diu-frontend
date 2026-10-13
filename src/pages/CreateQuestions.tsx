@@ -174,43 +174,50 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
     return examConfig.duration_minutes;
   };
 
-  // Load subjects for a department
+  // Load subjects for a department (inherited via parent faculty)
   const loadDepartmentSubjects = async (departmentId: number) => {
     try {
       setIsLoadingSubjects(true);
       const response = await subjectDepartmentAPI.getDepartmentSubjects(departmentId);
       
-      let subjectIds: number[] = [];
+      let subjectList: any[] = [];
       if (response && (response.success !== false)) {
         const data = response.data || response;
-        if (data.subject_ids && data.subject_ids.length > 0) {
-          subjectIds = data.subject_ids;
+        if (data.subjects && Array.isArray(data.subjects) && data.subjects.length > 0) {
+          subjectList = data.subjects;
+        } else if (data.subject_ids && data.subject_ids.length > 0) {
+          const allSubjectsResponse = await subjectAPI.getAllSubjects();
+          const allSubjects = allSubjectsResponse.success ? allSubjectsResponse.data : allSubjectsResponse;
+          subjectList = (allSubjects || []).filter((subject: any) => 
+            data.subject_ids.includes(subject.id)
+          );
         }
       }
 
       // If department has no mapped subjects, fallback to user's assigned faculty
-      if (subjectIds.length === 0 && (user?.faculty_details?.id || user?.faculty_id)) {
+      if (subjectList.length === 0 && (user?.faculty_details?.id || user?.faculty_id)) {
         const facultyId = user.faculty_details?.id || user.faculty_id;
         try {
           const facRes = await subjectFacultyAPI.getFacultySubjects(facultyId);
-          if (facRes && facRes.success && facRes.data?.subject_ids) {
-            subjectIds = facRes.data.subject_ids;
+          if (facRes && facRes.success && facRes.data) {
+            if (facRes.data.subjects && Array.isArray(facRes.data.subjects)) {
+              subjectList = facRes.data.subjects;
+            } else if (facRes.data.subject_ids) {
+              const allSubjectsResponse = await subjectAPI.getAllSubjects();
+              const allSubjects = allSubjectsResponse.success ? allSubjectsResponse.data : allSubjectsResponse;
+              subjectList = (allSubjects || []).filter((s: any) => facRes.data.subject_ids.includes(s.id));
+            }
           }
         } catch {
           // ignore fallback error
         }
       }
 
-      if (subjectIds.length > 0) {
-        const allSubjectsResponse = await subjectAPI.getAllSubjects();
-        const allSubjects = allSubjectsResponse.success ? allSubjectsResponse.data : allSubjectsResponse;
-        const filteredSubjects = allSubjects.filter((subject: any) => 
-          subjectIds.includes(subject.id)
-        );
-        setDepartmentSubjects(filteredSubjects);
+      if (subjectList.length > 0) {
+        setDepartmentSubjects(subjectList);
       } else {
         setDepartmentSubjects([]);
-        toast('No subjects mapped to this department');
+        toast('No subjects mapped to this department or its faculty');
       }
     } catch (error: any) {
       console.error('Error loading department subjects:', error);
