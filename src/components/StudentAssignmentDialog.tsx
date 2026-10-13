@@ -6,7 +6,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Checkbox } from './ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import { Badge } from './ui/badge';
 import { UserPlus, Search, Loader2, Users, FileText } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Student {
   id: number;
@@ -41,6 +43,10 @@ interface Teacher {
 interface Schedule {
   id: number;
   exam: number;
+  exam_type?: 'SCHEDULED' | 'CENTRAL';
+  faculty_id?: number;
+  faculty_code?: string;
+  faculty_name?: string;
   exam_details: {
     id: number;
     department: string;
@@ -70,7 +76,8 @@ interface AssignmentSemesterError {
     username: string;
     f_id: string;
     full_name: string;
-    registration_semester: string;
+    registration_semester?: string;
+    reason?: string;
   }>;
 }
 
@@ -123,6 +130,13 @@ export function StudentAssignmentDialog({
   vivaAssignmentError,
   onClearAssignmentError
 }: StudentAssignmentDialogProps) {
+  const { user } = useAuth();
+  const userAccessType = (user?.access_type || '').toUpperCase();
+  const isSuperAdmin = user?.role_details?.role_name === 'superadmin' || user?.is_global_access || userAccessType === 'GLOBAL';
+  const isFacultyUser = userAccessType === 'FACULTY' || Boolean(user?.faculty_details?.id && !user?.department_details?.id);
+  const isDepartmentUser = !isSuperAdmin && !isFacultyUser;
+
+  const [examType, setExamType] = useState<'SCHEDULED' | 'CENTRAL'>('SCHEDULED');
   const [studentSearchTerm, setStudentSearchTerm] = useState('');
   const [semesterFilter, setSemesterFilter] = useState('all');
 
@@ -161,10 +175,13 @@ export function StudentAssignmentDialog({
       .filter(Boolean)
   )].sort((a, b) => a.localeCompare(b));
 
-  // Filter schedules based on date filter
+  // Filter schedules based on date filter and selected exam type
   const filteredSchedules = schedules
     .filter(schedule => {
-      return !filterDate || filterDate === 'all' || (filterDate === 'today' && isToday(schedule.created_at));
+      const matchesDate = !filterDate || filterDate === 'all' || (filterDate === 'today' && isToday(schedule.created_at));
+      const scheduleType = schedule.exam_type || (schedule.exam_details?.department?.startsWith('Central') ? 'CENTRAL' : 'SCHEDULED');
+      const matchesType = scheduleType === examType;
+      return matchesDate && matchesType;
     })
     .sort((a, b) => b.id - a.id);
 
@@ -439,9 +456,48 @@ export function StudentAssignmentDialog({
                   </div>
                 </div>
 
-                {/* Schedule Selection */}
+                {/* Exam Type Toggle & Schedule Selection */}
                 <div className="space-y-2 sm:space-y-3">
-                  <div className="text-base sm:text-lg font-medium">Schedule (shared by Written + Viva) *</div>
+                  <div className="flex items-center justify-between">
+                    <div className="text-base sm:text-lg font-medium">Exam Schedule *</div>
+                    <div className="inline-flex rounded-md shadow-sm border border-gray-300 bg-white p-0.5">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={examType === 'SCHEDULED' ? 'default' : 'ghost'}
+                        onClick={() => {
+                          setExamType('SCHEDULED');
+                          onClearAssignmentError?.();
+                          onAssignmentFormChange({ ...assignmentForm, schedule_id: '' });
+                        }}
+                        className={`h-7 px-2.5 text-xs font-medium rounded ${
+                          examType === 'SCHEDULED'
+                            ? 'bg-[#2E3094] text-white shadow'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        Scheduled
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={examType === 'CENTRAL' ? 'default' : 'ghost'}
+                        onClick={() => {
+                          setExamType('CENTRAL');
+                          onClearAssignmentError?.();
+                          onAssignmentFormChange({ ...assignmentForm, schedule_id: '' });
+                        }}
+                        title="Central / Faculty-wide Exam"
+                        className={`h-7 px-2.5 text-xs font-medium rounded ${
+                          examType === 'CENTRAL'
+                            ? 'bg-purple-700 text-white shadow'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        Central
+                      </Button>
+                    </div>
+                  </div>
                   <Select
                     value={assignmentForm.schedule_id}
                     onValueChange={(value) => {
@@ -558,7 +614,7 @@ export function StudentAssignmentDialog({
                       <ul className="text-sm text-red-700 space-y-1 max-h-32 overflow-y-auto">
                         {assignmentError.mismatched_students!.map((student) => (
                           <li key={student.id}>
-                            • {student.full_name} ({student.f_id}) — {student.registration_semester}
+                            • {student.full_name} ({student.f_id}) {student.reason ? `— ${student.reason}` : (student.registration_semester ? `— ${student.registration_semester}` : '')}
                           </li>
                         ))}
                       </ul>

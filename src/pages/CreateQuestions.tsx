@@ -5,11 +5,11 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Badge } from '../components/ui/badge';
-import { Settings, Building, Loader2, FileText, Plus, Trash2, Save, RefreshCw, AlertTriangle, BookOpen } from 'lucide-react';
+import { Settings, Building, Loader2, FileText, Plus, Trash2, Save, RefreshCw, AlertTriangle, BookOpen, Layers } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Textarea } from '../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { examAPI, subjectAPI, subjectDepartmentAPI } from '../services/api';
+import { examAPI, subjectAPI, subjectDepartmentAPI, subjectFacultyAPI, departmentAPI, facultyAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { buildAcademicSemesterOptions } from '../lib/semester';
@@ -49,11 +49,34 @@ interface ExamConfig {
   faculty: string;
 }
 
+interface DepartmentOption {
+  id: number;
+  department_name: string;
+  department_shortname: string;
+}
+
+interface FacultyOption {
+  id: number;
+  faculty_name: string;
+  faculty_shortname: string;
+}
+
 export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestionsProps) {
   const { user } = useAuth();
   const { canWrite, canRead } = usePermissions();
+
+  const userAccessType = (user?.access_type || '').toUpperCase();
+  const isSuperAdmin = user?.role_details?.role_name === 'superadmin' || user?.is_global_access || userAccessType === 'GLOBAL';
+  const isFacultyUser = userAccessType === 'FACULTY' || Boolean(user?.faculty_details?.id && !user?.department_details?.id);
+  const isDepartmentUser = !isSuperAdmin && !isFacultyUser;
   
   // State management
+  const [examType, setExamType] = useState<'SCHEDULED' | 'CENTRAL'>('SCHEDULED');
+  const [departmentList, setDepartmentList] = useState<DepartmentOption[]>([]);
+  const [facultyList, setFacultyList] = useState<FacultyOption[]>([]);
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | null>(user?.department_details?.id || null);
+  const [selectedFacultyId, setSelectedFacultyId] = useState<number | null>(user?.faculty_details?.id || null);
+
   const [departmentSubjects, setDepartmentSubjects] = useState<Subject[]>([]);
   const [selectedSubjects, setSelectedSubjects] = useState<Array<{ subject: string; marks: number }>>([]);
   const [generatedQuestions, setGeneratedQuestions] = useState<Question[]>([]);
@@ -83,6 +106,52 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
   const languages = ['english', 'both'];
   const semesters = buildAcademicSemesterOptions();
 
+  // Load faculties and departments for dropdowns
+  useEffect(() => {
+    const loadOrgEntities = async () => {
+      try {
+        const [depRes, facRes] = await Promise.all([
+          departmentAPI.getAllDepartments(),
+          facultyAPI.getAllFaculties(),
+        ]);
+        if (depRes?.data) setDepartmentList(depRes.data);
+        if (facRes?.data) setFacultyList(facRes.data);
+      } catch (err) {
+        console.error('Failed to load departments/faculties:', err);
+      }
+    };
+    loadOrgEntities();
+  }, []);
+
+  // Sync initial department / faculty IDs when user loads
+  useEffect(() => {
+    if (user?.department_details?.id && !selectedDepartmentId) {
+      setSelectedDepartmentId(user.department_details.id);
+    }
+    if (user?.faculty_details?.id && !selectedFacultyId) {
+      setSelectedFacultyId(user.faculty_details.id);
+    }
+  }, [user]);
+
+  // Load subjects whenever examType or selected target changes
+  useEffect(() => {
+    if (examType === 'SCHEDULED') {
+      const deptId = selectedDepartmentId || user?.department_details?.id;
+      if (deptId) {
+        loadDepartmentSubjects(deptId);
+      } else {
+        setDepartmentSubjects([]);
+      }
+    } else {
+      const facId = selectedFacultyId || user?.faculty_details?.id;
+      if (facId) {
+        loadFacultySubjects(facId);
+      } else {
+        setDepartmentSubjects([]);
+      }
+    }
+  }, [examType, selectedDepartmentId, selectedFacultyId, user]);
+
   const getLanguageLabel = (language: string) => {
     if (language === 'both') {
       return 'Both (Bangla & English)';
@@ -105,53 +174,53 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
     return examConfig.duration_minutes;
   };
 
-  // Load department subjects on component mount
-  useEffect(() => {
-    if (user?.department_details?.id) {
-      loadDepartmentSubjects(user.department_details.id);
-    }
-  }, [user]);
-
-  // Load subjects for user's department
+  // Load subjects for a department
   const loadDepartmentSubjects = async (departmentId: number) => {
     try {
       setIsLoadingSubjects(true);
       const response = await subjectDepartmentAPI.getDepartmentSubjects(departmentId);
       
+      let subjectIds: number[] = [];
       if (response && (response.success !== false)) {
         const data = response.data || response;
-        
-        // Handle the response format: {department_id, subject_ids, subjects}
         if (data.subject_ids && data.subject_ids.length > 0) {
-          // Get all subjects and filter by the subject_ids
-          const allSubjectsResponse = await subjectAPI.getAllSubjects();
-          const allSubjects = allSubjectsResponse.success ? allSubjectsResponse.data : allSubjectsResponse;
-          
-          const filteredSubjects = allSubjects.filter((subject: any) => 
-            data.subject_ids.includes(subject.id)
-          );
-          
-          setDepartmentSubjects(filteredSubjects);
-        } else {
-          // No subjects mapped to this department
-          setDepartmentSubjects([]);
-          toast.success('No subjects mapped to your department');
+          subjectIds = data.subject_ids;
         }
+      }
+
+      // If department has no mapped subjects, fallback to user's assigned faculty
+      if (subjectIds.length === 0 && (user?.faculty_details?.id || user?.faculty_id)) {
+        const facultyId = user.faculty_details?.id || user.faculty_id;
+        try {
+          const facRes = await subjectFacultyAPI.getFacultySubjects(facultyId);
+          if (facRes && facRes.success && facRes.data?.subject_ids) {
+            subjectIds = facRes.data.subject_ids;
+          }
+        } catch {
+          // ignore fallback error
+        }
+      }
+
+      if (subjectIds.length > 0) {
+        const allSubjectsResponse = await subjectAPI.getAllSubjects();
+        const allSubjects = allSubjectsResponse.success ? allSubjectsResponse.data : allSubjectsResponse;
+        const filteredSubjects = allSubjects.filter((subject: any) => 
+          subjectIds.includes(subject.id)
+        );
+        setDepartmentSubjects(filteredSubjects);
       } else {
-        throw new Error(response.message || 'Invalid response format');
+        setDepartmentSubjects([]);
+        toast('No subjects mapped to this department');
       }
     } catch (error: any) {
       console.error('Error loading department subjects:', error);
       toast.error('Failed to load department subjects');
       
-      // Fallback: try to load all subjects
       try {
         const subjectsResponse = await subjectAPI.getAllSubjects();
         const allSubjects = subjectsResponse.success ? subjectsResponse.data : subjectsResponse;
         setDepartmentSubjects(allSubjects);
-        toast.success('Loaded all subjects as fallback');
-      } catch (fallbackError) {
-        console.error('Fallback failed:', fallbackError);
+      } catch {
         setDepartmentSubjects([]);
       }
     } finally {
@@ -159,10 +228,45 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
     }
   };
 
+  // Load subjects mapped to a faculty (for Central exam)
+  const loadFacultySubjects = async (facultyId: number) => {
+    try {
+      setIsLoadingSubjects(true);
+      const facRes = await subjectFacultyAPI.getFacultySubjects(facultyId);
+      let subjectIds: number[] = [];
+      if (facRes && facRes.success && facRes.data?.subject_ids) {
+        subjectIds = facRes.data.subject_ids;
+      }
+
+      if (subjectIds.length > 0) {
+        const allSubjectsResponse = await subjectAPI.getAllSubjects();
+        const allSubjects = allSubjectsResponse.success ? allSubjectsResponse.data : allSubjectsResponse;
+        const filteredSubjects = allSubjects.filter((subject: any) => 
+          subjectIds.includes(subject.id)
+        );
+        setDepartmentSubjects(filteredSubjects);
+      } else {
+        setDepartmentSubjects([]);
+        toast('No subjects mapped to this faculty');
+      }
+    } catch (error: any) {
+      console.error('Error loading faculty subjects:', error);
+      toast.error('Failed to load faculty subjects');
+      setDepartmentSubjects([]);
+    } finally {
+      setIsLoadingSubjects(false);
+    }
+  };
+
   // Generate exam questions
   const handleCreateExam = async () => {
-    if (!user?.department_details?.id) {
-      toast.error('User department not found');
+    if (examType === 'SCHEDULED' && !selectedDepartmentId && !user?.department_details?.id) {
+      toast.error('Please select a department');
+      return;
+    }
+
+    if (examType === 'CENTRAL' && !selectedFacultyId && !user?.faculty_details?.id) {
+      toast.error('Please select a faculty');
       return;
     }
 
@@ -173,11 +277,6 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
 
     if (!examConfig.semester) {
       toast.error('Please select a semester');
-      return;
-    }
-
-    if (!user?.department_details?.id) {
-      toast.error('User department not found');
       return;
     }
 
@@ -192,12 +291,18 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
 
     try {
       setIsLoading(true);
+      const effectiveDeptId = examType === 'SCHEDULED' ? (selectedDepartmentId || user?.department_details?.id) : undefined;
+      const effectiveFacId = examType === 'CENTRAL' ? (selectedFacultyId || user?.faculty_details?.id) : undefined;
+      const chosenFaculty = facultyList.find(f => f.id === effectiveFacId);
+
       const examData = {
-        department_id: user.department_details.id,
+        exam_type: examType,
+        department_id: effectiveDeptId,
+        faculty_id: effectiveFacId,
         semester: examConfig.semester,
         duration_minutes: durationMinutes,
         language: examConfig.language,
-        faculty: examConfig.faculty,
+        faculty: chosenFaculty ? chosenFaculty.faculty_shortname : examConfig.faculty,
         subjects: selectedSubjects,
         regenerate: false,
         exclude_questions: []
@@ -224,7 +329,7 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
 
   // Save exam
   const handleSaveExam = async () => {
-    if (!user?.department_details?.id || generatedQuestions.length === 0) return;
+    if (generatedQuestions.length === 0) return;
 
     if (!examConfig.semester) {
       toast.error('Please select a semester');
@@ -236,20 +341,31 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
 
     try {
       setIsLoading(true);
+      const effectiveDeptId = examType === 'SCHEDULED' ? (selectedDepartmentId || user?.department_details?.id) : undefined;
+      const effectiveFacId = examType === 'CENTRAL' ? (selectedFacultyId || user?.faculty_details?.id) : undefined;
+      const chosenDept = departmentList.find(d => d.id === effectiveDeptId) || user?.department_details;
+      const chosenFaculty = facultyList.find(f => f.id === effectiveFacId);
+
+      const departmentLabel = examType === 'CENTRAL'
+        ? `Central (${chosenFaculty?.faculty_shortname || 'Faculty'})`
+        : (chosenDept?.department_name || 'Department');
+
       const examData = {
-        department: user.department_details.department_name,
+        exam_type: examType,
+        faculty_id: effectiveFacId,
+        department_id: effectiveDeptId,
+        department: departmentLabel,
         semester: examConfig.semester,
         total_questions: generatedQuestions.length,
         total_marks: totalMarks,
         duration_minutes: durationMinutes,
-        except_semesters: [], // You can add logic to fill this if needed
+        except_semesters: [],
         language: examConfig.language,
-        faculty: examConfig.faculty,
+        faculty: chosenFaculty ? chosenFaculty.faculty_shortname : examConfig.faculty,
         questions: generatedQuestions.map(q => ({
           ...q,
-          department_shortname: user.department_details?.department_shortname || ''
+          department_shortname: chosenDept?.department_shortname || ''
         })),
-        // Optionally add other fields as needed
       };
 
       const response = await examAPI.saveGeneratedExam(examData);
@@ -269,19 +385,23 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
 
   // Regenerate exam
   const handleRegenerateExam = async () => {
-    if (!user?.department_details?.id) return;
-
     const durationMinutes = getValidatedDurationMinutes();
     if (durationMinutes === null) return;
 
     try {
       setIsLoading(true);
+      const effectiveDeptId = examType === 'SCHEDULED' ? (selectedDepartmentId || user?.department_details?.id) : undefined;
+      const effectiveFacId = examType === 'CENTRAL' ? (selectedFacultyId || user?.faculty_details?.id) : undefined;
+      const chosenFaculty = facultyList.find(f => f.id === effectiveFacId);
+
       const regenerateData = {
-        department_id: user.department_details.id,
+        exam_type: examType,
+        department_id: effectiveDeptId,
+        faculty_id: effectiveFacId,
         semester: examConfig.semester,
         duration_minutes: durationMinutes,
         language: examConfig.language,
-        faculty: examConfig.faculty,
+        faculty: chosenFaculty ? chosenFaculty.faculty_shortname : examConfig.faculty,
         subjects: selectedSubjects,
         regenerate: true,
         exclude_questions: excludedQuestions
@@ -368,10 +488,7 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
   };
 
   const handleRefillMissingQuestions = async () => {
-    if (!user?.department_details?.id) {
-      toast.error('User department not found');
-      return;
-    }
+    const effectiveDeptId = examType === 'SCHEDULED' ? (selectedDepartmentId || user?.department_details?.id) : undefined;
 
     if (missingQuestionSlots.length === 0) {
       toast('No missing questions to regenerate');
@@ -389,7 +506,7 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
       for (const slot of slotsToFill) {
         try {
           const response = await examAPI.regenerateQuestion({
-            department_id: user.department_details.id,
+            department_id: effectiveDeptId,
             subject: slot.subject,
             marks: slot.marks,
             language: examConfig.language,
@@ -431,10 +548,7 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
   };
 
   const handleRegenerateQuestion = async (question: Question) => {
-    if (!user?.department_details?.id) {
-      toast.error('User department not found');
-      return;
-    }
+    const effectiveDeptId = examType === 'SCHEDULED' ? (selectedDepartmentId || user?.department_details?.id) : undefined;
 
     if (examSaved) {
       toast.error('Saved exams cannot be regenerated from this draft view.');
@@ -444,7 +558,7 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
     try {
       setRegeneratingQuestionId(question.id);
       const response = await examAPI.regenerateQuestion({
-        department_id: user.department_details.id,
+        department_id: effectiveDeptId,
         subject: question.subject,
         marks: question.marks,
         language: examConfig.language,
@@ -512,6 +626,9 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
     setMissingQuestionSlots([]);
     setShowQuestions(false);
     setExamSaved(false);
+    setExamType('SCHEDULED');
+    setSelectedDepartmentId(user?.department_details?.id || null);
+    setSelectedFacultyId(user?.faculty_details?.id || null);
     setExamConfig({
       semester: '',
       duration_minutes: '',
@@ -537,7 +654,7 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {user?.department_details && (
+      {user?.department_details && examType === 'SCHEDULED' && (
         <div className="flex items-center gap-2 rounded-md border border-[#3a3ea5]/20 bg-[#3a3ea5]/5 px-3 py-2 text-sm font-medium text-slate-700">
           <Building className="w-4 h-4 text-[#3a3ea5]" />
           <span>
@@ -549,14 +666,108 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
       {/* Exam Configuration */}
       <Card className="border-2 border-gray-200">
         <CardHeader className="py-4 bg-gradient-to-r from-[#2E3094]/10 to-[#4C51BF]/10">
-          <CardTitle className="flex items-center gap-3">
-            <Settings className="h-5 w-5 text-[#4C51BF]" />
-            <span className="leading-none">Exam Configuration</span>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Settings className="h-5 w-5 text-[#4C51BF]" />
+              <span className="leading-none">Exam Configuration</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold uppercase text-slate-500">Exam Type:</span>
+              <div className="inline-flex rounded-md shadow-sm border border-gray-300 bg-white p-0.5">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={examType === 'SCHEDULED' ? 'default' : 'ghost'}
+                  onClick={() => {
+                    setExamType('SCHEDULED');
+                    setSelectedSubjects([]);
+                    setGeneratedQuestions([]);
+                  }}
+                  className={`h-7 px-3 text-xs font-medium rounded ${
+                    examType === 'SCHEDULED'
+                      ? 'bg-[#2E3094] text-white shadow'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Scheduled
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={isDepartmentUser}
+                  variant={examType === 'CENTRAL' ? 'default' : 'ghost'}
+                  onClick={() => {
+                    setExamType('CENTRAL');
+                    setSelectedSubjects([]);
+                    setGeneratedQuestions([]);
+                  }}
+                  title={isDepartmentUser ? 'Central exams require faculty or global access' : 'Central / Faculty-wide Exam'}
+                  className={`h-7 px-3 text-xs font-medium rounded ${
+                    examType === 'CENTRAL'
+                      ? 'bg-purple-700 text-white shadow'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Central
+                </Button>
+              </div>
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6 space-y-6">
           {/* Basic Configuration */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {/* Conditional Scope Target: Department for Scheduled, Faculty for Central */}
+            {examType === 'SCHEDULED' ? (
+              <div className="space-y-2">
+                <Label htmlFor="department_scope">Department</Label>
+                <Select
+                  value={selectedDepartmentId ? selectedDepartmentId.toString() : ''}
+                  onValueChange={(val) => {
+                    setSelectedDepartmentId(Number(val));
+                    setSelectedSubjects([]);
+                    setGeneratedQuestions([]);
+                  }}
+                  disabled={!isSuperAdmin && Boolean(user?.department_details?.id)}
+                >
+                  <SelectTrigger id="department_scope">
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departmentList.map(dep => (
+                      <SelectItem key={dep.id} value={dep.id.toString()}>
+                        {dep.department_shortname} - {dep.department_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="faculty_scope">Faculty (Central)</Label>
+                <Select
+                  value={selectedFacultyId ? selectedFacultyId.toString() : ''}
+                  onValueChange={(val) => {
+                    setSelectedFacultyId(Number(val));
+                    setSelectedSubjects([]);
+                    setGeneratedQuestions([]);
+                  }}
+                  disabled={!isSuperAdmin && Boolean(user?.faculty_details?.id && !user?.department_details?.id)}
+                >
+                  <SelectTrigger id="faculty_scope">
+                    <SelectValue placeholder="Select faculty" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {facultyList.map(fac => (
+                      <SelectItem key={fac.id} value={fac.id.toString()}>
+                        {fac.faculty_shortname} - {fac.faculty_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="semester">Semester</Label>
               <Select
@@ -608,23 +819,6 @@ export function CreateQuestions({ gradientClass: _gradientClass }: CreateQuestio
                     <SelectItem key={lang} value={lang}>
                       {getLanguageLabel(lang)}
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="faculty">Faculty</Label>
-              <Select
-                value={examConfig.faculty}
-                onValueChange={(value) => setExamConfig(prev => ({ ...prev, faculty: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {faculties.map(faculty => (
-                    <SelectItem key={faculty} value={faculty}>{faculty}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

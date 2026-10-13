@@ -6,8 +6,8 @@ import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
-import { Calendar, Clock, Building, Users, Plus, Loader2, Trash2, CheckCircle, FileText, RefreshCw, ArrowRight, Search, X } from 'lucide-react';
-import { examAPI, scheduleAPI } from '../services/api';
+import { Calendar, Clock, Building, Users, Plus, Loader2, Trash2, CheckCircle, FileText, RefreshCw, ArrowRight, Search, X, Filter } from 'lucide-react';
+import { examAPI, scheduleAPI, departmentAPI, facultyAPI } from '../services/api';
 import PaginationControls, { DEFAULT_PAGINATION, paginationFromDrf } from '../components/PaginationControls';
 import toast from 'react-hot-toast';
 
@@ -21,6 +21,11 @@ interface Exam {
   duration_minutes: number;
   except_semesters: string[];
   created_at: string;
+  exam_type?: 'SCHEDULED' | 'CENTRAL';
+  faculty?: string;
+  faculty_id?: number;
+  faculty_code?: string;
+  faculty_name?: string;
 }
 
 interface Schedule {
@@ -30,6 +35,22 @@ interface Schedule {
   end_time: string;
   is_active: boolean;
   created_at: string;
+  exam_type?: 'SCHEDULED' | 'CENTRAL';
+  faculty_id?: number;
+  faculty_code?: string;
+  faculty_name?: string;
+}
+
+interface DepartmentOption {
+  id: number;
+  department_name: string;
+  department_shortname: string;
+}
+
+interface FacultyOption {
+  id: number;
+  faculty_name: string;
+  faculty_shortname: string;
 }
 
 interface ExamScheduleProps {
@@ -43,17 +64,25 @@ const sortSchedulesByLatest = (scheduleList: Schedule[]) =>
     return bTime - aTime;
   });
 
-export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
+export function ExamSchedule({ gradientClass: _gradientClass }: ExamScheduleProps) {
   const [exams, setExams] = useState<Exam[]>([]);
   const [todaysExams, setTodaysExams] = useState<Exam[]>([]);
   const [filteredLeftExams, setFilteredLeftExams] = useState<Exam[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [scheduledExamIds, setScheduledExamIds] = useState<number[]>([]);
+  const [departments, setDepartments] = useState<DepartmentOption[]>([]);
+  const [faculties, setFaculties] = useState<FacultyOption[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isCreatingSchedule, setIsCreatingSchedule] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   
-  // Filter states
+  // Advanced Filter states
+  const [filterExamType, setFilterExamType] = useState<string>('all');
+  const [filterFaculty, setFilterFaculty] = useState<string>('all');
+  const [filterDepartment, setFilterDepartment] = useState<string>('all');
+  const [filterMarks, setFilterMarks] = useState<string>('');
+
+  // Left & Right filter states
   const [leftFilter, setLeftFilter] = useState<'today' | 'all' | 'unscheduled'>('today');
   const [draftRightFilter, setDraftRightFilter] = useState<'today' | 'all'>('all');
   const [appliedRightFilter, setAppliedRightFilter] = useState<'today' | 'all'>('all');
@@ -69,22 +98,45 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
   const [scheduleTime, setScheduleTime] = useState<string>('');
 
   useEffect(() => {
-    loadExams();
-    loadScheduleLookup();
+    loadFilterOptions();
   }, []);
 
   useEffect(() => {
+    loadExams();
+    loadScheduleLookup();
+  }, [filterExamType, filterFaculty, filterDepartment, filterMarks, reloadKey]);
+
+  useEffect(() => {
     loadSchedules();
-  }, [page, appliedSearch, appliedRightFilter, reloadKey]);
+  }, [page, appliedSearch, appliedRightFilter, filterExamType, filterFaculty, filterDepartment, filterMarks, reloadKey]);
 
   useEffect(() => {
     filterLeftPanelExams();
   }, [exams, todaysExams, leftFilter]);
 
+  const loadFilterOptions = async () => {
+    try {
+      const [depRes, facRes] = await Promise.all([
+        departmentAPI.getAllDepartments(),
+        facultyAPI.getAllFaculties(),
+      ]);
+      if (depRes?.data) setDepartments(depRes.data);
+      if (facRes?.data) setFaculties(facRes.data);
+    } catch (err) {
+      console.error('Failed to load filter options:', err);
+    }
+  };
+
   const loadExams = async () => {
     setIsLoading(true);
     try {
-      const response = await examAPI.getAllExamsForLookup();
+      const params: any = {};
+      if (filterExamType !== 'all') params.exam_type = filterExamType;
+      if (filterFaculty !== 'all') params.faculty = filterFaculty;
+      if (filterDepartment !== 'all') params.department = filterDepartment;
+      if (filterMarks.trim()) params.marks = filterMarks.trim();
+
+      const response = await examAPI.getAllExamsForLookup(params);
       const examData = response.results || response;
       setExams(examData);
       
@@ -106,11 +158,17 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
 
   const loadSchedules = async () => {
     try {
-      const response = await scheduleAPI.getAllSchedules({
+      const params: any = {
         page,
         search: appliedSearch || undefined,
         date_filter: appliedRightFilter === 'today' ? 'today' : undefined,
-      });
+      };
+      if (filterExamType !== 'all') params.exam_type = filterExamType;
+      if (filterFaculty !== 'all') params.faculty = filterFaculty;
+      if (filterDepartment !== 'all') params.department = filterDepartment;
+      if (filterMarks.trim()) params.marks = filterMarks.trim();
+
+      const response = await scheduleAPI.getAllSchedules(params);
       const scheduleData = response.results || response.data || response;
       setSchedules(Array.isArray(scheduleData) ? sortSchedulesByLatest(scheduleData) : []);
       setPagination(paginationFromDrf(response, page));
@@ -253,6 +311,98 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {/* Advanced Filter Bar for Question Sets & Schedules */}
+      <Card className="border border-slate-200 shadow-sm">
+        <CardHeader className="py-3 px-4 bg-slate-50/80 border-b border-slate-200">
+          <CardTitle className="text-sm font-semibold flex items-center justify-between text-slate-800">
+            <span className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-[#2E3094]" />
+              Advanced Filters
+            </span>
+            {(filterExamType !== 'all' || filterFaculty !== 'all' || filterDepartment !== 'all' || filterMarks) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setFilterExamType('all');
+                  setFilterFaculty('all');
+                  setFilterDepartment('all');
+                  setFilterMarks('');
+                }}
+                className="h-6 px-2 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+              >
+                Reset Filters
+              </Button>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Filter 1: Exam Type */}
+            <div className="space-y-1">
+              <Label className="text-xs font-medium text-slate-600">Exam Type</Label>
+              <Select value={filterExamType} onValueChange={setFilterExamType}>
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue placeholder="All Exam Types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="SCHEDULED">Scheduled</SelectItem>
+                  <SelectItem value="CENTRAL">Central</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Filter 2: Faculty */}
+            <div className="space-y-1">
+              <Label className="text-xs font-medium text-slate-600">Faculty</Label>
+              <Select value={filterFaculty} onValueChange={setFilterFaculty}>
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue placeholder="All Faculties" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Faculties</SelectItem>
+                  {faculties.map((fac) => (
+                    <SelectItem key={fac.id} value={fac.id.toString()}>
+                      {fac.faculty_shortname}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Filter 3: Department */}
+            <div className="space-y-1">
+              <Label className="text-xs font-medium text-slate-600">Department</Label>
+              <Select value={filterDepartment} onValueChange={setFilterDepartment}>
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue placeholder="All Departments" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Departments</SelectItem>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.id.toString()}>
+                      {dept.department_shortname}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Filter 4: Marks */}
+            <div className="space-y-1">
+              <Label className="text-xs font-medium text-slate-600">Marks</Label>
+              <Input
+                placeholder="Filter by total marks..."
+                value={filterMarks}
+                onChange={(e) => setFilterMarks(e.target.value)}
+                className="h-9 text-xs"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Panel - Today's Questions */}
         <Card className="border-2 border-gray-200">
@@ -307,9 +457,21 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
                     <CardContent className="p-4">
                       <div className="flex justify-between items-start mb-3">
                         <div>
-                          <h4 className="font-semibold text-gray-800">
-                            Question Set #{exam.id}
-                          </h4>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-semibold text-gray-800">
+                              Question Set #{exam.id}
+                            </h4>
+                            <Badge
+                              variant="outline"
+                              className={
+                                exam.exam_type === 'CENTRAL'
+                                  ? 'border-purple-300 bg-purple-50 text-purple-700 text-[10px]'
+                                  : 'border-blue-300 bg-blue-50 text-blue-700 text-[10px]'
+                              }
+                            >
+                              {exam.exam_type === 'CENTRAL' ? 'Central' : 'Scheduled'}
+                            </Badge>
+                          </div>
                           <p className="text-sm text-blue-600 font-medium">
                             {exam.department} - {exam.semester}
                           </p>
@@ -540,11 +702,23 @@ export function ExamSchedule({ gradientClass }: ExamScheduleProps) {
             <div className="space-y-4">
               {/* Selected Question Details */}
               <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <h4 className="font-semibold text-blue-800 mb-2">Question Set Details</h4>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-semibold text-blue-800">Question Set Details</h4>
+                  <Badge
+                    variant="outline"
+                    className={
+                      selectedExamForSchedule.exam_type === 'CENTRAL'
+                        ? 'border-purple-300 bg-purple-100 text-purple-800'
+                        : 'border-blue-300 bg-blue-100 text-blue-800'
+                    }
+                  >
+                    {selectedExamForSchedule.exam_type === 'CENTRAL' ? 'Central Faculty Scope' : 'Scheduled Department Scope'}
+                  </Badge>
+                </div>
                 <div className="grid grid-cols-1 gap-2 text-sm">
                   <div className="flex items-center gap-2">
                     <Building className="h-4 w-4 text-blue-600" />
-                    <span><strong>Department:</strong> {selectedExamForSchedule.department}</span>
+                    <span><strong>{selectedExamForSchedule.exam_type === 'CENTRAL' ? 'Faculty/Scope:' : 'Department:'}</strong> {selectedExamForSchedule.department}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-green-600" />

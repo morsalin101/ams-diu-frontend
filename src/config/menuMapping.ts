@@ -26,8 +26,9 @@ export const menuToGroupMapping: Record<string, { group: string; order: number }
   'faculty department mapping': { group: 'EXAM CONTROLS & MAPPING', order: 2 },
   'subject management': { group: 'EXAM CONTROLS & MAPPING', order: 3 },
   'subject department mapping': { group: 'EXAM CONTROLS & MAPPING', order: 4 },
-  'viva rubrics management': { group: 'EXAM CONTROLS & MAPPING', order: 5 },
-  'marks distribution management': { group: 'EXAM CONTROLS & MAPPING', order: 6 },
+  'subject priority mapping': { group: 'EXAM CONTROLS & MAPPING', order: 5 },
+  'viva rubrics management': { group: 'EXAM CONTROLS & MAPPING', order: 6 },
+  'marks distribution management': { group: 'EXAM CONTROLS & MAPPING', order: 7 },
 
   // DEPARTMENTAL CONTROLS
   'student acceptance criteria': { group: 'DEPARTMENTAL CONTROLS', order: 1 },
