@@ -70,6 +70,9 @@ export interface AdmissionResult {
   viva_contribution: number;
   exam_details: AdmissionExamDetails;
   exam_taken_at: string | null;
+  allocated_department?: string | null;
+  waiting_for?: string | null;
+  eligible_departments?: string[];
   created_at: string;
   updated_at: string;
 }

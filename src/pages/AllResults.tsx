@@ -60,6 +60,7 @@ interface AdmissionResult {
   department_id?: number;
   department_name: string;
   department_shortname: string;
+  allocated_department?: string | null;
   mcq_marks: number;
   viva_marks: number;
   viva_marks_entered?: boolean;
@@ -1041,7 +1042,10 @@ const AllResults: React.FC = () => {
                           <div className="flex items-center gap-1 text-slate-800 font-medium">
                             <Building className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                             <span>
-                              {result.department_shortname || result.department_name || '—'}
+                              {result.allocated_department ||
+                                (result.is_selected || result.is_admitted
+                                  ? result.department_shortname || result.department_name
+                                  : '—')}
                             </span>
                           </div>
                         </TableCell>
