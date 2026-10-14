@@ -270,8 +270,8 @@ const AllResults: React.FC = () => {
       }
 
       const response = await admissionResultsAPI.getResults(params);
-      if (response.success) {
-        setResults(response.results || []);
+      if (response && response.success !== false) {
+        setResults(response.results || (Array.isArray(response) ? response : []));
         setPagination(paginationFromDrf(response, page));
 
         if (response.summary || response.total_summary) {
@@ -283,10 +283,18 @@ const AllResults: React.FC = () => {
             REJECTED: s.REJECTED ?? 0,
           });
         }
+      } else {
+        toast.error(response?.message || 'Failed to load admission results');
+        setResults([]);
+        setPagination(DEFAULT_PAGINATION);
       }
     } catch (error: any) {
       console.error('Error loading results:', error);
-      toast.error('Failed to load admission results');
+      const msg =
+        error?.message ||
+        error?.detail ||
+        (typeof error === 'string' ? error : 'Failed to load admission results');
+      toast.error(msg);
       setResults([]);
       setPagination(DEFAULT_PAGINATION);
     } finally {
