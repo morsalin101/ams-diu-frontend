@@ -314,7 +314,7 @@ export function getColumnHeader(
     case "remarks":
       return "Status";
     case "examTakenAt":
-      return "Exam Taken";
+      return "Exam Date";
     default:
       return String(key);
   }

@@ -20,6 +20,14 @@ import {
 import toast from "react-hot-toast";
 
 import { SemesterCombobox } from "../components/SemesterCombobox";
+import {
+  DepartmentMultiSelect,
+  type DepartmentOption,
+} from "../components/DepartmentMultiSelect";
+import {
+  FacultyMultiSelect,
+  type FacultyOption,
+} from "../components/FacultyMultiSelect";
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -43,7 +51,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { usePermissions } from "../hooks/usePermissions";
-import { useEffectiveDepartment } from "../hooks/useEffectiveDepartment";
+import { useAuth } from "../contexts/AuthContext";
 import {
   formatSemesterLabel,
   PRETTY_STATUS_LABELS,
@@ -60,12 +68,17 @@ import {
 import {
   drawDiuPdfChrome,
   drawSignatureBlock,
-  formatReportDate,
   getSignatureBlockHeight,
   loadDiuLogoDataUrl,
 } from "../lib/diu-report-pdf";
 import { downloadBlobFile } from "../lib/pdf-download";
-import { admissionResultsAPI, examAPI } from "../services/api";
+import {
+  admissionResultsAPI,
+  departmentAPI,
+  examAPI,
+  facultyAPI,
+  facultyDepartmentAPI,
+} from "../services/api";
 import { StudentAdmissionReportDialog } from "../components/StudentAdmissionReportDialog";
 import PaginationControls, { DEFAULT_PAGINATION, paginationFromDrf } from "../components/PaginationControls";
 import {
@@ -97,6 +110,96 @@ const DEFAULT_SUMMARY = {
 
 type TabKey = keyof typeof TAB_TO_STATUS;
 const ALL_TABS = Object.keys(TAB_TO_STATUS) as TabKey[];
+
+const RESULT_FILTER_STORAGE_PREFIX = "ams:results:filters:v1";
+
+interface PersistedResultFilters {
+  facultyIds: number[];
+  departmentIds: number[];
+  semester: string;
+  activeTab: TabKey;
+  search: string;
+  examType: "all" | "CENTRAL" | "SCHEDULED";
+  activeSortCategory: SortCategory;
+  scoreSort: ScoreSort;
+  examsSort: ExamsSort;
+  dateSort: DateSort;
+  customStartDate: string;
+  customEndDate: string;
+  exportCount: string;
+}
+
+const parseStoredNumberIds = (value: unknown): number[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return [...new Set(
+    value
+      .map((item) => Number(item))
+      .filter((item) => Number.isInteger(item) && item > 0),
+  )];
+};
+
+const readPersistedResultFilters = (
+  storageKey: string | null,
+): PersistedResultFilters | null => {
+  if (!storageKey) {
+    return null;
+  }
+
+  try {
+    const rawValue = localStorage.getItem(storageKey);
+    if (!rawValue) {
+      return null;
+    }
+
+    const value = JSON.parse(rawValue) as Record<string, unknown>;
+    const activeTab = ALL_TABS.includes(value.activeTab as TabKey)
+      ? value.activeTab as TabKey
+      : "selected";
+    const examType = ["all", "CENTRAL", "SCHEDULED"].includes(String(value.examType))
+      ? value.examType as PersistedResultFilters["examType"]
+      : "all";
+    const activeSortCategory = ["score", "exams", "date"].includes(
+      String(value.activeSortCategory),
+    )
+      ? value.activeSortCategory as SortCategory
+      : "date";
+    const scoreSort = ["score_high", "score_low"].includes(String(value.scoreSort))
+      ? value.scoreSort as ScoreSort
+      : "score_high";
+    const examsSort = ["exams_most", "exams_fewest"].includes(String(value.examsSort))
+      ? value.examsSort as ExamsSort
+      : "exams_most";
+    const dateSort = ["latest", "oldest", "custom"].includes(String(value.dateSort))
+      ? value.dateSort as DateSort
+      : "latest";
+
+    return {
+      facultyIds: parseStoredNumberIds(value.facultyIds),
+      departmentIds: parseStoredNumberIds(value.departmentIds),
+      semester: typeof value.semester === "string" ? value.semester : "",
+      activeTab,
+      search: typeof value.search === "string" ? value.search : "",
+      examType,
+      activeSortCategory,
+      scoreSort,
+      examsSort,
+      dateSort,
+      customStartDate:
+        typeof value.customStartDate === "string" ? value.customStartDate : "",
+      customEndDate:
+        typeof value.customEndDate === "string" ? value.customEndDate : "",
+      exportCount:
+        typeof value.exportCount === "string" && /^\d*$/.test(value.exportCount)
+          ? value.exportCount
+          : "",
+    };
+  } catch {
+    return null;
+  }
+};
 
 // Per-tab labels (trigger text) and summary-card styling, so both the cards and
 // the tab strip can be rendered from an allow-list (cosmetic tab restriction).
@@ -149,14 +252,15 @@ type PdfColumn = {
 
 const RESULT_SHEET_PDF_COLUMNS: PdfColumn[] = [
   { key: "serial", header: "SL", cellWidth: 24, align: "center" },
-  { key: "applicationSerial", header: "Application Serial", cellWidth: 62 },
+  { key: "applicationSerial", header: "Application Serial", cellWidth: 76 },
   { key: "studentName", header: "Student Name", cellWidth: 92 },
   { key: "ssc", header: "SSC", cellWidth: 58, align: "center" },
-  { key: "academic", header: "HSC/Diploma", cellWidth: 72, align: "center" },
+  { key: "academic", header: "HSC/Diploma", cellWidth: 58, align: "center" },
   { key: "written", header: "Written", cellWidth: 58, align: "center" },
   { key: "viva", header: "Viva", cellWidth: 54, align: "center" },
   // { key: "writtenViva", header: "Written + Viva", cellWidth: 50, align: "center" },  // commented out: hidden column
   { key: "total", header: "Total", cellWidth: 76, align: "center" },
+  { key: "examTakenAt", header: "Exam Date", cellWidth: 68, align: "center" },
   { key: "remarks", header: "Status", cellWidth: 62, align: "center" },
 ];
 
@@ -173,6 +277,7 @@ const RESULT_SHEET_EXCEL_KEYS = [
   "viva",
   "writtenViva",
   "total",
+  "examTakenAt",
   "remarks",
 ] as const;
 
@@ -235,18 +340,6 @@ const scaleColumnWidthsToPage = (
 
 type ExportFormat = "pdf" | "excel";
 
-// PDF header "Exam Date": the common exam-taken calendar day of the exported
-// cohort, else today (when dates differ or any student was absent).
-const resolveExportExamDate = (rows: AdmissionResult[]): string => {
-  const keys = new Set(
-    rows.map((r) => (r.exam_taken_at ? new Date(r.exam_taken_at).toDateString() : "none")),
-  );
-  if (keys.size === 1 && !keys.has("none")) {
-    return formatReportDate(new Date(rows[0].exam_taken_at as string));
-  }
-  return formatReportDate();
-};
-
 interface AcceptedStudentsProps {
   // Cosmetic tab restriction: pass a subset to show only those tabs + their
   // summary cards (e.g. ["selected","rejected"] for a published-results viewer).
@@ -254,22 +347,52 @@ interface AcceptedStudentsProps {
   allowedTabs?: TabKey[];
 }
 
+interface FacultyDepartmentMapping {
+  faculty_id: number;
+  faculty_name: string;
+  faculty_shortname?: string;
+  department_ids: number[];
+}
+
 export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsProps = {}) {
   const visibleTabs = allowedTabs.length > 0 ? allowedTabs : ALL_TABS;
+  const { user } = useAuth();
   const { canRead, canWrite } = usePermissions();
-  const { department, isFallback, isLoading: isDepartmentLoading, error: departmentError } =
-    useEffectiveDepartment();
   const hasReadAccess = canRead();
   const hasWriteAccess = canWrite();
+  const filterStorageKey = user
+    ? `${RESULT_FILTER_STORAGE_PREFIX}:user:${user.id}`
+    : null;
+
+  const accessType = (user?.access_type || "").trim().toUpperCase();
+  const isGlobalUser =
+    user?.role_details?.role_name?.toLowerCase() === "superadmin"
+    || Boolean(user?.is_global_access)
+    || accessType === "GLOBAL";
+  const isFacultyUser =
+    !isGlobalUser
+    && (accessType === "FACULTY"
+      || Boolean(user?.faculty_details?.id && !user?.department_details?.id));
+  const isDepartmentUser =
+    !isGlobalUser && !isFacultyUser && Boolean(user?.department_details?.id);
+
+  const [departments, setDepartments] = useState<DepartmentOption[]>([]);
+  const [faculties, setFaculties] = useState<FacultyOption[]>([]);
+  const [facultyMappings, setFacultyMappings] = useState<FacultyDepartmentMapping[]>([]);
+  // Empty means every faculty available inside the user's access scope.
+  const [selectedFacultyIds, setSelectedFacultyIds] = useState<number[]>([]);
+  // Empty means every department available inside the selected access scope.
+  const [selectedDepartmentIds, setSelectedDepartmentIds] = useState<number[]>([]);
+  const [isScopeLoading, setIsScopeLoading] = useState(true);
+  const [isFilterStateHydrated, setIsFilterStateHydrated] = useState(false);
+  const [scopeError, setScopeError] = useState<string | null>(null);
 
   const [semesterOptions, setSemesterOptions] = useState<string[]>([]);
   const [selectedSemester, setSelectedSemester] = useState("");
   const [activeTab, setActiveTab] = useState<TabKey>(visibleTabs[0]);
   const [results, setResults] = useState<AdmissionResult[]>([]);
-  // `summary` tracks the active search/date filters (drives the tab counts);
-  // `totalSummary` stays at the whole-semester totals (drives the top cards).
+  // Filtered counts drive both the top cards and tab labels.
   const [summary, setSummary] = useState(DEFAULT_SUMMARY);
-  const [totalSummary, setTotalSummary] = useState(DEFAULT_SUMMARY);
   const [configurationMissing, setConfigurationMissing] = useState(false);
   const [examRecords, setExamRecords] = useState<ExamLookupRecord[]>([]);
   const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
@@ -281,6 +404,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
   const [scoreSort, setScoreSort] = useState<ScoreSort>("score_high");
   const [examsSort, setExamsSort] = useState<ExamsSort>("exams_most");
   const [dateSort, setDateSort] = useState<DateSort>("latest");
+  const [examTypeFilter, setExamTypeFilter] = useState<"all" | "CENTRAL" | "SCHEDULED">("all");
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
   // Draft count in the input vs the count applied on OK (drives N-export).
@@ -302,7 +426,309 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
   const [downloadingReportId, setDownloadingReportId] = useState<number | null>(null);
   const [isBulkDownloadingReports, setIsBulkDownloadingReports] = useState(false);
 
-  // Computed backend query params for sorting & date filtering
+  const availableDepartments = useMemo(() => {
+    if (selectedFacultyIds.length === 0) {
+      return departments;
+    }
+    const selectedFacultyIdSet = new Set(selectedFacultyIds);
+    const mappedIdSet = new Set(
+      facultyMappings
+        .filter((item) => selectedFacultyIdSet.has(Number(item.faculty_id)))
+        .flatMap((item) => item.department_ids || []),
+    );
+    return departments.filter((departmentOption) => mappedIdSet.has(departmentOption.id));
+  }, [departments, facultyMappings, selectedFacultyIds]);
+
+  const selectedDepartments = useMemo(() => {
+    if (selectedDepartmentIds.length === 0) {
+      return availableDepartments;
+    }
+    const selectedIdSet = new Set(selectedDepartmentIds);
+    return availableDepartments.filter((departmentOption) =>
+      selectedIdSet.has(departmentOption.id),
+    );
+  }, [availableDepartments, selectedDepartmentIds]);
+
+  const selectedFaculties = useMemo(() => {
+    if (selectedFacultyIds.length === 0) {
+      return faculties;
+    }
+    const selectedIdSet = new Set(selectedFacultyIds);
+    return faculties.filter((faculty) => selectedIdSet.has(faculty.id));
+  }, [faculties, selectedFacultyIds]);
+  const selectedFaculty = selectedFaculties.length === 1 ? selectedFaculties[0] : null;
+
+  const scopeQueryParams = useMemo(() => {
+    const params: {
+      faculty_id?: number;
+      faculty_ids?: string;
+      department_id?: number;
+      department_ids?: string;
+    } = {};
+
+    if (selectedFacultyIds.length === 1) {
+      params.faculty_id = selectedFacultyIds[0];
+    } else if (selectedFacultyIds.length > 1) {
+      params.faculty_ids = selectedFacultyIds.join(",");
+    }
+    if (selectedDepartmentIds.length === 1) {
+      params.department_id = selectedDepartmentIds[0];
+    } else if (selectedDepartmentIds.length > 1) {
+      params.department_ids = selectedDepartmentIds.join(",");
+    }
+    return params;
+  }, [selectedDepartmentIds, selectedFacultyIds]);
+
+  const scopeQueryKey = `${selectedFacultyIds.join(",")}:${selectedDepartmentIds.join(",")}`;
+  const singleDepartment =
+    selectedDepartments.length === 1 ? selectedDepartments[0] : null;
+  const facultyBoardLabel = selectedFaculty
+    ? selectedFaculty.faculty_shortname
+    : selectedFacultyIds.length > 0
+      ? `${selectedFacultyIds.length} faculties`
+      : "All Faculties";
+  const departmentBoardLabel = singleDepartment
+    ? singleDepartment.department_shortname
+    : selectedDepartmentIds.length > 0
+      ? `${selectedDepartmentIds.length} departments`
+      : selectedFaculty
+        ? `All ${selectedFaculty.faculty_shortname} departments`
+        : selectedFacultyIds.length > 0
+          ? "All selected faculty departments"
+        : "All departments";
+  const departmentSelectionLocked =
+    isDepartmentUser || availableDepartments.length <= 1;
+  const facultySelectionLocked = !isGlobalUser || faculties.length <= 1;
+
+  useEffect(() => {
+    if (!hasReadAccess) {
+      setIsScopeLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+    const loadAccessScope = async () => {
+      setIsScopeLoading(true);
+      setIsFilterStateHydrated(false);
+      setScopeError(null);
+      try {
+        const [departmentResponse, facultyResponse, mappingResponse] = await Promise.all([
+          departmentAPI.getAllDepartments(),
+          facultyAPI.getAllFaculties(),
+          facultyDepartmentAPI.getAllMappings(),
+        ]);
+        if (!isMounted) {
+          return;
+        }
+
+        const nextDepartments = departmentResponse?.data || [];
+        const allMappings = Array.isArray(mappingResponse)
+          ? mappingResponse
+          : mappingResponse?.data || [];
+        const accessibleDepartmentIds = new Set(
+          nextDepartments.map((departmentOption: DepartmentOption) => departmentOption.id),
+        );
+        const nextMappings = isGlobalUser
+          ? allMappings
+          : allMappings.filter((mapping: FacultyDepartmentMapping) =>
+              mapping.department_ids?.some((departmentId) =>
+                accessibleDepartmentIds.has(departmentId),
+              ),
+            );
+        let nextFaculties = facultyResponse?.data || [];
+
+        // A department-scoped user may not receive a faculty from the faculty
+        // list endpoint. The mapping still lets us display the assigned parent.
+        nextMappings.forEach((mapping: FacultyDepartmentMapping) => {
+          if (!nextFaculties.some((faculty: FacultyOption) => faculty.id === mapping.faculty_id)) {
+            nextFaculties = [
+              ...nextFaculties,
+              {
+                id: mapping.faculty_id,
+                faculty_name: mapping.faculty_name,
+                faculty_shortname: mapping.faculty_shortname || mapping.faculty_name,
+              },
+            ];
+          }
+        });
+
+        setDepartments(nextDepartments);
+        setFacultyMappings(nextMappings);
+        setFaculties(nextFaculties);
+
+        const assignedDepartmentId = user?.department_details?.id;
+        const mappedFaculty = assignedDepartmentId
+          ? nextMappings.find((mapping: FacultyDepartmentMapping) =>
+              mapping.department_ids?.includes(assignedDepartmentId),
+            )
+          : null;
+        const assignedFacultyId = user?.faculty_details?.id || mappedFaculty?.faculty_id;
+        const storedFilters = readPersistedResultFilters(filterStorageKey);
+        const availableFacultyIdSet = new Set(
+          nextFaculties.map((faculty: FacultyOption) => Number(faculty.id)),
+        );
+        let nextSelectedFacultyIds = !isGlobalUser && assignedFacultyId
+          ? [Number(assignedFacultyId)]
+          : (storedFilters?.facultyIds || []).filter((facultyId) =>
+              availableFacultyIdSet.has(facultyId),
+            );
+
+        if (nextFaculties.length === 1) {
+          nextSelectedFacultyIds = [Number(nextFaculties[0].id)];
+        }
+
+        const selectedFacultyIdSet = new Set(nextSelectedFacultyIds);
+        const facultyDepartmentIdSet = nextSelectedFacultyIds.length > 0
+          ? new Set(
+              nextMappings
+                .filter((mapping: FacultyDepartmentMapping) =>
+                  selectedFacultyIdSet.has(Number(mapping.faculty_id)),
+                )
+                .flatMap((mapping: FacultyDepartmentMapping) => mapping.department_ids || []),
+            )
+          : accessibleDepartmentIds;
+        const availableDepartmentIds = nextDepartments
+          .map((departmentOption: DepartmentOption) => Number(departmentOption.id))
+          .filter((departmentId: number) => facultyDepartmentIdSet.has(departmentId));
+        const availableDepartmentIdSet = new Set(availableDepartmentIds);
+        let nextSelectedDepartmentIds = isDepartmentUser && assignedDepartmentId
+          ? [Number(assignedDepartmentId)]
+          : (storedFilters?.departmentIds || []).filter((departmentId) =>
+              availableDepartmentIdSet.has(departmentId),
+            );
+
+        if (availableDepartmentIds.length === 1) {
+          nextSelectedDepartmentIds = [availableDepartmentIds[0]];
+        }
+
+        setSelectedFacultyIds(nextSelectedFacultyIds);
+        setSelectedDepartmentIds(nextSelectedDepartmentIds);
+        setSelectedSemester(storedFilters?.semester || "");
+        setActiveTab(
+          storedFilters && visibleTabs.includes(storedFilters.activeTab)
+            ? storedFilters.activeTab
+            : visibleTabs[0],
+        );
+        setDraftSearch(storedFilters?.search || "");
+        setAppliedSearch(storedFilters?.search || "");
+        setExamTypeFilter(storedFilters?.examType || "all");
+        setActiveSortCategory(storedFilters?.activeSortCategory || "date");
+        setScoreSort(storedFilters?.scoreSort || "score_high");
+        setExamsSort(storedFilters?.examsSort || "exams_most");
+        setDateSort(storedFilters?.dateSort || "latest");
+        setCustomStartDate(storedFilters?.customStartDate || "");
+        setCustomEndDate(storedFilters?.customEndDate || "");
+        setExportCount(storedFilters?.exportCount || "");
+        setAppliedExportCount(storedFilters?.exportCount || "");
+        setIsFilterStateHydrated(true);
+      } catch (accessError: any) {
+        if (isMounted) {
+          setScopeError(accessError?.message || "Failed to load faculty and department access.");
+          setDepartments([]);
+          setFaculties([]);
+          setFacultyMappings([]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsScopeLoading(false);
+        }
+      }
+    };
+
+    void loadAccessScope();
+    return () => {
+      isMounted = false;
+    };
+  }, [filterStorageKey, hasReadAccess, isDepartmentUser, isGlobalUser, user]);
+
+  useEffect(() => {
+    if (!filterStorageKey || !isFilterStateHydrated || isScopeLoading) {
+      return;
+    }
+
+    const filters: PersistedResultFilters = {
+      facultyIds: selectedFacultyIds,
+      departmentIds: selectedDepartmentIds,
+      semester: selectedSemester,
+      activeTab,
+      search: appliedSearch,
+      examType: examTypeFilter,
+      activeSortCategory,
+      scoreSort,
+      examsSort,
+      dateSort,
+      customStartDate,
+      customEndDate,
+      exportCount: appliedExportCount,
+    };
+
+    try {
+      localStorage.setItem(filterStorageKey, JSON.stringify(filters));
+    } catch {
+      // Browsers can disable or exhaust localStorage. Filters still work for
+      // the current session, so persistence failure should not block the page.
+    }
+  }, [
+    activeSortCategory,
+    activeTab,
+    appliedExportCount,
+    appliedSearch,
+    customEndDate,
+    customStartDate,
+    dateSort,
+    examTypeFilter,
+    examsSort,
+    filterStorageKey,
+    isFilterStateHydrated,
+    isScopeLoading,
+    scoreSort,
+    selectedDepartmentIds,
+    selectedFacultyIds,
+    selectedSemester,
+  ]);
+
+  useEffect(() => {
+    if (isScopeLoading) {
+      return;
+    }
+    if (faculties.length === 1) {
+      const onlyFacultyId = faculties[0].id;
+      setSelectedFacultyIds((currentIds) =>
+        currentIds.length === 1 && currentIds[0] === onlyFacultyId
+          ? currentIds
+          : [onlyFacultyId],
+      );
+    }
+  }, [faculties, isScopeLoading]);
+
+  useEffect(() => {
+    if (isScopeLoading) {
+      return;
+    }
+    if (availableDepartments.length === 1) {
+      const onlyDepartmentId = availableDepartments[0].id;
+      setSelectedDepartmentIds((currentIds) =>
+        currentIds.length === 1 && currentIds[0] === onlyDepartmentId
+          ? currentIds
+          : [onlyDepartmentId],
+      );
+      return;
+    }
+
+    const availableIdSet = new Set(availableDepartments.map((item) => item.id));
+    setSelectedDepartmentIds((currentIds) => {
+      const nextIds = currentIds.filter((departmentId) => availableIdSet.has(departmentId));
+      return nextIds.length === currentIds.length ? currentIds : [];
+    });
+  }, [availableDepartments, isScopeLoading]);
+
+  const handleFacultyChange = (facultyIds: number[]) => {
+    setSelectedFacultyIds(facultyIds);
+    setSelectedDepartmentIds([]);
+    setPage(1);
+  };
+
+  // Computed backend query params for sorting, date, and exam-type filtering.
   const resultQueryParams = useMemo(() => {
     const params: {
       sort_by: string;
@@ -310,6 +736,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
       exam_taken_date?: string;
       start_date?: string;
       end_date?: string;
+      exam_type?: "CENTRAL" | "SCHEDULED";
     } = {
       sort_by: "date",
       order: "desc",
@@ -340,14 +767,19 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
       }
     }
 
+    if (examTypeFilter !== "all") {
+      params.exam_type = examTypeFilter;
+    }
+
     return params;
-  }, [activeSortCategory, scoreSort, examsSort, dateSort, customStartDate, customEndDate]);
+  }, [activeSortCategory, scoreSort, examsSort, dateSort, customStartDate, customEndDate, examTypeFilter]);
 
   const handleResetSortAndFilter = () => {
     setActiveSortCategory("date");
     setScoreSort("score_high");
     setExamsSort("exams_most");
     setDateSort("latest");
+    setExamTypeFilter("all");
     setCustomStartDate("");
     setCustomEndDate("");
   };
@@ -355,6 +787,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
   const isSortFilterCustomized =
     activeSortCategory !== "date" ||
     dateSort !== "latest" ||
+    examTypeFilter !== "all" ||
     Boolean(customStartDate) ||
     Boolean(customEndDate);
 
@@ -374,13 +807,12 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
     let isMounted = true;
 
     const loadSemesterOptions = async () => {
-      if (isDepartmentLoading) {
+      if (isScopeLoading) {
         return;
       }
 
       try {
-        const params: any = department?.id ? { department_id: department.id } : {};
-        const response = await admissionResultsAPI.getSemesterOptions(params);
+        const response = await admissionResultsAPI.getSemesterOptions(scopeQueryParams);
         const semesters = response?.semesters || [];
 
         if (!isMounted) {
@@ -428,27 +860,25 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
     return () => {
       isMounted = false;
     };
-  }, [hasReadAccess, department?.id, isDepartmentLoading]);
+  }, [hasReadAccess, isScopeLoading, scopeQueryKey, scopeQueryParams]);
 
   useEffect(() => {
     setResults([]);
     setSummary(DEFAULT_SUMMARY);
-    setTotalSummary(DEFAULT_SUMMARY);
     setConfigurationMissing(false);
     setSelectedStudentIds([]);
     setPage(1);
-  }, [department?.id, selectedSemester]);
+  }, [scopeQueryKey, selectedSemester]);
 
-  // Changing sort/date filter jumps back to page 1.
+  // Changing sort/date/exam-type filters jumps back to page 1.
   useEffect(() => {
     setPage(1);
-  }, [activeSortCategory, scoreSort, examsSort, dateSort, customStartDate, customEndDate]);
+  }, [activeSortCategory, scoreSort, examsSort, dateSort, customStartDate, customEndDate, examTypeFilter]);
 
   useEffect(() => {
-    if (!hasReadAccess || !department?.id || !selectedSemester) {
+    if (!hasReadAccess || isScopeLoading || !selectedSemester) {
       setResults([]);
       setSummary(DEFAULT_SUMMARY);
-      setTotalSummary(DEFAULT_SUMMARY);
       setPagination(DEFAULT_PAGINATION);
       setConfigurationMissing(false);
       return;
@@ -460,7 +890,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
       try {
         setIsLoading(true);
         const response = await admissionResultsAPI.getResults({
-          department_id: department.id,
+          ...scopeQueryParams,
           semester: selectedSemester,
           result_status: TAB_TO_STATUS[activeTab],
           search: appliedSearch || undefined,
@@ -481,10 +911,6 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
             ...DEFAULT_SUMMARY,
             ...(response?.summary || {}),
           });
-          setTotalSummary(isConfigMissing ? DEFAULT_SUMMARY : {
-            ...DEFAULT_SUMMARY,
-            ...(response?.total_summary || response?.summary || {}),
-          });
           setSelectedStudentIds([]);
         });
       } catch (resultError: any) {
@@ -496,7 +922,6 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
         toast.error(resultError?.message || "Failed to load accepted students");
         setResults([]);
         setSummary(DEFAULT_SUMMARY);
-        setTotalSummary(DEFAULT_SUMMARY);
         setPagination(DEFAULT_PAGINATION);
         setConfigurationMissing(false);
       } finally {
@@ -511,7 +936,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
     return () => {
       isMounted = false;
     };
-  }, [hasReadAccess, department?.id, selectedSemester, activeTab, appliedSearch, page, reloadKey, resultQueryParams]);
+  }, [hasReadAccess, isScopeLoading, scopeQueryKey, scopeQueryParams, selectedSemester, activeTab, appliedSearch, page, reloadKey, resultQueryParams]);
 
   const visibleResults = results;
   const visibleRows = useMemo(() => buildResultSheetRows(visibleResults), [visibleResults]);
@@ -537,19 +962,25 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
   const exportRows = useMemo(() => buildResultSheetRows(exportResults), [exportResults]);
   const isExportDisabled =
     configurationMissing ||
-    !department ||
+    isScopeLoading ||
     !selectedSemester ||
     exportRows.length === 0 ||
     Boolean(exportingFormat);
   const allSelectedVisible =
     visibleResults.length > 0 &&
     visibleResults.every((result) => selectedStudentIdSet.has(result.student));
-  const facultyName = resolveFacultyName({
-    exams: examRecords,
-    department,
-    semester: selectedSemester,
-    resultExamIds: results.map((result) => result.exam),
-  });
+  const facultyName = selectedFaculty?.faculty_name
+    || (selectedFacultyIds.length > 0
+      ? selectedFaculties.map((faculty) => faculty.faculty_shortname).join(" / ")
+      : singleDepartment
+      ? resolveFacultyName({
+          exams: examRecords,
+          department: singleDepartment,
+          semester: selectedSemester,
+          resultExamIds: results.map((result) => result.exam),
+        })
+      : "All Faculties");
+  const departmentName = singleDepartment?.department_name || departmentBoardLabel;
 
   const getExportBaseName = () => {
     const titleSemester = formatSemesterLabel(selectedSemester)
@@ -567,11 +998,11 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
     if (hasSelectedRows) {
       return selectedTabResults;
     }
-    if (!department?.id || !selectedSemester) {
+    if (!selectedSemester) {
       return [];
     }
     const response = await admissionResultsAPI.getAllResults({
-      department_id: department.id,
+      ...scopeQueryParams,
       semester: selectedSemester,
       result_status: TAB_TO_STATUS[activeTab],
       search: appliedSearch || undefined,
@@ -582,7 +1013,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
   };
 
   const exportPdf = async () => {
-    if (isExportDisabled || !department) {
+    if (isExportDisabled) {
       return;
     }
 
@@ -604,10 +1035,9 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
       });
 
       const marginX = 26;
-      const tableTop = 190;
+      const tableTop = 174;
       const bottomMargin = 28;
       const groupGap = 16;
-      const reportDate = resolveExportExamDate(exportData);
       const activeStatusLabel = PRETTY_STATUS_LABELS[TAB_TO_STATUS[activeTab]];
 
       const drawHeader = () => {
@@ -615,8 +1045,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
           logoDataUrl,
           semester: selectedSemester,
           facultyName,
-          departmentName: department.department_name,
-          dateLabel: reportDate,
+          departmentName,
           rightLabel: activeStatusLabel,
         });
       };
@@ -752,14 +1181,15 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
       const worksheet = XLSX.utils.aoa_to_sheet(sheetRows);
       worksheet["!cols"] = [
         { wch: 8 },   // SL
-        { wch: 20 },  // Application Serial
+        { wch: 24 },  // Application Serial
         { wch: 28 },  // Student Name
         { wch: 16 },  // SSC (out of 5)
-        { wch: 22 },  // HSC/Diploma (out of X)
+        { wch: 16 },  // HSC/Diploma (out of X)
         { wch: 20 },  // Written (out of X)
         { wch: 18 },  // Viva (out of X)
         { wch: 26 },  // Written + Viva (out of X)
         { wch: 20 },  // Total (out of 100)
+        { wch: 18 },  // Exam Date
         { wch: 16 },  // Remarks
       ];
 
@@ -776,10 +1206,9 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
   };
 
   const refreshResults = async () => {
-    if (!department?.id || !selectedSemester) {
+    if (!selectedSemester) {
       setResults([]);
       setSummary(DEFAULT_SUMMARY);
-      setTotalSummary(DEFAULT_SUMMARY);
       setConfigurationMissing(false);
       setSelectedStudentIds([]);
       return;
@@ -788,7 +1217,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
     setIsLoading(true);
     try {
       const response = await admissionResultsAPI.getResults({
-        department_id: department.id,
+        ...scopeQueryParams,
         semester: selectedSemester,
         result_status: TAB_TO_STATUS[activeTab],
         search: appliedSearch || undefined,
@@ -804,17 +1233,12 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
         ...DEFAULT_SUMMARY,
         ...(response?.summary || {}),
       });
-      setTotalSummary(isConfigMissing ? DEFAULT_SUMMARY : {
-        ...DEFAULT_SUMMARY,
-        ...(response?.total_summary || response?.summary || {}),
-      });
       setSelectedStudentIds([]);
     } catch (refreshError: any) {
       console.error("Error refreshing accepted students:", refreshError);
       toast.error(refreshError?.message || "Failed to refresh accepted students");
       setResults([]);
       setSummary(DEFAULT_SUMMARY);
-      setTotalSummary(DEFAULT_SUMMARY);
       setPagination(DEFAULT_PAGINATION);
       setConfigurationMissing(false);
       setSelectedStudentIds([]);
@@ -825,7 +1249,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
 
   useEffect(() => {
     setSelectedStudentIds([]);
-  }, [activeTab, selectedSemester, appliedSearch, page]);
+  }, [activeTab, selectedSemester, appliedSearch, examTypeFilter, page]);
 
   const handleSearch = () => {
     setPage(1);
@@ -1067,19 +1491,10 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {isFallback && department && (
-        <Alert className="border-amber-200 bg-amber-50">
-          <AlertTriangle className="w-4 h-4 text-amber-600" />
-          <AlertDescription className="text-amber-800">
-            This user has no department assigned. Using the CSE fallback board for now.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {departmentError && !department && (
+      {scopeError && (
         <Alert variant="destructive">
           <AlertTriangle className="w-4 h-4" />
-          <AlertDescription>{departmentError}</AlertDescription>
+          <AlertDescription>{scopeError}</AlertDescription>
         </Alert>
       )}
 
@@ -1089,7 +1504,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
             <CardContent className="p-4">
               <p className="text-sm font-medium text-gray-600">{CARD_CONFIG[key].label}</p>
               <p className={`text-2xl font-bold ${CARD_CONFIG[key].className}`}>
-                {totalSummary[TAB_TO_STATUS[key]]}
+                {summary[TAB_TO_STATUS[key]]}
               </p>
             </CardContent>
           </Card>
@@ -1104,14 +1519,33 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 xl:grid-cols-[minmax(8rem,0.75fr)_1fr_1.2fr_auto_auto_auto] gap-4 items-end">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 items-end">
+            <div className="space-y-2">
+              <Label>Faculty</Label>
+              <FacultyMultiSelect
+                options={faculties}
+                selectedIds={selectedFacultyIds}
+                onChange={handleFacultyChange}
+                disabled={isScopeLoading || facultySelectionLocked}
+              />
+            </div>
+
             <div className="space-y-2">
               <Label>Department</Label>
-              <div className="flex items-center h-10 px-3 border rounded-md bg-gray-50">
-                <span className="text-sm font-medium text-gray-800">
-                  {isDepartmentLoading ? "Resolving..." : department?.department_shortname || "Unavailable"}
-                </span>
-              </div>
+              <DepartmentMultiSelect
+                options={availableDepartments}
+                selectedIds={selectedDepartmentIds}
+                onChange={(departmentIds) => {
+                  setSelectedDepartmentIds(departmentIds);
+                  setPage(1);
+                }}
+                disabled={isScopeLoading || departmentSelectionLocked}
+                allLabel={selectedFaculty
+                  ? `All ${selectedFaculty.faculty_shortname} departments`
+                  : selectedFacultyIds.length > 0
+                    ? "All selected faculty departments"
+                    : "All departments"}
+              />
             </div>
 
             <div className="space-y-2">
@@ -1120,8 +1554,28 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
                 value={selectedSemester}
                 options={semesterOptions}
                 onChange={setSelectedSemester}
-                disabled={isDepartmentLoading || semesterOptions.length === 0}
+                disabled={isScopeLoading || semesterOptions.length === 0}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Exam Type</Label>
+              <Select
+                value={examTypeFilter}
+                onValueChange={(value: "all" | "CENTRAL" | "SCHEDULED") =>
+                  setExamTypeFilter(value)
+                }
+                disabled={isScopeLoading || isLoading}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All Exam Types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Exam Types</SelectItem>
+                  <SelectItem value="CENTRAL">Central</SelectItem>
+                  <SelectItem value="SCHEDULED">Scheduled</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
@@ -1146,7 +1600,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
             <Button
               onClick={handleSearch}
               variant="outline"
-              disabled={isDepartmentLoading || isLoading || !department || !selectedSemester}
+              disabled={isScopeLoading || isLoading || !selectedSemester}
             >
               <Search className="w-4 h-4 mr-2" />
               Search
@@ -1155,7 +1609,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
             <Button
               variant="outline"
               onClick={handleClearSearch}
-              disabled={isDepartmentLoading || isLoading || (!draftSearch && !appliedSearch)}
+              disabled={isScopeLoading || isLoading || (!draftSearch && !appliedSearch)}
             >
               <X className="w-4 h-4 mr-2" />
               Clear
@@ -1164,7 +1618,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
             <Button
               variant="outline"
               onClick={refreshResults}
-              disabled={isDepartmentLoading || isLoading || !department || !selectedSemester}
+              disabled={isScopeLoading || isLoading || !selectedSemester}
             >
               {isLoading ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -1190,7 +1644,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
             onEndDateChange={setCustomEndDate}
             onReset={handleResetSortAndFilter}
             isCustomized={isSortFilterCustomized}
-            disabled={isDepartmentLoading || isLoading || !department || !selectedSemester}
+            disabled={isScopeLoading || isLoading || !selectedSemester}
           />
         </CardContent>
       </Card>
@@ -1261,13 +1715,19 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
                 </div>
                 <div className="flex flex-wrap items-center justify-start gap-1.5 xl:justify-end">
                   <div className="flex flex-wrap items-center gap-1.5 text-sm">
-                    {department && (
-                      <Badge variant="outline" className="px-1.5 py-0 h-6">
-                        {department.department_shortname}
-                      </Badge>
-                    )}
+                    <Badge variant="outline" className="px-1.5 py-0 h-6">
+                      {facultyBoardLabel}
+                    </Badge>
+                    <Badge variant="outline" className="px-1.5 py-0 h-6">
+                      {departmentBoardLabel}
+                    </Badge>
                     {selectedSemester && (
                       <Badge variant="secondary" className="px-1.5 py-0 h-6">{formatSemesterLabel(selectedSemester)}</Badge>
+                    )}
+                    {examTypeFilter !== "all" && (
+                      <Badge variant="secondary" className="px-1.5 py-0 h-6">
+                        {examTypeFilter === "CENTRAL" ? "Central" : "Scheduled"}
+                      </Badge>
                     )}
                     <Badge variant="outline" className="px-1.5 py-0 h-6">{PRETTY_STATUS_LABELS[TAB_TO_STATUS[activeTab]]}</Badge>
                   </div>
@@ -1384,7 +1844,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
 
                 {visibleTabs.map((tabKey) => (
                   <TabsContent key={tabKey} value={tabKey} className="mt-4">
-                    {isDepartmentLoading || isLoading ? (
+                    {isScopeLoading || isLoading ? (
                       <div className="flex items-center justify-center py-12">
                         <div className="text-center">
                           <Loader2 className="w-8 h-8 mx-auto mb-4 text-blue-600 animate-spin" />

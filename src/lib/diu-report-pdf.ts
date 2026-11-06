@@ -40,14 +40,12 @@ export function drawDiuPdfChrome(
     semester,
     facultyName,
     departmentName,
-    dateLabel = formatReportDate(),
     rightLabel,
   }: {
     logoDataUrl: string;
     semester: string;
     facultyName: string;
     departmentName: string;
-    dateLabel?: string;
     rightLabel?: string;
   },
 ) {
@@ -82,7 +80,6 @@ export function drawDiuPdfChrome(
   doc.text(departmentLine, centerX, 156, {
     align: "center",
   });
-  doc.text(`Exam Date: ${dateLabel}`, centerX, 172, { align: "center" });
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
