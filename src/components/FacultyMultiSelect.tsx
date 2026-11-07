@@ -40,12 +40,12 @@ export function FacultyMultiSelect({
     if (options.length === 0) {
       return "No faculties available";
     }
-    if (allSelected) {
-      return "All faculties";
-    }
     if (selectedIds.length === 1) {
       return options.find((option) => option.id === selectedIds[0])?.faculty_shortname
         || "1 faculty";
+    }
+    if (allSelected) {
+      return "All faculties";
     }
     return `${selectedIds.length} faculties selected`;
   }, [allSelected, options, selectedIds]);

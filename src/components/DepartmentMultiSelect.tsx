@@ -42,12 +42,12 @@ export function DepartmentMultiSelect({
     if (options.length === 0) {
       return "No departments available";
     }
-    if (allSelected) {
-      return allLabel;
-    }
     if (selectedIds.length === 1) {
       return options.find((option) => option.id === selectedIds[0])?.department_shortname
         || "1 department";
+    }
+    if (allSelected) {
+      return allLabel;
     }
     return `${selectedIds.length} departments selected`;
   }, [allLabel, allSelected, options, selectedIds]);
