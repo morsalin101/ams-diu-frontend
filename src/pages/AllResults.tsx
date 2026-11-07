@@ -13,6 +13,7 @@ import {
   RefreshCw,
   Building,
   CheckCircle2,
+  CheckSquare,
   RotateCcw,
   X,
   Filter,
@@ -244,6 +245,7 @@ const AllResults: React.FC = () => {
   const [selectedReportStudentId, setSelectedReportStudentId] = useState<number | null>(null);
   const [selectedReportStudentName, setSelectedReportStudentName] = useState<string>('');
   const [downloadingReportId, setDownloadingReportId] = useState<number | null>(null);
+  const [isBulkDownloadingReports, setIsBulkDownloadingReports] = useState(false);
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -637,29 +639,15 @@ const AllResults: React.FC = () => {
 
   const handleToggleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedIds(
-        results
-          .filter((result) =>
-            activeTab === 'ACCEPTED'
-              ? Boolean(result.is_admitted)
-              : Boolean(result.is_selected && result.result_status === 'SELECTED'),
-          )
-          .map((result) => result.id),
-      );
+      setSelectedIds(results.map((result) => result.id));
     } else {
       setSelectedIds([]);
     }
   };
 
   const handleToggleSelectRow = (id: number, checked: boolean) => {
-    const result = results.find((item) => item.id === id);
-    const isActionable = activeTab === 'ACCEPTED'
-      ? Boolean(result?.is_admitted)
-      : Boolean(result?.is_selected && result?.result_status === 'SELECTED');
-    if (!isActionable) return;
-
     if (checked) {
-      setSelectedIds((prev) => [...prev, id]);
+      setSelectedIds((prev) => [...new Set([...prev, id])]);
     } else {
       setSelectedIds((prev) => prev.filter((item) => item !== id));
     }
@@ -823,6 +811,59 @@ const AllResults: React.FC = () => {
     }
   };
 
+  const resolveBulkReportResults = async (): Promise<AdmissionResult[]> => {
+    if (selectedIds.length > 0) {
+      const selectedIdSet = new Set(selectedIds);
+      return results.filter((result) => selectedIdSet.has(result.id));
+    }
+
+    const params: Record<string, unknown> = {
+      ...scopeQueryParams,
+      ...resultQueryParams,
+      semester: selectedSemester,
+      search: appliedSearch || undefined,
+    };
+    if (activeTab === 'ACCEPTED') {
+      params.result_status = 'ACCEPTED';
+    } else {
+      params.is_admitted = false;
+    }
+    const response = await admissionResultsAPI.getAllResults(params);
+    return response?.results || response?.data || [];
+  };
+
+  const handleDownloadBulkReports = async () => {
+    setIsBulkDownloadingReports(true);
+    try {
+      const reportResults = await resolveBulkReportResults();
+      if (reportResults.length === 0) {
+        toast.error('No students found for the current filters.');
+        return;
+      }
+      if (reportResults.length === 1) {
+        await handleDownloadReport(reportResults[0]);
+        return;
+      }
+
+      const response = await admissionResultsAPI.downloadStudentDetailReportsZip(
+        reportResults.map((result) => ({
+          exam_id: result.exam_id || result.exam,
+          student_id: result.student_id || result.student,
+        })),
+      );
+      if (!response?.blob) {
+        throw new Error('Student report ZIP is not available yet.');
+      }
+      downloadBlobFile(response.blob, response.filename);
+      toast.success(`Downloaded ${reportResults.length} student reports as ZIP.`);
+    } catch (error: any) {
+      console.error('Error downloading bulk student reports:', error);
+      toast.error(error?.message || 'Failed to download student reports');
+    } finally {
+      setIsBulkDownloadingReports(false);
+    }
+  };
+
   const hasAppliedFilters =
     Boolean(appliedSearch) ||
     selectedFacultyIds.length > 0 ||
@@ -830,15 +871,18 @@ const AllResults: React.FC = () => {
     examTypeFilter !== 'all' ||
     isSortFilterCustomized;
 
-  const selectableResults = results.filter((result) =>
+  const actionableResults = results.filter((result) =>
     activeTab === 'ACCEPTED'
       ? Boolean(result.is_admitted)
       : Boolean(result.is_selected && result.result_status === 'SELECTED'),
   );
+  const selectedIdSet = new Set(selectedIds);
+  const selectedActionableCount = actionableResults.filter((result) =>
+    selectedIdSet.has(result.id),
+  ).length;
   const allVisibleSelected =
-    selectableResults.length > 0 &&
-    selectableResults.every((result) => selectedIds.includes(result.id));
-  const someVisibleSelected = selectableResults.some((result) => selectedIds.includes(result.id));
+    results.length > 0 && results.every((result) => selectedIdSet.has(result.id));
+  const someVisibleSelected = results.some((result) => selectedIdSet.has(result.id));
   const awaitingAdmissionCount =
     summary.SELECTED + summary.WAITING + summary.REJECTED + summary.ABSENT;
   const statusTabs: Array<{
@@ -1131,11 +1175,15 @@ const AllResults: React.FC = () => {
 
             {/* Workflow Action Buttons */}
             <div className="flex items-center gap-2">
+              <span className="hidden items-center gap-1.5 text-xs font-semibold text-slate-600 sm:flex">
+                <CheckSquare className="h-4 w-4 text-blue-600" />
+                Bulk Selection
+              </span>
               {activeTab === 'SELECTED' && canWrite() && (
                 <Button
                   size="sm"
                   onClick={handleAcceptAdmission}
-                  disabled={selectedIds.length === 0 || isProcessing}
+                  disabled={selectedActionableCount === 0 || isProcessing}
                   className="h-8 px-3 text-white bg-green-600 hover:bg-green-700 shadow-sm text-xs font-semibold"
                 >
                   {isProcessing ? (
@@ -1143,7 +1191,7 @@ const AllResults: React.FC = () => {
                   ) : (
                     <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
                   )}
-                  Accept Admission {selectedIds.length > 0 && `(${selectedIds.length})`}
+                  Accept Admission {selectedActionableCount > 0 && `(${selectedActionableCount})`}
                 </Button>
               )}
 
@@ -1163,6 +1211,34 @@ const AllResults: React.FC = () => {
                   Revert Admission {selectedIds.length > 0 && `(${selectedIds.length})`}
                 </Button>
               )}
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void handleDownloadBulkReports()}
+                disabled={
+                  isLoading ||
+                  isBulkDownloadingReports ||
+                  downloadingReportId !== null ||
+                  !selectedSemester ||
+                  pagination.count === 0
+                }
+                className="h-8 px-3 text-xs font-semibold"
+                title={
+                  selectedIds.length > 0
+                    ? 'Download reports for selected students'
+                    : 'Download reports for all students matching the current filters'
+                }
+              >
+                {isBulkDownloadingReports ? (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Download className="mr-1.5 h-3.5 w-3.5" />
+                )}
+                {selectedIds.length > 0
+                  ? `Reports (${selectedIds.length})`
+                  : 'All Reports'}
+              </Button>
 
               <Badge variant="outline" className="h-8 px-2.5 font-medium text-xs">
                 {pagination.count} Total
@@ -1189,7 +1265,7 @@ const AllResults: React.FC = () => {
                       <Checkbox
                         checked={allVisibleSelected ? true : someVisibleSelected ? 'indeterminate' : false}
                         onCheckedChange={(checked) => handleToggleSelectAll(Boolean(checked))}
-                        disabled={selectableResults.length === 0}
+                        disabled={results.length === 0}
                         aria-label="Select all on page"
                       />
                     </TableHead>
@@ -1232,9 +1308,6 @@ const AllResults: React.FC = () => {
                 <TableBody className="text-xs">
                   {results.map((result, index) => {
                     const isChecked = selectedIds.includes(result.id);
-                    const isActionable = activeTab === 'ACCEPTED'
-                      ? Boolean(result.is_admitted)
-                      : Boolean(result.is_selected && result.result_status === 'SELECTED');
                     const serialNumber =
                       (pagination.current_page - 1) * pagination.page_size + index + 1;
 
@@ -1249,13 +1322,10 @@ const AllResults: React.FC = () => {
                         <TableCell className="px-3 text-center">
                           <Checkbox
                             checked={isChecked}
-                            disabled={!isActionable}
                             onCheckedChange={(checked) =>
                               handleToggleSelectRow(result.id, Boolean(checked))
                             }
-                            aria-label={isActionable
-                              ? `Select student ${result.student_full_name}`
-                              : `${result.student_full_name} has no department allocation`}
+                            aria-label={`Select student ${result.student_full_name}`}
                           />
                         </TableCell>
 
