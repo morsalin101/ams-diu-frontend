@@ -60,7 +60,7 @@ const createEmptyFormData = () => ({
   f_id: '',
   full_name: '',
   email: '',
-  department_shortname: 'CSE',
+  department_shortname: '',
   registration_semester: '',
   ssc: '',
   academic_type: 'HSC' as AcademicType,
@@ -88,21 +88,29 @@ const getStudentAcademicLabel = (student: Student) =>
 const getStudentAcademicValue = (student: Student) =>
   getStudentAcademicType(student) === 'DIPLOMA' ? student.diploma : student.hsc;
 
-const buildStudentPayload = (formData: ReturnType<typeof createEmptyFormData>) => ({
-  ...formData,
-  // Applicant ID drives both username and f_id (one identifier for applicants).
-  f_id: formData.f_id || formData.username,
-  // Email is optional; fall back to a clear "Not Entered" marker.
-  email: formData.email.trim() || NOT_ENTERED_EMAIL,
-  hsc: formData.academic_type === 'HSC' ? formData.hsc : '0',
-  diploma: formData.academic_type === 'DIPLOMA' ? formData.diploma : '0',
-  // Only send faculty_id if selected; send department_choices array
-  faculty_id: formData.faculty_id || undefined,
-  department_choices: formData.department_choices.map(({ department_id, priority }) => ({
-    department_id,
-    priority,
-  })),
-});
+const buildStudentPayload = (formData: ReturnType<typeof createEmptyFormData>) => {
+  const firstChoice = formData.department_choices.find(choice => choice.priority === 1);
+
+  return {
+    ...formData,
+    // Keep the legacy department field aligned with the student's first choice.
+    // The backend also normalizes this value, but sending the correct value
+    // avoids scope checks ever seeing the old CSE form default.
+    department_shortname: firstChoice?.department_shortname || formData.department_shortname,
+    // Applicant ID drives both username and f_id (one identifier for applicants).
+    f_id: formData.f_id || formData.username,
+    // Email is optional; fall back to a clear "Not Entered" marker.
+    email: formData.email.trim() || NOT_ENTERED_EMAIL,
+    hsc: formData.academic_type === 'HSC' ? formData.hsc : '0',
+    diploma: formData.academic_type === 'DIPLOMA' ? formData.diploma : '0',
+    // Only send faculty_id if selected; send department_choices array
+    faculty_id: formData.faculty_id || undefined,
+    department_choices: formData.department_choices.map(({ department_id, priority }) => ({
+      department_id,
+      priority,
+    })),
+  };
+};
 
 interface StudentsProps {
   gradientClass: string;
