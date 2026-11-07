@@ -41,6 +41,7 @@ import MySchedule from './pages/MySchedule';
 import { ExamineeResult } from './pages/ExamineeResult';
 import { AcceptedStudents } from './pages/AcceptedStudents';
 import { DeleteQuestions } from './pages/DeleteQuestions';
+import ReportSignatories from './pages/ReportSignatories';
 
 // Component mapping for dynamic routes
 // Cosmetic restricted view of the results board: only Selected + Not Selected
@@ -79,6 +80,7 @@ const componentMap = {
   AcceptedStudents,
   PublishedResults,
   DeleteQuestions,
+  ReportSignatories,
 };
 
 function ProtectedRoutes() {
@@ -153,6 +155,7 @@ function ProtectedRoutes() {
         <Route path="/result" element={<Navigate to="/results" replace />} />
         <Route path="/accepted-students" element={<Navigate to="/results" replace />} />
         <Route path="/deletequestions" element={<DeleteQuestions />} />
+        <Route path="/report-signatories" element={<ReportSignatories />} />
         
         {/* Test route for layout debugging */}
         <Route path="/layout-test" element={<LayoutTestPage />} />

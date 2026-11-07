@@ -70,6 +70,7 @@ import {
   drawSignatureBlock,
   getSignatureBlockHeight,
   loadDiuLogoDataUrl,
+  type ResultSheetSignatory,
 } from "../lib/diu-report-pdf";
 import { downloadBlobFile } from "../lib/pdf-download";
 import {
@@ -78,6 +79,7 @@ import {
   examAPI,
   facultyAPI,
   facultyDepartmentAPI,
+  reportSignatoryAPI,
 } from "../services/api";
 import { StudentAdmissionReportDialog } from "../components/StudentAdmissionReportDialog";
 import PaginationControls, { DEFAULT_PAGINATION, paginationFromDrf } from "../components/PaginationControls";
@@ -107,6 +109,20 @@ const DEFAULT_SUMMARY = {
   REJECTED: 0,
   ABSENT: 0,
 };
+
+interface ReportSignatoryRecord {
+  role: "CONVENOR" | "DEPARTMENT_HEAD" | "DEAN";
+  name: string;
+  designation: string;
+  department: number | null;
+  faculty: number | null;
+}
+
+const withoutRepeatedPrefix = (value: string, prefix: "Faculty" | "Department") =>
+  value
+    .trim()
+    .replace(new RegExp(`^(?:${prefix}\\s+of\\s+)+`, "i"), "")
+    .trim();
 
 type TabKey = keyof typeof TAB_TO_STATUS;
 const ALL_TABS = Object.keys(TAB_TO_STATUS) as TabKey[];
@@ -982,6 +998,77 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
       : "All Faculties");
   const departmentName = singleDepartment?.department_name || departmentBoardLabel;
 
+  const loadResultSheetSignatories = async (): Promise<ResultSheetSignatory[]> => {
+    if (!singleDepartment) {
+      return [];
+    }
+    const mappedFacultyId = facultyMappings.find((mapping) =>
+      mapping.department_ids?.includes(singleDepartment.id),
+    )?.faculty_id;
+    const reportFaculty = selectedFaculty
+      || faculties.find((faculty) => faculty.id === Number(mappedFacultyId));
+    if (!reportFaculty) {
+      return [];
+    }
+
+    const response = await reportSignatoryAPI.getAll({
+      department_id: singleDepartment.id,
+      faculty_id: reportFaculty.id,
+    });
+    const records: ReportSignatoryRecord[] = response?.data || [];
+    const departmentLine = `Department of ${withoutRepeatedPrefix(
+      singleDepartment.department_name,
+      "Department",
+    )}`;
+    const facultyLine = `Faculty of ${withoutRepeatedPrefix(
+      reportFaculty.faculty_name,
+      "Faculty",
+    )}`;
+    const signatories: ResultSheetSignatory[] = [];
+    const convenor = records.find(
+      (record) => record.role === "CONVENOR" && record.department === singleDepartment.id,
+    );
+    const departmentHead = records.find(
+      (record) => record.role === "DEPARTMENT_HEAD" && record.department === singleDepartment.id,
+    );
+    const dean = records.find(
+      (record) => record.role === "DEAN" && record.faculty === reportFaculty.id,
+    );
+
+    if (convenor) {
+      signatories.push({
+        name: convenor.name,
+        details: [
+          `Convenor, Admission Test Committee, ${reportFaculty.faculty_shortname}`,
+          convenor.designation,
+          departmentLine,
+          "Daffodil International University",
+        ],
+      });
+    }
+    if (departmentHead) {
+      signatories.push({
+        name: departmentHead.name,
+        details: [
+          departmentHead.designation,
+          departmentLine,
+          "Daffodil International University",
+        ],
+      });
+    }
+    if (dean) {
+      signatories.push({
+        name: dean.name,
+        details: [
+          dean.designation,
+          facultyLine,
+          "Daffodil International University",
+        ],
+      });
+    }
+    return signatories;
+  };
+
   const getExportBaseName = () => {
     const titleSemester = formatSemesterLabel(selectedSemester)
       .toLowerCase()
@@ -1028,6 +1115,7 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
         return;
       }
       const logoDataUrl = await loadDiuLogoDataUrl();
+      const signatories = await loadResultSheetSignatories();
       const doc = new jsPDF({
         orientation: "portrait",
         unit: "pt",
@@ -1115,27 +1203,29 @@ export function AcceptedStudents({ allowedTabs = ALL_TABS }: AcceptedStudentsPro
       // Render the signature block as one indivisible block at the very end.
       // Compute the remaining vertical space on the current page and decide
       // whether the block fits here or needs to be moved to a new page.
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const signatureBlockHeight = getSignatureBlockHeight(doc);
-      const tableEndY =
-        (doc as any).lastAutoTable?.finalY ?? tableTop;
-      const signatureTopGap = 36;
-      const requiredSpace = signatureBlockHeight + signatureTopGap;
-      const remainingSpace =
-        pageHeight - bottomMargin - tableEndY;
+      if (signatories.length > 0) {
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const signatureBlockHeight = getSignatureBlockHeight(doc, signatories);
+        const tableEndY =
+          (doc as any).lastAutoTable?.finalY ?? tableTop;
+        const signatureTopGap = 36;
+        const requiredSpace = signatureBlockHeight + signatureTopGap;
+        const remainingSpace =
+          pageHeight - bottomMargin - tableEndY;
 
-      if (remainingSpace < requiredSpace) {
-        // Not enough room — push the signature block to a new page.
-        doc.addPage();
-        drawHeader();
+        if (remainingSpace < requiredSpace) {
+          // Not enough room — push the signature block to a new page.
+          doc.addPage();
+          drawHeader();
+        }
+
+        const signatureStartY =
+          remainingSpace < requiredSpace
+            ? tableTop + signatureTopGap
+            : tableEndY + signatureTopGap;
+
+        drawSignatureBlock(doc, signatureStartY, signatories, { marginX });
       }
-
-      const signatureStartY =
-        remainingSpace < requiredSpace
-          ? tableTop + signatureTopGap
-          : tableEndY + signatureTopGap;
-
-      drawSignatureBlock(doc, signatureStartY, { marginX });
 
       doc.save(`${getExportBaseName()}.pdf`);
       toast.success("Result sheet PDF exported successfully");

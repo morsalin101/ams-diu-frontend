@@ -74,13 +74,16 @@ function drawPdfHeader(
   // Faculty and Department
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9.5);
-  const facultyName = report.written_exam.faculty || "Science and Information Technology";
+  const facultyName = (report.written_exam.faculty || "Science and Information Technology")
+    .replace(/^(?:faculty\s+of\s+)+/i, "")
+    .trim();
   doc.text(`Faculty of ${facultyName}`, centerX, 107, { align: "center" });
 
-  const departmentText = (report.written_exam.department || "Computer Science & Engineering").trim();
-  const deptLine = /^department\s+of\b/i.test(departmentText)
-    ? departmentText
-    : `Department of ${departmentText}`;
+  const departmentText = (report.written_exam.department || "Computer Science & Engineering")
+    .trim()
+    .replace(/^(?:department\s+of\s+)+/i, "")
+    .trim();
+  const deptLine = `Department of ${departmentText}`;
   doc.text(deptLine, centerX, 119, { align: "center" });
 
   // Exam Date
