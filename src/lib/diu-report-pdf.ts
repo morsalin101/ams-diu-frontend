@@ -70,13 +70,18 @@ export function drawDiuPdfChrome(
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
-  doc.text(`Faculty of ${facultyName}`, centerX, 140, { align: "center" });
+  const facultyText = facultyName
+    .trim()
+    .replace(/^(?:faculty\s+of\s+)+/i, "")
+    .trim();
+  doc.text(`Faculty of ${facultyText}`, centerX, 140, { align: "center" });
   // Some department names already include the "Department of" prefix; don't
   // repeat it (e.g. avoid "Department of Department of Computer Science...").
-  const departmentText = departmentName.trim();
-  const departmentLine = /^department\s+of\b/i.test(departmentText)
-    ? departmentText
-    : `Department of ${departmentText}`;
+  const departmentText = departmentName
+    .trim()
+    .replace(/^(?:department\s+of\s+)+/i, "")
+    .trim();
+  const departmentLine = `Department of ${departmentText}`;
   doc.text(departmentLine, centerX, 156, {
     align: "center",
   });
@@ -94,38 +99,10 @@ export function drawDiuPdfChrome(
   doc.text(formatReportDate(), marginX, pageHeight - 12, { align: "left" });
 }
 
-type Signatory = {
+export type ResultSheetSignatory = {
   name: string;
   details: string[];
 };
-
-export const RESULT_SHEET_SIGNATORIES: Signatory[] = [
-  {
-    name: "Md. Abbas Ali Khan",
-    details: [
-      "Convener, Admission Test Committee, FSIT",
-      "Assistant Professor",
-      "Department of Computer Science and Engineering",
-      "Daffodil International University",
-    ],
-  },
-  {
-    name: "Professor Dr. Sheak Rashed Haider Noori",
-    details: [
-      "Professor & Head",
-      "Department of Computer Science and Engineering",
-      "Daffodil International University",
-    ],
-  },
-  {
-    name: "Professor Dr. Md. Fokhray Hossain",
-    details: [
-      "Dean & Professor",
-      "Faculty of Science and Information Technology",
-      "Daffodil International University",
-    ],
-  },
-];
 
 const SIGNATURE_LAYOUT = {
   marginX: 26,
@@ -147,11 +124,13 @@ const SIGNATURE_LAYOUT = {
   bottomPadding: 6,
 } as const;
 
-function getColumnGeometry(pageWidth: number) {
+function getColumnGeometry(pageWidth: number, signatories: ResultSheetSignatory[]) {
   const usableWidth = pageWidth - SIGNATURE_LAYOUT.marginX * 2;
-  const columnCount = RESULT_SHEET_SIGNATORIES.length;
+  const columnCount = signatories.length;
   const columnWidth =
-    (usableWidth - SIGNATURE_LAYOUT.columnGap * (columnCount - 1)) / columnCount;
+    columnCount > 0
+      ? (usableWidth - SIGNATURE_LAYOUT.columnGap * (columnCount - 1)) / columnCount
+      : usableWidth;
   return { columnWidth, columnCount };
 }
 
@@ -162,9 +141,15 @@ function getColumnGeometry(pageWidth: number) {
  * Each signatory's details are rendered on a single line per row, so the
  * height only depends on the signatory with the most detail rows.
  */
-export function getSignatureBlockHeight(doc: jsPDF): number {
+export function getSignatureBlockHeight(
+  doc: jsPDF,
+  signatories: ResultSheetSignatory[],
+): number {
+  if (signatories.length === 0) {
+    return 0;
+  }
   const pageWidth = doc.internal.pageSize.getWidth();
-  const { columnWidth } = getColumnGeometry(pageWidth);
+  const { columnWidth } = getColumnGeometry(pageWidth, signatories);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(SIGNATURE_LAYOUT.detailSize);
@@ -172,7 +157,7 @@ export function getSignatureBlockHeight(doc: jsPDF): number {
   // Sanity-check that every detail line actually fits inside its column at
   // the current font size. If a line is too long, log a warning so the caller
   // can spot configuration drift early.
-  RESULT_SHEET_SIGNATORIES.forEach((signatory) => {
+  signatories.forEach((signatory) => {
     signatory.details.forEach((line) => {
       const width = doc.getTextWidth(line);
       if (width > columnWidth) {
@@ -186,7 +171,7 @@ export function getSignatureBlockHeight(doc: jsPDF): number {
   });
 
   const maxDetails = Math.max(
-    ...RESULT_SHEET_SIGNATORIES.map((signatory) => signatory.details.length),
+    ...signatories.map((signatory) => signatory.details.length),
   );
 
   return (
@@ -214,6 +199,7 @@ export function getSignatureBlockHeight(doc: jsPDF): number {
 export function drawSignatureBlock(
   doc: jsPDF,
   startY: number,
+  signatories: ResultSheetSignatory[],
   {
     marginX = SIGNATURE_LAYOUT.marginX,
     columnGap = SIGNATURE_LAYOUT.columnGap,
@@ -236,9 +222,12 @@ export function drawSignatureBlock(
     lineHeight?: number;
   } = {},
 ) {
+  if (signatories.length === 0) {
+    return;
+  }
   const pageWidth = doc.internal.pageSize.getWidth();
   const usableWidth = pageWidth - marginX * 2;
-  const columnCount = RESULT_SHEET_SIGNATORIES.length;
+  const columnCount = signatories.length;
   const columnWidth = (usableWidth - columnGap * (columnCount - 1)) / columnCount;
 
   const signatureLineY = startY + signatureLineHeight;
@@ -249,7 +238,7 @@ export function drawSignatureBlock(
   doc.setLineWidth(0.6);
   doc.setTextColor(15, 23, 42);
 
-  RESULT_SHEET_SIGNATORIES.forEach((signatory, index) => {
+  signatories.forEach((signatory, index) => {
     const columnX = marginX + index * (columnWidth + columnGap);
     const centerX = columnX + columnWidth / 2;
 

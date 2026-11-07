@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'https://api.tatomal.me';
-// const BASE_URL = 'http://localhost:8000';
+// const BASE_URL = import.meta.env.VITE_API_URL || 'https://api.tatomal.me';
+const BASE_URL = 'http://localhost:8000';
 
 
 // Create axios instance with default config
@@ -1628,6 +1628,36 @@ export const thresholdAPI = {
   deleteThreshold: async (thresholdId) => {
     try {
       const response = await api.delete(`/api/admission/threshold/${thresholdId}/delete/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+};
+
+// Department/faculty signatories used by admission result-sheet PDFs.
+export const reportSignatoryAPI = {
+  getAll: async (params = {}) => {
+    try {
+      const response = await api.get('/api/admission/report-signatories/', { params });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  save: async (data) => {
+    try {
+      const response = await api.post('/api/admission/report-signatories/', data);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  remove: async (signatoryId) => {
+    try {
+      const response = await api.delete(`/api/admission/report-signatories/${signatoryId}/`);
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;

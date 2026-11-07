@@ -100,7 +100,7 @@ function normalizeFacultyLabel(value: string | null | undefined) {
   }
 
   return text
-    .replace(/^Faculty of\s+/i, "")
+    .replace(/^(?:Faculty of\s+)+/i, "")
     .replace(/\s+/g, " ")
     .trim();
 }
